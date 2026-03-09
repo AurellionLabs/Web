@@ -4,9 +4,9 @@
  * DO NOT EDIT MANUALLY - This file is generated from Hardhat artifacts
  * Run: npm run contract:gen
  *
- * Generated: 2026-03-08T20:37:20.949Z
+ * Generated: 2026-03-09T15:35:48.887Z
  * Facets: NodesFacet, AuSysFacet, AuSysViewFacet, OrderRouterFacet, CLOBFacetV2, CLOBMatchingFacet, DiamondLoupeFacet, OwnershipFacet, ERC1155ReceiverFacet, OperatorFacet, CLOBLogisticsFacet, AssetsFacet
- * Total items: 265
+ * Total items: 240
  */
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -143,25 +143,6 @@ export const DIAMOND_ABI: any[] = [
       },
     ],
     name: 'NodeRegistered',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'registrar',
-        type: 'address',
-      },
-      {
-        indexed: false,
-        internalType: 'bool',
-        name: 'enabled',
-        type: 'bool',
-      },
-    ],
-    name: 'NodeRegistrarUpdated',
     type: 'event',
   },
   {
@@ -568,19 +549,6 @@ export const DIAMOND_ABI: any[] = [
     type: 'event',
   },
   {
-    inputs: [],
-    name: 'NODE_REGISTRAR_ROLE',
-    outputs: [
-      {
-        internalType: 'bytes32',
-        name: '',
-        type: 'bytes32',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
     inputs: [
       {
         internalType: 'bytes32',
@@ -915,19 +883,6 @@ export const DIAMOND_ABI: any[] = [
         internalType: 'struct DiamondStorage.SupportingDocument[]',
         name: 'documents',
         type: 'tuple[]',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'getAllowedNodeRegistrars',
-    outputs: [
-      {
-        internalType: 'address[]',
-        name: '',
-        type: 'address[]',
       },
     ],
     stateMutability: 'view',
@@ -1424,30 +1379,6 @@ export const DIAMOND_ABI: any[] = [
     type: 'function',
   },
   {
-    inputs: [
-      {
-        internalType: 'bytes32',
-        name: 'role',
-        type: 'bytes32',
-      },
-      {
-        internalType: 'address',
-        name: 'account',
-        type: 'address',
-      },
-    ],
-    name: 'hasNodeRole',
-    outputs: [
-      {
-        internalType: 'bool',
-        name: '',
-        type: 'bool',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
     inputs: [],
     name: 'initialize',
     outputs: [],
@@ -1754,24 +1685,6 @@ export const DIAMOND_ABI: any[] = [
       },
     ],
     name: 'setNodeAdmin',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'registrar',
-        type: 'address',
-      },
-      {
-        internalType: 'bool',
-        name: 'enable',
-        type: 'bool',
-      },
-    ],
-    name: 'setNodeRegistrar',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
@@ -2690,68 +2603,6 @@ export const DIAMOND_ABI: any[] = [
     type: 'event',
   },
   {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'orderId',
-        type: 'bytes32',
-      },
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'buyer',
-        type: 'address',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'tokenId',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'quantity',
-        type: 'uint256',
-      },
-    ],
-    name: 'TokenDestinationPending',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'orderId',
-        type: 'bytes32',
-      },
-      {
-        indexed: false,
-        internalType: 'address',
-        name: 'destination',
-        type: 'address',
-      },
-      {
-        indexed: false,
-        internalType: 'bytes32',
-        name: 'nodeId',
-        type: 'bytes32',
-      },
-      {
-        indexed: false,
-        internalType: 'bool',
-        name: 'burned',
-        type: 'bool',
-      },
-    ],
-    name: 'TokenDestinationSelected',
-    type: 'event',
-  },
-  {
     inputs: [],
     name: 'ADMIN_ROLE',
     outputs: [
@@ -2791,58 +2642,6 @@ export const DIAMOND_ABI: any[] = [
     type: 'function',
   },
   {
-    inputs: [],
-    name: 'MAX_DRIVER_JOURNEYS',
-    outputs: [
-      {
-        internalType: 'uint256',
-        name: '',
-        type: 'uint256',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'MAX_JOURNEYS_PER_ORDER',
-    outputs: [
-      {
-        internalType: 'uint256',
-        name: '',
-        type: 'uint256',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'MAX_NODES_PER_ORDER',
-    outputs: [
-      {
-        internalType: 'uint256',
-        name: '',
-        type: 'uint256',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'MAX_ORDERS',
-    outputs: [
-      {
-        internalType: 'uint256',
-        name: '',
-        type: 'uint256',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
     inputs: [
       {
         internalType: 'bytes32',
@@ -2863,12 +2662,12 @@ export const DIAMOND_ABI: any[] = [
         type: 'bytes32',
       },
       {
-        internalType: 'address',
-        name: 'to',
-        type: 'address',
+        internalType: 'uint256',
+        name: 'correctQuantity',
+        type: 'uint256',
       },
     ],
-    name: 'adminRecoverEscrow',
+    name: 'adminFixOrderTokenQuantity',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
@@ -2900,24 +2699,6 @@ export const DIAMOND_ABI: any[] = [
       },
     ],
     name: 'cancelP2POffer',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'bytes32',
-        name: 'orderId',
-        type: 'bytes32',
-      },
-      {
-        internalType: 'uint256',
-        name: 'correctQuantity',
-        type: 'uint256',
-      },
-    ],
-    name: 'correctOrderTokenQuantity',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
@@ -3250,272 +3031,6 @@ export const DIAMOND_ABI: any[] = [
         type: 'bytes32',
       },
     ],
-    name: 'handOff',
-    outputs: [
-      {
-        internalType: 'bool',
-        name: '',
-        type: 'bool',
-      },
-    ],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'bytes32',
-        name: 'id',
-        type: 'bytes32',
-      },
-    ],
-    name: 'handOn',
-    outputs: [
-      {
-        internalType: 'bool',
-        name: '',
-        type: 'bool',
-      },
-    ],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: '',
-        type: 'address',
-      },
-      {
-        internalType: 'address',
-        name: '',
-        type: 'address',
-      },
-      {
-        internalType: 'uint256[]',
-        name: '',
-        type: 'uint256[]',
-      },
-      {
-        internalType: 'uint256[]',
-        name: '',
-        type: 'uint256[]',
-      },
-      {
-        internalType: 'bytes',
-        name: '',
-        type: 'bytes',
-      },
-    ],
-    name: 'onERC1155BatchReceived',
-    outputs: [
-      {
-        internalType: 'bytes4',
-        name: '',
-        type: 'bytes4',
-      },
-    ],
-    stateMutability: 'pure',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: '',
-        type: 'address',
-      },
-      {
-        internalType: 'address',
-        name: '',
-        type: 'address',
-      },
-      {
-        internalType: 'uint256',
-        name: '',
-        type: 'uint256',
-      },
-      {
-        internalType: 'uint256',
-        name: '',
-        type: 'uint256',
-      },
-      {
-        internalType: 'bytes',
-        name: '',
-        type: 'bytes',
-      },
-    ],
-    name: 'onERC1155Received',
-    outputs: [
-      {
-        internalType: 'bytes4',
-        name: '',
-        type: 'bytes4',
-      },
-    ],
-    stateMutability: 'pure',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'bytes32',
-        name: 'id',
-        type: 'bytes32',
-      },
-    ],
-    name: 'packageSign',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'admin',
-        type: 'address',
-      },
-    ],
-    name: 'revokeAuSysAdmin',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'bytes32',
-        name: 'orderId',
-        type: 'bytes32',
-      },
-      {
-        internalType: 'bytes32',
-        name: 'nodeId',
-        type: 'bytes32',
-      },
-      {
-        internalType: 'bool',
-        name: 'burn',
-        type: 'bool',
-      },
-    ],
-    name: 'selectTokenDestination',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'admin',
-        type: 'address',
-      },
-    ],
-    name: 'setAuSysAdmin',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'dispatcher',
-        type: 'address',
-      },
-      {
-        internalType: 'bool',
-        name: 'enable',
-        type: 'bool',
-      },
-    ],
-    name: 'setDispatcher',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'driver',
-        type: 'address',
-      },
-      {
-        internalType: 'bool',
-        name: 'enable',
-        type: 'bool',
-      },
-    ],
-    name: 'setDriver',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: '_payToken',
-        type: 'address',
-      },
-    ],
-    name: 'setPayToken',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'signer',
-        type: 'address',
-      },
-    ],
-    name: 'setTrustedP2PSigner',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'domainSeparator',
-    outputs: [
-      {
-        internalType: 'bytes32',
-        name: '',
-        type: 'bytes32',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'getAllowedDrivers',
-    outputs: [
-      {
-        internalType: 'address[]',
-        name: '',
-        type: 'address[]',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'bytes32',
-        name: 'id',
-        type: 'bytes32',
-      },
-    ],
     name: 'getAuSysOrder',
     outputs: [
       {
@@ -3650,25 +3165,6 @@ export const DIAMOND_ABI: any[] = [
         internalType: 'struct DiamondStorage.AuSysOrder',
         name: '',
         type: 'tuple',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'driver',
-        type: 'address',
-      },
-    ],
-    name: 'getDriverJourneyCount',
-    outputs: [
-      {
-        internalType: 'uint256',
-        name: '',
-        type: 'uint256',
       },
     ],
     stateMutability: 'view',
@@ -3821,25 +3317,6 @@ export const DIAMOND_ABI: any[] = [
     inputs: [
       {
         internalType: 'address',
-        name: 'buyer',
-        type: 'address',
-      },
-    ],
-    name: 'getPendingTokenDestinations',
-    outputs: [
-      {
-        internalType: 'bytes32[]',
-        name: '',
-        type: 'bytes32[]',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
         name: 'user',
         type: 'address',
       },
@@ -3853,6 +3330,44 @@ export const DIAMOND_ABI: any[] = [
       },
     ],
     stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'bytes32',
+        name: 'id',
+        type: 'bytes32',
+      },
+    ],
+    name: 'handOff',
+    outputs: [
+      {
+        internalType: 'bool',
+        name: '',
+        type: 'bool',
+      },
+    ],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'bytes32',
+        name: 'id',
+        type: 'bytes32',
+      },
+    ],
+    name: 'handOn',
+    outputs: [
+      {
+        internalType: 'bool',
+        name: '',
+        type: 'bool',
+      },
+    ],
+    stateMutability: 'nonpayable',
     type: 'function',
   },
   {
@@ -3877,6 +3392,172 @@ export const DIAMOND_ABI: any[] = [
       },
     ],
     stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: '',
+        type: 'address',
+      },
+      {
+        internalType: 'address',
+        name: '',
+        type: 'address',
+      },
+      {
+        internalType: 'uint256[]',
+        name: '',
+        type: 'uint256[]',
+      },
+      {
+        internalType: 'uint256[]',
+        name: '',
+        type: 'uint256[]',
+      },
+      {
+        internalType: 'bytes',
+        name: '',
+        type: 'bytes',
+      },
+    ],
+    name: 'onERC1155BatchReceived',
+    outputs: [
+      {
+        internalType: 'bytes4',
+        name: '',
+        type: 'bytes4',
+      },
+    ],
+    stateMutability: 'pure',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: '',
+        type: 'address',
+      },
+      {
+        internalType: 'address',
+        name: '',
+        type: 'address',
+      },
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+      {
+        internalType: 'bytes',
+        name: '',
+        type: 'bytes',
+      },
+    ],
+    name: 'onERC1155Received',
+    outputs: [
+      {
+        internalType: 'bytes4',
+        name: '',
+        type: 'bytes4',
+      },
+    ],
+    stateMutability: 'pure',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'bytes32',
+        name: 'id',
+        type: 'bytes32',
+      },
+    ],
+    name: 'packageSign',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'admin',
+        type: 'address',
+      },
+    ],
+    name: 'revokeAuSysAdmin',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'admin',
+        type: 'address',
+      },
+    ],
+    name: 'setAuSysAdmin',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'dispatcher',
+        type: 'address',
+      },
+      {
+        internalType: 'bool',
+        name: 'enable',
+        type: 'bool',
+      },
+    ],
+    name: 'setDispatcher',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'driver',
+        type: 'address',
+      },
+      {
+        internalType: 'bool',
+        name: 'enable',
+        type: 'bool',
+      },
+    ],
+    name: 'setDriver',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: '_payToken',
+        type: 'address',
+      },
+    ],
+    name: 'setPayToken',
+    outputs: [],
+    stateMutability: 'nonpayable',
     type: 'function',
   },
   {
@@ -6017,25 +5698,6 @@ export const DIAMOND_ABI: any[] = [
   {
     inputs: [
       {
-        internalType: 'address',
-        name: '',
-        type: 'address',
-      },
-    ],
-    name: 'authorizedLogisticsCreators',
-    outputs: [
-      {
-        internalType: 'bool',
-        name: '',
-        type: 'bool',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
         internalType: 'bytes32',
         name: 'orderId',
         type: 'bytes32',
@@ -6059,13 +5721,8 @@ export const DIAMOND_ABI: any[] = [
         type: 'bytes32',
       },
       {
-        internalType: 'uint256',
-        name: 'deadline',
-        type: 'uint256',
-      },
-      {
         internalType: 'bytes',
-        name: 'buyerSignature',
+        name: 'receiverSignature',
         type: 'bytes',
       },
       {
@@ -6099,13 +5756,8 @@ export const DIAMOND_ABI: any[] = [
         type: 'bytes32',
       },
       {
-        internalType: 'uint256',
-        name: 'deadline',
-        type: 'uint256',
-      },
-      {
         internalType: 'bytes',
-        name: 'sellerSignature',
+        name: 'signature',
         type: 'bytes',
       },
       {
@@ -6552,24 +6204,6 @@ export const DIAMOND_ABI: any[] = [
       },
     ],
     name: 'setDriverAvailability',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'creator',
-        type: 'address',
-      },
-      {
-        internalType: 'bool',
-        name: 'authorized',
-        type: 'bool',
-      },
-    ],
-    name: 'setLogisticsCreatorAuthorization',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
@@ -7186,88 +6820,6 @@ export const DIAMOND_ABI: any[] = [
     type: 'function',
   },
   {
-    inputs: [
-      {
-        internalType: 'uint256',
-        name: 'tokenId',
-        type: 'uint256',
-      },
-      {
-        internalType: 'bytes32',
-        name: 'nodeHash',
-        type: 'bytes32',
-      },
-    ],
-    name: 'getNodeCustodyInfo',
-    outputs: [
-      {
-        internalType: 'uint256',
-        name: 'amount',
-        type: 'uint256',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'owner',
-        type: 'address',
-      },
-      {
-        internalType: 'uint256',
-        name: 'tokenId',
-        type: 'uint256',
-      },
-      {
-        internalType: 'bytes32',
-        name: 'nodeHash',
-        type: 'bytes32',
-      },
-    ],
-    name: 'getNodeSellableAmount',
-    outputs: [
-      {
-        internalType: 'uint256',
-        name: 'amount',
-        type: 'uint256',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'owner',
-        type: 'address',
-      },
-      {
-        internalType: 'uint256',
-        name: 'tokenId',
-        type: 'uint256',
-      },
-    ],
-    name: 'getOwnerNodeSellableBalances',
-    outputs: [
-      {
-        internalType: 'bytes32[]',
-        name: 'nodeHashes',
-        type: 'bytes32[]',
-      },
-      {
-        internalType: 'uint256[]',
-        name: 'amounts',
-        type: 'uint256[]',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
     inputs: [],
     name: 'getSupportedAssets',
     outputs: [
@@ -7549,89 +7101,6 @@ export const DIAMOND_ABI: any[] = [
   {
     inputs: [
       {
-        internalType: 'address',
-        name: 'account',
-        type: 'address',
-      },
-      {
-        components: [
-          {
-            internalType: 'string',
-            name: 'name',
-            type: 'string',
-          },
-          {
-            internalType: 'string',
-            name: 'assetClass',
-            type: 'string',
-          },
-          {
-            components: [
-              {
-                internalType: 'string',
-                name: 'name',
-                type: 'string',
-              },
-              {
-                internalType: 'string[]',
-                name: 'values',
-                type: 'string[]',
-              },
-              {
-                internalType: 'string',
-                name: 'description',
-                type: 'string',
-              },
-            ],
-            internalType: 'struct DiamondStorage.Attribute[]',
-            name: 'attributes',
-            type: 'tuple[]',
-          },
-        ],
-        internalType: 'struct DiamondStorage.AssetDefinition',
-        name: 'asset',
-        type: 'tuple',
-      },
-      {
-        internalType: 'uint256',
-        name: 'amount',
-        type: 'uint256',
-      },
-      {
-        internalType: 'string',
-        name: 'className',
-        type: 'string',
-      },
-      {
-        internalType: 'bytes',
-        name: 'data',
-        type: 'bytes',
-      },
-      {
-        internalType: 'bytes32',
-        name: 'nodeHash',
-        type: 'bytes32',
-      },
-    ],
-    name: 'nodeMintForNode',
-    outputs: [
-      {
-        internalType: 'bytes32',
-        name: 'hash',
-        type: 'bytes32',
-      },
-      {
-        internalType: 'uint256',
-        name: 'tokenID',
-        type: 'uint256',
-      },
-    ],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
         internalType: 'uint256',
         name: 'tokenId',
         type: 'uint256',
@@ -7648,34 +7117,6 @@ export const DIAMOND_ABI: any[] = [
       },
     ],
     name: 'redeem',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'uint256',
-        name: 'tokenId',
-        type: 'uint256',
-      },
-      {
-        internalType: 'uint256',
-        name: 'amount',
-        type: 'uint256',
-      },
-      {
-        internalType: 'address',
-        name: 'custodian',
-        type: 'address',
-      },
-      {
-        internalType: 'bytes32',
-        name: 'nodeHash',
-        type: 'bytes32',
-      },
-    ],
-    name: 'redeemFromNode',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',

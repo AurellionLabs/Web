@@ -125,7 +125,7 @@ contract RWYStakingLifecycleTest is DiamondTestBase {
     function _stakeERC20(bytes32 oppId, address staker, uint256 amount) internal {
         vm.startPrank(staker);
         payToken.approve(address(diamond), amount);
-        rwy.stake(oppId, amount);
+        rwy.stake(oppId, amount, 0);
         vm.stopPrank();
     }
 
@@ -133,7 +133,7 @@ contract RWYStakingLifecycleTest is DiamondTestBase {
     function _stakeERC1155(bytes32 oppId, address staker, uint256 amount) internal {
         vm.startPrank(staker);
         rwaToken.setApprovalForAll(address(diamond), true);
-        rwy.stake(oppId, amount);
+        rwy.stake(oppId, amount, 0);
         vm.stopPrank();
     }
 
@@ -247,7 +247,7 @@ contract RWYStakingLifecycleTest is DiamondTestBase {
         vm.startPrank(staker1);
         payToken.approve(address(diamond), 1 ether);
         vm.expectRevert(RWYStakingFacet.InvalidStatus.selector);
-        rwy.stake(oppId, 1 ether);
+        rwy.stake(oppId, 1 ether, 0);
         vm.stopPrank();
     }
 
@@ -259,7 +259,7 @@ contract RWYStakingLifecycleTest is DiamondTestBase {
         vm.startPrank(staker1);
         payToken.approve(address(diamond), TARGET / 2);
         vm.expectRevert(RWYStakingFacet.FundingDeadlinePassed.selector);
-        rwy.stake(oppId, TARGET / 2);
+        rwy.stake(oppId, TARGET / 2, 0);
         vm.stopPrank();
     }
 
@@ -269,7 +269,7 @@ contract RWYStakingLifecycleTest is DiamondTestBase {
         vm.startPrank(staker1);
         payToken.approve(address(diamond), TARGET + 1 ether);
         vm.expectRevert(RWYStakingFacet.ExceedsTarget.selector);
-        rwy.stake(oppId, TARGET + 1 ether);
+        rwy.stake(oppId, TARGET + 1 ether, 0);
         vm.stopPrank();
     }
 
@@ -279,7 +279,7 @@ contract RWYStakingLifecycleTest is DiamondTestBase {
         vm.startPrank(staker1);
         payToken.approve(address(diamond), 0);
         vm.expectRevert(RWYStakingFacet.InvalidAmount.selector);
-        rwy.stake(oppId, 0);
+        rwy.stake(oppId, 0, 0);
         vm.stopPrank();
     }
 
@@ -329,7 +329,7 @@ contract RWYStakingLifecycleTest is DiamondTestBase {
         uint256 balBefore = payToken.balanceOf(staker1);
 
         vm.prank(staker1);
-        rwy.unstake(oppId, TARGET / 4);
+        rwy.unstake(oppId, TARGET / 4, 0);
 
         assertEq(payToken.balanceOf(staker1), balBefore + TARGET / 4, 'tokens returned');
         assertEq(payToken.balanceOf(address(diamond)), TARGET / 4, 'diamond reduced balance');
@@ -343,7 +343,7 @@ contract RWYStakingLifecycleTest is DiamondTestBase {
         uint256 balBefore = payToken.balanceOf(staker1);
 
         vm.prank(staker1);
-        rwy.unstake(oppId, stakedAmt);
+        rwy.unstake(oppId, stakedAmt, 0);
 
         assertEq(payToken.balanceOf(staker1), balBefore + stakedAmt, 'all tokens returned');
         assertEq(payToken.balanceOf(address(diamond)), 0, 'diamond empty');
@@ -355,7 +355,7 @@ contract RWYStakingLifecycleTest is DiamondTestBase {
 
         vm.prank(staker1);
         vm.expectRevert(RWYStakingFacet.InsufficientStake.selector);
-        rwy.unstake(oppId, TARGET / 2); // more than staked
+        rwy.unstake(oppId, TARGET / 2, 0); // more than staked
     }
 
     function test_unstake_revertAfterFunded() public {
@@ -367,7 +367,7 @@ contract RWYStakingLifecycleTest is DiamondTestBase {
 
         vm.prank(staker1);
         vm.expectRevert(RWYStakingFacet.CannotUnstake.selector);
-        rwy.unstake(oppId, TARGET / 2);
+        rwy.unstake(oppId, TARGET / 2, 0);
     }
 
     // ============================================================================
@@ -398,7 +398,7 @@ contract RWYStakingLifecycleTest is DiamondTestBase {
 
         // Unstake succeeds WITHOUT any self-approval — proving PR #127 was wrong
         vm.prank(staker1);
-        rwy.unstake(oppId, stakeAmt);
+        rwy.unstake(oppId, stakeAmt, 0);
 
         // Confirm self-approval is still false after unstake
         assertFalse(
@@ -423,7 +423,7 @@ contract RWYStakingLifecycleTest is DiamondTestBase {
         _stakeERC1155(oppId, staker1, ERC1155_TARGET / 2);
 
         vm.prank(staker1);
-        rwy.unstake(oppId, ERC1155_TARGET / 4);
+        rwy.unstake(oppId, ERC1155_TARGET / 4, 0);
 
         assertEq(rwaToken.balanceOf(address(diamond), ERC1155_TOKEN_ID), ERC1155_TARGET / 4);
         assertEq(
@@ -653,7 +653,7 @@ contract RWYStakingLifecycleTest is DiamondTestBase {
         vm.startPrank(staker1);
         payToken.approve(address(diamond), TARGET);
         vm.expectRevert(RWYStakingFacet.OpportunityNotFound.selector);
-        rwy.stake(fakeId, TARGET);
+        rwy.stake(fakeId, TARGET, 0);
         vm.stopPrank();
     }
 
@@ -662,6 +662,6 @@ contract RWYStakingLifecycleTest is DiamondTestBase {
 
         vm.prank(staker1);
         vm.expectRevert(RWYStakingFacet.OpportunityNotFound.selector);
-        rwy.unstake(fakeId, 1);
+        rwy.unstake(fakeId, 1, 0);
     }
 }

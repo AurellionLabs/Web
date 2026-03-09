@@ -73,11 +73,13 @@ contract AuSysTokenDestinationTest is DiamondTestBase {
     }
 
     function _addMissingAuSysSelectors() internal {
-        bytes4[] memory sels = new bytes4[](4);
+        bytes4[] memory sels = new bytes4[](6);
         sels[0] = AuSysFacet.selectTokenDestination.selector;
         sels[1] = AuSysFacet.handOff.selector;
         sels[2] = AuSysFacet.onERC1155Received.selector;
         sels[3] = AuSysFacet.onERC1155BatchReceived.selector;
+        sels[4] = AuSysFacet.acceptP2POffer.selector;
+        sels[5] = AuSysFacet.cancelP2POffer.selector;
 
         IDiamondCut.FacetCut[] memory cut = new IDiamondCut.FacetCut[](1);
         cut[0] = IDiamondCut.FacetCut({
@@ -206,6 +208,30 @@ contract AuSysTokenDestinationTest is DiamondTestBase {
             block.timestamp + 86400,
             TOKEN_QTY,
             TOKEN_ID
+        );
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        vm.stopPrank();
+        return _extractJourneyId(logs);
+    }
+
+    function _createJourneyForOrderWithAssetId(
+        bytes32 orderId,
+        address receiver,
+        DiamondStorage.ParcelData memory parcelData,
+        uint256 assetId
+    ) internal returns (bytes32 journeyId) {
+        vm.startPrank(buyer);
+        payToken.approve(address(diamond), BOUNTY);
+        vm.recordLogs();
+        ausys.createOrderJourney(
+            orderId,
+            seller,
+            receiver,
+            parcelData,
+            BOUNTY,
+            block.timestamp + 86400,
+            TOKEN_QTY,
+            assetId
         );
         Vm.Log[] memory logs = vm.getRecordedLogs();
         vm.stopPrank();
@@ -465,5 +491,183 @@ contract AuSysTokenDestinationTest is DiamondTestBase {
 
         uint256 escrowAfterSecondHandOn = erc1155Token.balanceOf(address(diamond), TOKEN_ID);
         assertEq(escrowAfterSecondHandOn, TOKEN_QTY, 'Second handOn must not escrow the order twice');
+    }
+
+    function test_createSellerInitiatedOffer_debitsNodeSellableForDiamondAsset() public {
+        vm.startPrank(owner);
+        assets.addSupportedClass('COMMODITY');
+        vm.stopPrank();
+
+        DiamondStorage.AssetDefinition memory assetDef = _createAssetDefinition('Gold Bar', 'COMMODITY');
+
+        vm.prank(nodeOperator);
+        (, uint256 tokenId) = assets.nodeMint(seller, assetDef, TOKEN_QTY, 'COMMODITY', '');
+
+        vm.prank(seller);
+        assets.setApprovalForAll(address(diamond), true);
+
+        uint256 sellQty = 4;
+        uint256 beforeSellable = assets.getNodeSellableAmount(seller, tokenId, testNodeHash);
+
+        DiamondStorage.ParcelData memory parcelData = _createParcelData(
+            '40.7128', '-74.0060', '34.0522', '-118.2437', 'Origin', 'Destination'
+        );
+        address[] memory orderNodes = new address[](0);
+        bytes32[] memory journeyIds = new bytes32[](0);
+
+        DiamondStorage.AuSysOrder memory order = DiamondStorage.AuSysOrder({
+            id: bytes32(0),
+            token: address(diamond),
+            tokenId: tokenId,
+            tokenQuantity: sellQty,
+            price: ORDER_PRICE,
+            txFee: 0,
+            buyer: address(0),
+            seller: seller,
+            journeyIds: journeyIds,
+            nodes: orderNodes,
+            locationData: parcelData,
+            currentStatus: 0,
+            contractualAgreement: bytes32(0),
+            isSellerInitiated: true,
+            targetCounterparty: address(0),
+            expiresAt: 0
+        });
+
+        vm.prank(seller);
+        ausys.createAuSysOrder(order);
+
+        uint256 afterSellable = assets.getNodeSellableAmount(seller, tokenId, testNodeHash);
+        assertEq(afterSellable, beforeSellable - sellQty, 'Sellable should be debited on seller escrow');
+    }
+
+    function test_cancelSellerInitiatedOffer_restoresNodeSellableForDiamondAsset() public {
+        vm.startPrank(owner);
+        assets.addSupportedClass('COMMODITY');
+        vm.stopPrank();
+
+        DiamondStorage.AssetDefinition memory assetDef = _createAssetDefinition('Gold Bar', 'COMMODITY');
+
+        vm.prank(nodeOperator);
+        (, uint256 tokenId) = assets.nodeMint(seller, assetDef, TOKEN_QTY, 'COMMODITY', '');
+
+        vm.prank(seller);
+        assets.setApprovalForAll(address(diamond), true);
+
+        uint256 sellQty = 4;
+        uint256 beforeSellable = assets.getNodeSellableAmount(seller, tokenId, testNodeHash);
+
+        DiamondStorage.ParcelData memory parcelData = _createParcelData(
+            '40.7128', '-74.0060', '34.0522', '-118.2437', 'Origin', 'Destination'
+        );
+        address[] memory orderNodes = new address[](0);
+        bytes32[] memory journeyIds = new bytes32[](0);
+
+        DiamondStorage.AuSysOrder memory order = DiamondStorage.AuSysOrder({
+            id: bytes32(0),
+            token: address(diamond),
+            tokenId: tokenId,
+            tokenQuantity: sellQty,
+            price: ORDER_PRICE,
+            txFee: 0,
+            buyer: address(0),
+            seller: seller,
+            journeyIds: journeyIds,
+            nodes: orderNodes,
+            locationData: parcelData,
+            currentStatus: 0,
+            contractualAgreement: bytes32(0),
+            isSellerInitiated: true,
+            targetCounterparty: address(0),
+            expiresAt: 0
+        });
+
+        vm.prank(seller);
+        bytes32 orderId = ausys.createAuSysOrder(order);
+
+        uint256 debitedSellable = assets.getNodeSellableAmount(seller, tokenId, testNodeHash);
+        assertEq(debitedSellable, beforeSellable - sellQty, 'Sellable should be debited while offer is open');
+
+        vm.prank(seller);
+        ausys.cancelP2POffer(orderId);
+
+        uint256 restoredSellable = assets.getNodeSellableAmount(seller, tokenId, testNodeHash);
+        assertEq(restoredSellable, beforeSellable, 'Sellable should be restored after cancellation');
+    }
+
+    function test_handOn_debitsDiamondSellableOnlyOnceForNonSellerInitiatedFlow() public {
+        vm.startPrank(owner);
+        assets.addSupportedClass('COMMODITY');
+        vm.stopPrank();
+
+        DiamondStorage.AssetDefinition memory assetDef = _createAssetDefinition('Gold Bar', 'COMMODITY');
+
+        vm.prank(nodeOperator);
+        (, uint256 tokenId) = assets.nodeMint(seller, assetDef, TOKEN_QTY, 'COMMODITY', '');
+
+        vm.prank(seller);
+        assets.setApprovalForAll(address(diamond), true);
+
+        DiamondStorage.ParcelData memory parcelData = _createParcelData(
+            '40.7128', '-74.0060', '34.0522', '-118.2437', 'Origin', 'Destination'
+        );
+        address[] memory orderNodes = new address[](1);
+        orderNodes[0] = nodeOperator;
+        bytes32[] memory journeyIds = new bytes32[](0);
+
+        DiamondStorage.AuSysOrder memory order = DiamondStorage.AuSysOrder({
+            id: bytes32(0),
+            token: address(diamond),
+            tokenId: tokenId,
+            tokenQuantity: TOKEN_QTY,
+            price: ORDER_PRICE,
+            txFee: 0,
+            buyer: buyer,
+            seller: seller,
+            journeyIds: journeyIds,
+            nodes: orderNodes,
+            locationData: parcelData,
+            currentStatus: 0,
+            contractualAgreement: bytes32(0),
+            isSellerInitiated: false,
+            targetCounterparty: address(0),
+            expiresAt: 0
+        });
+
+        vm.startPrank(buyer);
+        payToken.approve(address(diamond), 10_000 ether);
+        bytes32 orderId = ausys.createAuSysOrder(order);
+        vm.stopPrank();
+
+        uint256 sellableBeforeHandOn = assets.getNodeSellableAmount(seller, tokenId, testNodeHash);
+        assertEq(sellableBeforeHandOn, TOKEN_QTY, 'Mint should initialize sellable balance');
+
+        bytes32 firstJourneyId = _createJourneyForOrderWithAssetId(orderId, buyer, parcelData, tokenId);
+        bytes32 secondJourneyId = _createJourneyForOrderWithAssetId(orderId, nodeOperator, parcelData, tokenId);
+
+        vm.startPrank(admin);
+        ausys.assignDriverToJourney(driver1, firstJourneyId);
+        ausys.assignDriverToJourney(driver1, secondJourneyId);
+        vm.stopPrank();
+
+        vm.prank(seller);
+        ausys.packageSign(firstJourneyId);
+        vm.prank(driver1);
+        ausys.packageSign(firstJourneyId);
+        vm.prank(driver1);
+        ausys.handOn(firstJourneyId);
+
+        uint256 sellableAfterFirstHandOn = assets.getNodeSellableAmount(seller, tokenId, testNodeHash);
+        assertEq(sellableAfterFirstHandOn, 0, 'First handOn should debit sellable once');
+
+        vm.prank(seller);
+        ausys.packageSign(secondJourneyId);
+        vm.prank(driver1);
+        ausys.packageSign(secondJourneyId);
+        vm.prank(driver1);
+        ausys.handOn(secondJourneyId);
+
+        uint256 sellableAfterSecondHandOn = assets.getNodeSellableAmount(seller, tokenId, testNodeHash);
+        assertEq(sellableAfterSecondHandOn, 0, 'Second handOn must not debit sellable again');
     }
 }

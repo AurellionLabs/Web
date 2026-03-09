@@ -247,7 +247,7 @@ contract RWYStakingFacetTest is DiamondTestBase {
         
         vm.startPrank(user1);
         payToken.approve(address(diamond), type(uint256).max);
-        rwy.stake(oppId, 1000 ether);
+        rwy.stake(oppId, 1000 ether, 0);
         vm.stopPrank();
     }
 

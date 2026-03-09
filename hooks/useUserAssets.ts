@@ -24,8 +24,8 @@ interface AssetWithAttributes extends TokenizedAsset {
  * Hook to fetch user's owned assets with balances
  *
  * Uses the same node-asset source as the node dashboard.
- * getNodeAssets() already returns the node-specific custody amount in
- * `asset.amount`, so this hook should not override it with node inventory.
+ * getNodeAssets() returns node sellable amount in `asset.amount`, so this
+ * hook treats that as the tradable quantity source for sell flows.
  * No node selection required - automatically aggregates from all owned nodes.
  *
  * @param filterClass - Optional asset class to filter by
@@ -152,9 +152,9 @@ export function useUserAssets(filterClass?: string) {
   }, [fetchUserAssets]);
 
   /**
-   * Convert TokenizedAsset to SellableAsset format
-   * Uses actualBalance from node-specific custody. This keeps the sell-offer
-   * wizard aligned with the node dashboard.
+   * Convert TokenizedAsset to SellableAsset format.
+   * Uses node sellable balances from the repository so sell-offer quantity
+   * gating matches on-chain availability.
    */
   const sellableAssets = useMemo((): SellableAsset[] => {
     const result: SellableAsset[] = [];

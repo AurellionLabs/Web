@@ -80,9 +80,27 @@ function createMockContext(
     nodeData?: any;
     nodeAssets?: any[];
     inventoryWithMetadata?: any[];
+    sellableByTokenId?: Record<string, bigint>;
     getNodeError?: Error;
   } = {},
 ) {
+  const buildSellableMap = (): Map<string, bigint> => {
+    if (overrides.sellableByTokenId) {
+      return new Map(
+        Object.entries(overrides.sellableByTokenId).map(([id, amount]) => [
+          id.toString(),
+          BigInt(amount),
+        ]),
+      );
+    }
+    return new Map(
+      (overrides.inventoryWithMetadata ?? []).map((entry) => [
+        entry.tokenId.toString(),
+        BigInt(entry.balance),
+      ]),
+    );
+  };
+
   const diamond = {
     getNode: overrides.getNodeError
       ? vi.fn().mockRejectedValue(overrides.getNodeError)
@@ -106,6 +124,19 @@ function createMockContext(
         ]),
       );
       return Promise.resolve(custodyMap.get(key) ?? 0n);
+    }),
+    getOwnerNodeSellableBalances: vi.fn().mockImplementation((_, tokenId) => {
+      const key = tokenId.toString();
+      const sellableMap = buildSellableMap();
+      const amount = sellableMap.get(key) ?? 0n;
+      if (amount === 0n) {
+        return Promise.resolve([[], []]);
+      }
+      return Promise.resolve([[TEST_NODE_HASH], [amount]]);
+    }),
+    getNodeSellableAmount: vi.fn().mockImplementation((_, tokenId: bigint) => {
+      const sellableMap = buildSellableMap();
+      return Promise.resolve(sellableMap.get(tokenId.toString()) ?? 0n);
     }),
     getNodeInventoryWithMetadata: vi
       .fn()

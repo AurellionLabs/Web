@@ -255,6 +255,11 @@ library DiamondStorage {
         // Enumerates node hashes that have ever had sellable allocation for a given owner/token.
         mapping(address => mapping(uint256 => bytes32[])) ownerTokenSellableNodes;
         mapping(address => mapping(uint256 => mapping(bytes32 => bool))) ownerTokenHasSellableNode;
+        // Tracks how much sellable allocation was debited per order escrow, by node.
+        // Used to restore attribution on seller-offer cancellation refunds.
+        mapping(bytes32 => mapping(bytes32 => uint256)) ausysOrderEscrowNodeDebits;
+        mapping(bytes32 => bytes32[]) ausysOrderEscrowNodes;
+        mapping(bytes32 => mapping(bytes32 => bool)) ausysOrderEscrowNodeSeen;
 
         // ======= TOKEN DESTINATION ESCROW =======
         mapping(bytes32 => bool) pendingTokenDestination;

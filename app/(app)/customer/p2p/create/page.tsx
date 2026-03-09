@@ -534,7 +534,7 @@ export default function CreateP2POfferPage() {
         return {
           valid: false,
           reason:
-            'Quantity exceeds the selected node inventory for this asset.',
+            'Quantity exceeds the selected node sellable balance for this asset.',
         };
       }
     }
@@ -943,11 +943,12 @@ export default function CreateP2POfferPage() {
                       <div className="p-6 text-center border border-border/20 bg-card/40">
                         <Network className="w-8 h-8 mx-auto mb-2 text-foreground/20" />
                         <p className="font-mono text-sm text-foreground/40">
-                          No nodes in this account currently custody{' '}
+                          No nodes in this account currently have sellable{' '}
                           {formData.assetClass}
                         </p>
                         <p className="font-mono text-xs text-foreground/25 mt-1">
-                          Add inventory to a node before creating a sell offer
+                          Add sellable balance to a node before creating a sell
+                          offer
                         </p>
                       </div>
                     ) : (
@@ -1140,7 +1141,7 @@ export default function CreateP2POfferPage() {
                 {isSellFlow ? (
                   <div>
                     <label className="block font-mono text-xs font-bold text-foreground/50 mb-2 tracking-[0.2em] uppercase">
-                      Node Inventory
+                      Node Sellable Balance
                     </label>
                     {!formData.assetClass ? (
                       <div className="p-4 text-center font-mono text-sm text-foreground/40 border border-border/20 bg-card/40">

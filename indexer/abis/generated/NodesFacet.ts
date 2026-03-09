@@ -1,5 +1,5 @@
 // Auto-generated from NodesFacet.sol - DO NOT EDIT
-// Generated at: 2026-03-06T16:33:32.565Z
+// Generated at: 2026-03-09T15:35:48.980Z
 
 export const NodesFacetABI = [
   {
@@ -10,11 +10,6 @@ export const NodesFacetABI = [
   {
     inputs: [],
     name: 'NotInitializing',
-    type: 'error',
-  },
-  {
-    inputs: [],
-    name: 'ReentrancyGuardReentrantCall',
     type: 'error',
   },
   {
@@ -149,25 +144,6 @@ export const NodesFacetABI = [
       },
     ],
     name: 'NodeRegistered',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'registrar',
-        type: 'address',
-      },
-      {
-        indexed: false,
-        internalType: 'bool',
-        name: 'enabled',
-        type: 'bool',
-      },
-    ],
-    name: 'NodeRegistrarUpdated',
     type: 'event',
   },
   {
@@ -574,19 +550,6 @@ export const NodesFacetABI = [
     type: 'event',
   },
   {
-    inputs: [],
-    name: 'NODE_REGISTRAR_ROLE',
-    outputs: [
-      {
-        internalType: 'bytes32',
-        name: '',
-        type: 'bytes32',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
     inputs: [
       {
         internalType: 'bytes32',
@@ -921,19 +884,6 @@ export const NodesFacetABI = [
         internalType: 'struct DiamondStorage.SupportingDocument[]',
         name: 'documents',
         type: 'tuple[]',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'getAllowedNodeRegistrars',
-    outputs: [
-      {
-        internalType: 'address[]',
-        name: '',
-        type: 'address[]',
       },
     ],
     stateMutability: 'view',
@@ -1430,30 +1380,6 @@ export const NodesFacetABI = [
     type: 'function',
   },
   {
-    inputs: [
-      {
-        internalType: 'bytes32',
-        name: 'role',
-        type: 'bytes32',
-      },
-      {
-        internalType: 'address',
-        name: 'account',
-        type: 'address',
-      },
-    ],
-    name: 'hasNodeRole',
-    outputs: [
-      {
-        internalType: 'bool',
-        name: '',
-        type: 'bool',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
     inputs: [],
     name: 'initialize',
     outputs: [],
@@ -1767,24 +1693,6 @@ export const NodesFacetABI = [
   {
     inputs: [
       {
-        internalType: 'address',
-        name: 'registrar',
-        type: 'address',
-      },
-      {
-        internalType: 'bool',
-        name: 'enable',
-        type: 'bool',
-      },
-    ],
-    name: 'setNodeRegistrar',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
         internalType: 'bytes32',
         name: '_fromNode',
         type: 'bytes32',
@@ -2047,11 +1955,6 @@ export const NodesFacetEvents = [
     name: 'NodeRegistered',
     signature: 'NodeRegistered(bytes32,address,string)',
     signatureHash: '0x8326de45',
-  },
-  {
-    name: 'NodeRegistrarUpdated',
-    signature: 'NodeRegistrarUpdated(address,bool)',
-    signatureHash: '0xff3e2fb4',
   },
   {
     name: 'NodeSellOrderPlaced',

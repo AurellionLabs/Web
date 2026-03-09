@@ -1,5 +1,5 @@
 // Auto-generated Ponder Schema - DO NOT EDIT
-// Generated at: 2026-03-06T16:33:32.569Z
+// Generated at: 2026-03-09T15:35:48.989Z
 //
 // This schema is derived from Diamond facet events.
 // Regenerate with: npm run generate:indexer
@@ -211,21 +211,6 @@ export const diamondNodeRegisteredEvents = onchainTable(
   (table) => ({
     nodeHashIdx: index().on(table.node_hash),
     ownerIdx: index().on(table.owner),
-  }),
-);
-
-export const diamondNodeRegistrarUpdatedEvents = onchainTable(
-  'diamond_node_registrar_updated_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    registrar: t.hex().notNull(),
-    enabled: t.boolean().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    registrarIdx: index().on(table.registrar),
   }),
 );
 
@@ -682,36 +667,6 @@ export const diamondBridgeOrderCancelledEvents = onchainTable(
   }),
   (table) => ({
     unifiedOrderIdIdx: index().on(table.unified_order_id),
-  }),
-);
-
-export const diamondFundsEscrowedEvents = onchainTable(
-  'diamond_funds_escrowed_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    buyer: t.hex().notNull(),
-    amount: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    buyerIdx: index().on(table.buyer),
-  }),
-);
-
-export const diamondFundsRefundedEvents = onchainTable(
-  'diamond_funds_refunded_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    recipient: t.hex().notNull(),
-    amount: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    recipientIdx: index().on(table.recipient),
   }),
 );
 
@@ -1418,6 +1373,36 @@ export const diamondEmitSigEvents = onchainTable(
   }),
 );
 
+export const diamondFundsEscrowedEvents = onchainTable(
+  'diamond_funds_escrowed_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    from: t.hex().notNull(),
+    amount: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    fromIdx: index().on(table.from),
+  }),
+);
+
+export const diamondFundsRefundedEvents = onchainTable(
+  'diamond_funds_refunded_events',
+  (t) => ({
+    id: t.text().primaryKey(),
+    to: t.hex().notNull(),
+    amount: t.bigint().notNull(),
+    block_number: t.bigint().notNull(),
+    block_timestamp: t.bigint().notNull(),
+    transaction_hash: t.hex().notNull(),
+  }),
+  (table) => ({
+    toIdx: index().on(table.to),
+  }),
+);
+
 export const diamondJourneyCanceledEvents = onchainTable(
   'diamond_journey_canceled_events',
   (t) => ({
@@ -1571,41 +1556,6 @@ export const diamondSellerPaidEvents = onchainTable(
   }),
   (table) => ({
     sellerIdx: index().on(table.seller),
-  }),
-);
-
-export const diamondTokenDestinationPendingEvents = onchainTable(
-  'diamond_token_destination_pending_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    order_id: t.hex().notNull(),
-    buyer: t.hex().notNull(),
-    token_id: t.bigint().notNull(),
-    quantity: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    orderIdIdx: index().on(table.order_id),
-    buyerIdx: index().on(table.buyer),
-  }),
-);
-
-export const diamondTokenDestinationSelectedEvents = onchainTable(
-  'diamond_token_destination_selected_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    order_id: t.hex().notNull(),
-    destination: t.hex().notNull(),
-    node_id: t.hex().notNull(),
-    burned: t.boolean().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    orderIdIdx: index().on(table.order_id),
   }),
 );
 
@@ -1800,7 +1750,6 @@ export const tables = {
   diamondNodeCapacityUpdatedEvents,
   diamondNodeDeactivatedEvents,
   diamondNodeRegisteredEvents,
-  diamondNodeRegistrarUpdatedEvents,
   diamondNodeSellOrderPlacedEvents,
   diamondNodeUpdatedEvents,
   diamondSupportedAssetAddedEvents,
@@ -1825,8 +1774,6 @@ export const tables = {
   diamondBountyPaidEvents,
   diamondBridgeFeeRecipientUpdatedEvents,
   diamondBridgeOrderCancelledEvents,
-  diamondFundsEscrowedEvents,
-  diamondFundsRefundedEvents,
   diamondJourneyStatusUpdatedEvents,
   diamondLogisticsOrderCreatedEvents,
   diamondOrderSettledEvents,
@@ -1869,6 +1816,8 @@ export const tables = {
   diamondAuSysOrderStatusUpdatedEvents,
   diamondDriverAssignedEvents,
   diamondEmitSigEvents,
+  diamondFundsEscrowedEvents,
+  diamondFundsRefundedEvents,
   diamondJourneyCanceledEvents,
   diamondJourneyCreatedEvents,
   diamondNodeFeeDistributedEvents,
@@ -1877,8 +1826,6 @@ export const tables = {
   diamondP2POfferCanceledEvents,
   diamondP2POfferCreatedEvents,
   diamondSellerPaidEvents,
-  diamondTokenDestinationPendingEvents,
-  diamondTokenDestinationSelectedEvents,
   diamondApprovalForAllEvents,
   diamondAssetAttributeAddedEvents,
   diamondCustodyEstablishedEvents,

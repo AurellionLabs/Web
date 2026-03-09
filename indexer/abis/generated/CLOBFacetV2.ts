@@ -1,5 +1,5 @@
 // Auto-generated from CLOBFacetV2.sol - DO NOT EDIT
-// Generated at: 2026-03-06T16:33:32.566Z
+// Generated at: 2026-03-09T15:35:48.981Z
 
 export const CLOBFacetV2ABI = [
   {
@@ -60,17 +60,6 @@ export const CLOBFacetV2ABI = [
   {
     inputs: [],
     name: 'ReentrancyGuardReentrantCall',
-    type: 'error',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'token',
-        type: 'address',
-      },
-    ],
-    name: 'SafeERC20FailedOperation',
     type: 'error',
   },
   {

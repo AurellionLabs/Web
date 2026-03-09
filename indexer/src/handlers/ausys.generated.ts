@@ -1,5 +1,5 @@
 // Auto-generated handler for ausys domain
-// Generated at: 2026-03-06T16:33:32.573Z
+// Generated at: 2026-03-09T15:35:48.995Z
 //
 // Inline aggregate writes: raw event insert + aggregate table upsert in ONE ponder.on() handler.
 // This avoids the Ponder 0.16 restriction: only one ponder.on() per event name is allowed.
@@ -17,6 +17,8 @@ import {
   diamondAuSysOrderStatusUpdatedEvents,
   diamondDriverAssignedEvents,
   diamondEmitSigEvents,
+  diamondFundsEscrowedEvents,
+  diamondFundsRefundedEvents,
   diamondJourneyCanceledEvents,
   diamondJourneyCreatedEvents,
   diamondNodeFeeDistributedEvents,
@@ -25,8 +27,6 @@ import {
   diamondP2POfferCanceledEvents,
   diamondP2POfferCreatedEvents,
   diamondSellerPaidEvents,
-  diamondTokenDestinationPendingEvents,
-  diamondTokenDestinationSelectedEvents,
 } from 'ponder:schema';
 
 // Utility functions
@@ -267,6 +267,46 @@ ponder.on('Diamond:EmitSig', async ({ event, context }) => {
 });
 
 /**
+ * Handle FundsEscrowed event from AuSysFacet
+ * Signature: FundsEscrowed(address,uint256)
+ * Hash: 0x4fbba82c
+ */
+ponder.on('Diamond:FundsEscrowed', async ({ event, context }) => {
+  const { from, amount } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  // Raw event insert
+  await context.db.insert(diamondFundsEscrowedEvents).values({
+    id: id,
+    from: from,
+    amount: amount,
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+});
+
+/**
+ * Handle FundsRefunded event from AuSysFacet
+ * Signature: FundsRefunded(address,uint256)
+ * Hash: 0xbada1a1b
+ */
+ponder.on('Diamond:FundsRefunded', async ({ event, context }) => {
+  const { to, amount } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  // Raw event insert
+  await context.db.insert(diamondFundsRefundedEvents).values({
+    id: id,
+    to: to,
+    amount: amount,
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+});
+
+/**
  * Handle JourneyCanceled event from AuSysFacet
  * Signature: JourneyCanceled(bytes32,address,address,address,uint256,uint256,string,string,string,string,string,string)
  * Hash: 0x08a09942
@@ -487,50 +527,6 @@ ponder.on('Diamond:SellerPaid', async ({ event, context }) => {
     id: id,
     seller: seller,
     amount: amount,
-    block_number: event.block.number,
-    block_timestamp: BigInt(event.block.timestamp),
-    transaction_hash: event.transaction.hash,
-  });
-});
-
-/**
- * Handle TokenDestinationPending event from AuSysFacet
- * Signature: TokenDestinationPending(bytes32,address,uint256,uint256)
- * Hash: 0x390f5c7f
- */
-ponder.on('Diamond:TokenDestinationPending', async ({ event, context }) => {
-  const { orderId, buyer, tokenId, quantity } = event.args;
-  const id = eventId(event.transaction.hash, event.log.logIndex);
-
-  // Raw event insert
-  await context.db.insert(diamondTokenDestinationPendingEvents).values({
-    id: id,
-    order_id: orderId,
-    buyer: buyer,
-    token_id: tokenId,
-    quantity: quantity,
-    block_number: event.block.number,
-    block_timestamp: BigInt(event.block.timestamp),
-    transaction_hash: event.transaction.hash,
-  });
-});
-
-/**
- * Handle TokenDestinationSelected event from AuSysFacet
- * Signature: TokenDestinationSelected(bytes32,address,bytes32,bool)
- * Hash: 0xd695fe01
- */
-ponder.on('Diamond:TokenDestinationSelected', async ({ event, context }) => {
-  const { orderId, destination, nodeId, burned } = event.args;
-  const id = eventId(event.transaction.hash, event.log.logIndex);
-
-  // Raw event insert
-  await context.db.insert(diamondTokenDestinationSelectedEvents).values({
-    id: id,
-    order_id: orderId,
-    destination: destination,
-    node_id: nodeId,
-    burned: burned,
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,

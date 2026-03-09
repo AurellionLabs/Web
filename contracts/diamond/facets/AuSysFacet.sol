@@ -187,6 +187,7 @@ contract AuSysFacet is ReentrancyGuard {
     error TrustedSignerNotSet();
     error CallerMustBeBuyer();
     error CallerMustBeSeller();
+    error ExceedsNodeSellableAmount();
 
     // ============================================================================
     // CONSTANTS (RBAC roles from AuSys.sol)
@@ -464,6 +465,15 @@ contract AuSysFacet is ReentrancyGuard {
             // Seller-initiated P2P: escrow tokens from seller
             if (order.seller == address(0)) revert InvalidAddress();
             if (order.seller != msg.sender) revert CallerMustBeSeller();
+            if (order.token == address(this)) {
+                _debitOwnerSellableForEscrow(
+                    s,
+                    id,
+                    msg.sender,
+                    order.tokenId,
+                    order.tokenQuantity
+                );
+            }
             IERC1155(order.token).safeTransferFrom(
                 msg.sender,
                 address(this),
@@ -587,6 +597,15 @@ contract AuSysFacet is ReentrancyGuard {
                 order.tokenQuantity,
                 ''
             );
+            if (order.token == address(this)) {
+                _debitOwnerSellableForEscrow(
+                    s,
+                    orderId,
+                    msg.sender,
+                    order.tokenId,
+                    order.tokenQuantity
+                );
+            }
         }
 
         emit P2POfferAccepted(orderId, msg.sender, order.isSellerInitiated);
@@ -621,6 +640,14 @@ contract AuSysFacet is ReentrancyGuard {
                 order.tokenQuantity,
                 ''
             );
+            if (order.token == address(this)) {
+                _restoreEscrowedOwnerSellable(
+                    s,
+                    orderId,
+                    order.seller,
+                    order.tokenId
+                );
+            }
         } else {
             // Refund payment to buyer
             uint256 totalRefund = order.price + order.txFee;
@@ -958,6 +985,15 @@ contract AuSysFacet is ReentrancyGuard {
             // Transfer tokens from seller to escrow if this is first journey
             // Skip if seller-initiated P2P (tokens already escrowed at offer creation)
             if (J.sender == O.seller && !O.isSellerInitiated && !s.ausysOrderTokenEscrowed[orderId]) {
+                if (O.token == address(this)) {
+                    _debitOwnerSellableForEscrow(
+                        s,
+                        orderId,
+                        O.seller,
+                        O.tokenId,
+                        O.tokenQuantity
+                    );
+                }
                 IERC1155(O.token).safeTransferFrom(
                     O.seller,
                     address(this),
@@ -1182,6 +1218,53 @@ contract AuSysFacet is ReentrancyGuard {
         }
 
         s.ownerNodeSellableAmounts[owner][tokenId][nodeHash] += amount;
+    }
+
+    function _debitOwnerSellableForEscrow(
+        DiamondStorage.AppStorage storage s,
+        bytes32 orderId,
+        address owner,
+        uint256 tokenId,
+        uint256 amount
+    ) internal {
+        bytes32[] storage trackedNodes = s.ownerTokenSellableNodes[owner][tokenId];
+        uint256 remaining = amount;
+
+        for (uint256 i = 0; i < trackedNodes.length && remaining > 0; i++) {
+            bytes32 nodeHash = trackedNodes[i];
+            uint256 nodeAmount = s.ownerNodeSellableAmounts[owner][tokenId][nodeHash];
+            if (nodeAmount == 0) continue;
+
+            uint256 debited = nodeAmount > remaining ? remaining : nodeAmount;
+            s.ownerNodeSellableAmounts[owner][tokenId][nodeHash] -= debited;
+            remaining -= debited;
+
+            if (!s.ausysOrderEscrowNodeSeen[orderId][nodeHash]) {
+                s.ausysOrderEscrowNodeSeen[orderId][nodeHash] = true;
+                s.ausysOrderEscrowNodes[orderId].push(nodeHash);
+            }
+            s.ausysOrderEscrowNodeDebits[orderId][nodeHash] += debited;
+        }
+
+        if (remaining > 0) revert ExceedsNodeSellableAmount();
+    }
+
+    function _restoreEscrowedOwnerSellable(
+        DiamondStorage.AppStorage storage s,
+        bytes32 orderId,
+        address owner,
+        uint256 tokenId
+    ) internal {
+        bytes32[] storage escrowNodes = s.ausysOrderEscrowNodes[orderId];
+        uint256 nodeCount = escrowNodes.length;
+
+        for (uint256 i = 0; i < nodeCount; i++) {
+            bytes32 nodeHash = escrowNodes[i];
+            uint256 amount = s.ausysOrderEscrowNodeDebits[orderId][nodeHash];
+            if (amount == 0) continue;
+            _creditOwnerNodeSellable(s, owner, tokenId, nodeHash, amount);
+            s.ausysOrderEscrowNodeDebits[orderId][nodeHash] = 0;
+        }
     }
 
     // ============================================================================

@@ -1,34 +1,7 @@
 // Auto-generated from BridgeFacet.sol - DO NOT EDIT
-// Generated at: 2026-03-06T16:33:32.566Z
+// Generated at: 2026-03-09T15:35:48.982Z
 
 export const BridgeFacetABI = [
-  {
-    inputs: [],
-    name: 'ECDSAInvalidSignature',
-    type: 'error',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'uint256',
-        name: 'length',
-        type: 'uint256',
-      },
-    ],
-    name: 'ECDSAInvalidSignatureLength',
-    type: 'error',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'bytes32',
-        name: 's',
-        type: 'bytes32',
-      },
-    ],
-    name: 'ECDSAInvalidSignatureS',
-    type: 'error',
-  },
   {
     inputs: [],
     name: 'InvalidInitialization',
@@ -36,48 +9,7 @@ export const BridgeFacetABI = [
   },
   {
     inputs: [],
-    name: 'InvalidSeller',
-    type: 'error',
-  },
-  {
-    inputs: [],
-    name: 'InvalidSignature',
-    type: 'error',
-  },
-  {
-    inputs: [],
-    name: 'InvalidTrade',
-    type: 'error',
-  },
-  {
-    inputs: [],
     name: 'NotInitializing',
-    type: 'error',
-  },
-  {
-    inputs: [],
-    name: 'OrderExpired',
-    type: 'error',
-  },
-  {
-    inputs: [],
-    name: 'ReentrancyGuardReentrantCall',
-    type: 'error',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'token',
-        type: 'address',
-      },
-    ],
-    name: 'SafeERC20FailedOperation',
-    type: 'error',
-  },
-  {
-    inputs: [],
-    name: 'SignatureAlreadyUsed',
     type: 'error',
   },
   {
@@ -135,44 +67,6 @@ export const BridgeFacetABI = [
       },
     ],
     name: 'BridgeOrderCancelled',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'buyer',
-        type: 'address',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'amount',
-        type: 'uint256',
-      },
-    ],
-    name: 'FundsEscrowed',
-    type: 'event',
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'recipient',
-        type: 'address',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'amount',
-        type: 'uint256',
-      },
-    ],
-    name: 'FundsRefunded',
     type: 'event',
   },
   {
@@ -443,11 +337,6 @@ export const BridgeFacetABI = [
         name: '_tokenId',
         type: 'uint256',
       },
-      {
-        internalType: 'bytes',
-        name: '_signature',
-        type: 'bytes',
-      },
     ],
     name: 'bridgeTradeToLogistics',
     outputs: [],
@@ -506,11 +395,6 @@ export const BridgeFacetABI = [
       {
         internalType: 'uint256',
         name: '_quantity',
-        type: 'uint256',
-      },
-      {
-        internalType: 'uint256',
-        name: '_expiresAt',
         type: 'uint256',
       },
       {
@@ -826,19 +710,6 @@ export const BridgeFacetABI = [
   {
     inputs: [
       {
-        internalType: 'address',
-        name: '_quoteToken',
-        type: 'address',
-      },
-    ],
-    name: 'setQuoteTokenAddress',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
         internalType: 'bytes32',
         name: '_unifiedOrderId',
         type: 'bytes32',
@@ -893,25 +764,6 @@ export const BridgeFacetABI = [
     stateMutability: 'nonpayable',
     type: 'function',
   },
-  {
-    inputs: [
-      {
-        internalType: 'bytes32',
-        name: '',
-        type: 'bytes32',
-      },
-    ],
-    name: 'usedSignatures',
-    outputs: [
-      {
-        internalType: 'bool',
-        name: '',
-        type: 'bool',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
 ] as const;
 
 export const BridgeFacetEvents = [
@@ -929,16 +781,6 @@ export const BridgeFacetEvents = [
     name: 'BridgeOrderCancelled',
     signature: 'BridgeOrderCancelled(bytes32,uint8)',
     signatureHash: '0xfb630ff8',
-  },
-  {
-    name: 'FundsEscrowed',
-    signature: 'FundsEscrowed(address,uint256)',
-    signatureHash: '0x4fbba82c',
-  },
-  {
-    name: 'FundsRefunded',
-    signature: 'FundsRefunded(address,uint256)',
-    signatureHash: '0xbada1a1b',
   },
   {
     name: 'Initialized',

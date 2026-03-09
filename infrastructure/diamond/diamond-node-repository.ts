@@ -200,6 +200,48 @@ export class DiamondNodeRepository implements NodeRepository {
     return results;
   }
 
+  private async getOwnerNodeSellableAmount(
+    owner: string,
+    tokenId: bigint,
+    nodeHash: string,
+  ): Promise<bigint> {
+    const diamond = this.context.getDiamond();
+
+    try {
+      const [nodeHashes, amounts] = await diamond.getOwnerNodeSellableBalances(
+        owner,
+        tokenId,
+      );
+      const targetHash = nodeHash.toLowerCase();
+      const matchIndex = (nodeHashes as string[]).findIndex(
+        (hash) => hash.toLowerCase() === targetHash,
+      );
+      if (matchIndex >= 0) {
+        return BigInt(amounts[matchIndex].toString());
+      }
+      return 0n;
+    } catch (bulkError) {
+      console.warn(
+        '[DiamondNodeRepository] getOwnerNodeSellableBalances failed, falling back to per-node query:',
+        bulkError,
+      );
+      try {
+        const amount = await diamond.getNodeSellableAmount(
+          owner,
+          tokenId,
+          nodeHash,
+        );
+        return BigInt(amount.toString());
+      } catch (singleError) {
+        console.error(
+          '[DiamondNodeRepository] Failed to query node sellable amount:',
+          singleError,
+        );
+        return 0n;
+      }
+    }
+  }
+
   /**
    * Fetch asset metadata from IPFS by tokenId
    */
@@ -420,13 +462,13 @@ export class DiamondNodeRepository implements NodeRepository {
    * Get tokenized assets for a node
    *
    * Strategy:
-   * 1. Get the node's inventory from Diamond (which tokens are credited to this node)
+   * 1. Get the node's inventory from Diamond (which tokens are configured on this node)
    * 2. Query raw events from indexer for asset metadata
-   * 3. Fetch actual ERC1155 balances from on-chain (source of truth)
+   * 3. Fetch node sellable amounts from on-chain (source of truth for sell actions)
    *
-   * Note: The 'amount' field now reflects the ACTUAL ERC1155 balance of the
-   * node owner, which correctly accounts for tokens escrowed in active orders.
-   * 'capacity' is retained as the registered maximum.
+   * Note: The 'amount' field reflects owner-node sellable balance.
+   * Custody remains a separate metric and is only used to keep operational
+   * capacity from displaying below node-held custody.
    */
   async getNodeAssets(nodeAddress: string): Promise<TokenizedAsset[]> {
     try {
@@ -440,9 +482,7 @@ export class DiamondNodeRepository implements NodeRepository {
       const diamond = this.context.getDiamond();
       const nodeHash = this.toBytes32NodeHash(nodeAddress);
 
-      // Fetch IPFS metadata and use node-specific custody as the quantity
-      // source of truth. This reflects wallet-held tokens custodied by the
-      // selected node rather than Diamond-held inventory.
+      // Fetch IPFS metadata and use node sellable balances as primary quantity.
       const assetsWithMetadata = await this.mapWithConcurrency(
         node.assets,
         3,
@@ -453,10 +493,16 @@ export class DiamondNodeRepository implements NodeRepository {
           capacity: bigint | { toString(): string };
         }) => {
           const tokenId = nodeAsset.tokenId.toString();
+          const tokenIdBigInt = BigInt(tokenId);
           // Fetch IPFS metadata
           const metadata = await this.fetchAssetMetadata(tokenId);
+          const sellableAmount = await this.getOwnerNodeSellableAmount(
+            node.owner,
+            tokenIdBigInt,
+            nodeHash,
+          );
           const custodyAmount = await diamond.getNodeCustodyInfo(
-            nodeAsset.tokenId,
+            tokenIdBigInt,
             nodeHash,
           );
 
@@ -468,7 +514,7 @@ export class DiamondNodeRepository implements NodeRepository {
 
           return {
             id: tokenId,
-            amount: custodyAmount.toString(),
+            amount: sellableAmount.toString(),
             name: metadata.name,
             class: metadata.class || 'Unknown',
             fileHash: metadata.fileHash,

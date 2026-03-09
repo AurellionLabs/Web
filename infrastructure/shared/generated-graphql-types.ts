@@ -1,5 +1,5 @@
 // Auto-generated GraphQL types - DO NOT EDIT
-// Generated at: 2026-03-06T16:33:32.577Z
+// Generated at: 2026-03-09T15:35:48.999Z
 //
 // This file provides type-safe GraphQL query helpers for Ponder tables.
 // All table names and field names are derived from the schema generator.
@@ -26,8 +26,6 @@ export const TABLE_DIAMOND_NODE_DEACTIVATED_EVENTS =
   'diamondNodeDeactivatedEventss' as const;
 export const TABLE_DIAMOND_NODE_REGISTERED_EVENTS =
   'diamondNodeRegisteredEventss' as const;
-export const TABLE_DIAMOND_NODE_REGISTRAR_UPDATED_EVENTS =
-  'diamondNodeRegistrarUpdatedEventss' as const;
 export const TABLE_DIAMOND_NODE_SELL_ORDER_PLACED_EVENTS =
   'diamondNodeSellOrderPlacedEventss' as const;
 export const TABLE_DIAMOND_NODE_UPDATED_EVENTS =
@@ -76,10 +74,6 @@ export const TABLE_DIAMOND_BRIDGE_FEE_RECIPIENT_UPDATED_EVENTS =
   'diamondBridgeFeeRecipientUpdatedEventss' as const;
 export const TABLE_DIAMOND_BRIDGE_ORDER_CANCELLED_EVENTS =
   'diamondBridgeOrderCancelledEventss' as const;
-export const TABLE_DIAMOND_FUNDS_ESCROWED_EVENTS =
-  'diamondFundsEscrowedEventss' as const;
-export const TABLE_DIAMOND_FUNDS_REFUNDED_EVENTS =
-  'diamondFundsRefundedEventss' as const;
 export const TABLE_DIAMOND_JOURNEY_STATUS_UPDATED_EVENTS =
   'diamondJourneyStatusUpdatedEventss' as const;
 export const TABLE_DIAMOND_LOGISTICS_ORDER_CREATED_EVENTS =
@@ -163,6 +157,10 @@ export const TABLE_DIAMOND_AU_SYS_ORDER_STATUS_UPDATED_EVENTS =
 export const TABLE_DIAMOND_DRIVER_ASSIGNED_EVENTS =
   'diamondDriverAssignedEventss' as const;
 export const TABLE_DIAMOND_EMIT_SIG_EVENTS = 'diamondEmitSigEventss' as const;
+export const TABLE_DIAMOND_FUNDS_ESCROWED_EVENTS =
+  'diamondFundsEscrowedEventss' as const;
+export const TABLE_DIAMOND_FUNDS_REFUNDED_EVENTS =
+  'diamondFundsRefundedEventss' as const;
 export const TABLE_DIAMOND_JOURNEY_CANCELED_EVENTS =
   'diamondJourneyCanceledEventss' as const;
 export const TABLE_DIAMOND_JOURNEY_CREATED_EVENTS =
@@ -179,10 +177,6 @@ export const TABLE_DIAMOND_P2_P_OFFER_CREATED_EVENTS =
   'diamondP2POfferCreatedEventss' as const;
 export const TABLE_DIAMOND_SELLER_PAID_EVENTS =
   'diamondSellerPaidEventss' as const;
-export const TABLE_DIAMOND_TOKEN_DESTINATION_PENDING_EVENTS =
-  'diamondTokenDestinationPendingEventss' as const;
-export const TABLE_DIAMOND_TOKEN_DESTINATION_SELECTED_EVENTS =
-  'diamondTokenDestinationSelectedEventss' as const;
 export const TABLE_DIAMOND_APPROVAL_FOR_ALL_EVENTS =
   'diamondApprovalForAllEventss' as const;
 export const TABLE_DIAMOND_ASSET_ATTRIBUTE_ADDED_EVENTS =
@@ -213,7 +207,6 @@ export const VALID_TABLE_NAMES = [
   'diamondNodeCapacityUpdatedEventss',
   'diamondNodeDeactivatedEventss',
   'diamondNodeRegisteredEventss',
-  'diamondNodeRegistrarUpdatedEventss',
   'diamondNodeSellOrderPlacedEventss',
   'diamondNodeUpdatedEventss',
   'diamondSupportedAssetAddedEventss',
@@ -238,8 +231,6 @@ export const VALID_TABLE_NAMES = [
   'diamondBountyPaidEventss',
   'diamondBridgeFeeRecipientUpdatedEventss',
   'diamondBridgeOrderCancelledEventss',
-  'diamondFundsEscrowedEventss',
-  'diamondFundsRefundedEventss',
   'diamondJourneyStatusUpdatedEventss',
   'diamondLogisticsOrderCreatedEventss',
   'diamondOrderSettledEventss',
@@ -282,6 +273,8 @@ export const VALID_TABLE_NAMES = [
   'diamondAuSysOrderStatusUpdatedEventss',
   'diamondDriverAssignedEventss',
   'diamondEmitSigEventss',
+  'diamondFundsEscrowedEventss',
+  'diamondFundsRefundedEventss',
   'diamondJourneyCanceledEventss',
   'diamondJourneyCreatedEventss',
   'diamondNodeFeeDistributedEventss',
@@ -290,8 +283,6 @@ export const VALID_TABLE_NAMES = [
   'diamondP2POfferCanceledEventss',
   'diamondP2POfferCreatedEventss',
   'diamondSellerPaidEventss',
-  'diamondTokenDestinationPendingEventss',
-  'diamondTokenDestinationSelectedEventss',
   'diamondApprovalForAllEventss',
   'diamondAssetAttributeAddedEventss',
   'diamondCustodyEstablishedEventss',
@@ -375,15 +366,6 @@ export interface diamondNodeRegisteredEvent {
   node_hash: string;
   owner: string;
   node_type: string;
-  block_number: string;
-  block_timestamp: string;
-  transaction_hash: string;
-}
-
-export interface diamondNodeRegistrarUpdatedEvent {
-  id: string;
-  registrar: string;
-  enabled: boolean;
   block_number: string;
   block_timestamp: string;
   transaction_hash: string;
@@ -667,24 +649,6 @@ export interface diamondBridgeOrderCancelledEvent {
   id: string;
   unified_order_id: string;
   previous_status: string;
-  block_number: string;
-  block_timestamp: string;
-  transaction_hash: string;
-}
-
-export interface diamondFundsEscrowedEvent {
-  id: string;
-  buyer: string;
-  amount: string;
-  block_number: string;
-  block_timestamp: string;
-  transaction_hash: string;
-}
-
-export interface diamondFundsRefundedEvent {
-  id: string;
-  recipient: string;
-  amount: string;
   block_number: string;
   block_timestamp: string;
   transaction_hash: string;
@@ -1137,6 +1101,24 @@ export interface diamondEmitSigEvent {
   transaction_hash: string;
 }
 
+export interface diamondFundsEscrowedEvent {
+  id: string;
+  from: string;
+  amount: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+export interface diamondFundsRefundedEvent {
+  id: string;
+  to: string;
+  amount: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
 export interface diamondJourneyCanceledEvent {
   id: string;
   journey_id: string;
@@ -1234,28 +1216,6 @@ export interface diamondSellerPaidEvent {
   id: string;
   seller: string;
   amount: string;
-  block_number: string;
-  block_timestamp: string;
-  transaction_hash: string;
-}
-
-export interface diamondTokenDestinationPendingEvent {
-  id: string;
-  order_id: string;
-  buyer: string;
-  token_id: string;
-  quantity: string;
-  block_number: string;
-  block_timestamp: string;
-  transaction_hash: string;
-}
-
-export interface diamondTokenDestinationSelectedEvent {
-  id: string;
-  order_id: string;
-  destination: string;
-  node_id: string;
-  burned: boolean;
   block_number: string;
   block_timestamp: string;
   transaction_hash: string;
@@ -1414,10 +1374,6 @@ export interface diamondNodeRegisteredEventsResponse {
   diamondNodeRegisteredEventss: PonderItemsResponse<diamondNodeRegisteredEvent>;
 }
 
-export interface diamondNodeRegistrarUpdatedEventsResponse {
-  diamondNodeRegistrarUpdatedEventss: PonderItemsResponse<diamondNodeRegistrarUpdatedEvent>;
-}
-
 export interface diamondNodeSellOrderPlacedEventsResponse {
   diamondNodeSellOrderPlacedEventss: PonderItemsResponse<diamondNodeSellOrderPlacedEvent>;
 }
@@ -1512,14 +1468,6 @@ export interface diamondBridgeFeeRecipientUpdatedEventsResponse {
 
 export interface diamondBridgeOrderCancelledEventsResponse {
   diamondBridgeOrderCancelledEventss: PonderItemsResponse<diamondBridgeOrderCancelledEvent>;
-}
-
-export interface diamondFundsEscrowedEventsResponse {
-  diamondFundsEscrowedEventss: PonderItemsResponse<diamondFundsEscrowedEvent>;
-}
-
-export interface diamondFundsRefundedEventsResponse {
-  diamondFundsRefundedEventss: PonderItemsResponse<diamondFundsRefundedEvent>;
 }
 
 export interface diamondJourneyStatusUpdatedEventsResponse {
@@ -1690,6 +1638,14 @@ export interface diamondEmitSigEventsResponse {
   diamondEmitSigEventss: PonderItemsResponse<diamondEmitSigEvent>;
 }
 
+export interface diamondFundsEscrowedEventsResponse {
+  diamondFundsEscrowedEventss: PonderItemsResponse<diamondFundsEscrowedEvent>;
+}
+
+export interface diamondFundsRefundedEventsResponse {
+  diamondFundsRefundedEventss: PonderItemsResponse<diamondFundsRefundedEvent>;
+}
+
 export interface diamondJourneyCanceledEventsResponse {
   diamondJourneyCanceledEventss: PonderItemsResponse<diamondJourneyCanceledEvent>;
 }
@@ -1720,14 +1676,6 @@ export interface diamondP2POfferCreatedEventsResponse {
 
 export interface diamondSellerPaidEventsResponse {
   diamondSellerPaidEventss: PonderItemsResponse<diamondSellerPaidEvent>;
-}
-
-export interface diamondTokenDestinationPendingEventsResponse {
-  diamondTokenDestinationPendingEventss: PonderItemsResponse<diamondTokenDestinationPendingEvent>;
-}
-
-export interface diamondTokenDestinationSelectedEventsResponse {
-  diamondTokenDestinationSelectedEventss: PonderItemsResponse<diamondTokenDestinationSelectedEvent>;
 }
 
 export interface diamondApprovalForAllEventsResponse {
@@ -1839,15 +1787,6 @@ export const FIELDS_DIAMOND_NODE_REGISTERED_EVENTS = [
   'node_hash',
   'owner',
   'node_type',
-  'block_number',
-  'block_timestamp',
-  'transaction_hash',
-] as const;
-
-export const FIELDS_DIAMOND_NODE_REGISTRAR_UPDATED_EVENTS = [
-  'id',
-  'registrar',
-  'enabled',
   'block_number',
   'block_timestamp',
   'transaction_hash',
@@ -2131,24 +2070,6 @@ export const FIELDS_DIAMOND_BRIDGE_ORDER_CANCELLED_EVENTS = [
   'id',
   'unified_order_id',
   'previous_status',
-  'block_number',
-  'block_timestamp',
-  'transaction_hash',
-] as const;
-
-export const FIELDS_DIAMOND_FUNDS_ESCROWED_EVENTS = [
-  'id',
-  'buyer',
-  'amount',
-  'block_number',
-  'block_timestamp',
-  'transaction_hash',
-] as const;
-
-export const FIELDS_DIAMOND_FUNDS_REFUNDED_EVENTS = [
-  'id',
-  'recipient',
-  'amount',
   'block_number',
   'block_timestamp',
   'transaction_hash',
@@ -2601,6 +2522,24 @@ export const FIELDS_DIAMOND_EMIT_SIG_EVENTS = [
   'transaction_hash',
 ] as const;
 
+export const FIELDS_DIAMOND_FUNDS_ESCROWED_EVENTS = [
+  'id',
+  'from',
+  'amount',
+  'block_number',
+  'block_timestamp',
+  'transaction_hash',
+] as const;
+
+export const FIELDS_DIAMOND_FUNDS_REFUNDED_EVENTS = [
+  'id',
+  'to',
+  'amount',
+  'block_number',
+  'block_timestamp',
+  'transaction_hash',
+] as const;
+
 export const FIELDS_DIAMOND_JOURNEY_CANCELED_EVENTS = [
   'id',
   'journey_id',
@@ -2698,28 +2637,6 @@ export const FIELDS_DIAMOND_SELLER_PAID_EVENTS = [
   'id',
   'seller',
   'amount',
-  'block_number',
-  'block_timestamp',
-  'transaction_hash',
-] as const;
-
-export const FIELDS_DIAMOND_TOKEN_DESTINATION_PENDING_EVENTS = [
-  'id',
-  'order_id',
-  'buyer',
-  'token_id',
-  'quantity',
-  'block_number',
-  'block_timestamp',
-  'transaction_hash',
-] as const;
-
-export const FIELDS_DIAMOND_TOKEN_DESTINATION_SELECTED_EVENTS = [
-  'id',
-  'order_id',
-  'destination',
-  'node_id',
-  'burned',
   'block_number',
   'block_timestamp',
   'transaction_hash',
@@ -2876,7 +2793,6 @@ export function getTableName(eventName: string): ValidTableName | undefined {
     NodeCapacityUpdated: 'diamondNodeCapacityUpdatedEventss',
     NodeDeactivated: 'diamondNodeDeactivatedEventss',
     NodeRegistered: 'diamondNodeRegisteredEventss',
-    NodeRegistrarUpdated: 'diamondNodeRegistrarUpdatedEventss',
     NodeSellOrderPlaced: 'diamondNodeSellOrderPlacedEventss',
     NodeUpdated: 'diamondNodeUpdatedEventss',
     SupportedAssetAdded: 'diamondSupportedAssetAddedEventss',
@@ -2902,8 +2818,6 @@ export function getTableName(eventName: string): ValidTableName | undefined {
     BountyPaid: 'diamondBountyPaidEventss',
     BridgeFeeRecipientUpdated: 'diamondBridgeFeeRecipientUpdatedEventss',
     BridgeOrderCancelled: 'diamondBridgeOrderCancelledEventss',
-    FundsEscrowed: 'diamondFundsEscrowedEventss',
-    FundsRefunded: 'diamondFundsRefundedEventss',
     JourneyStatusUpdated: 'diamondJourneyStatusUpdatedEventss',
     LogisticsOrderCreated: 'diamondLogisticsOrderCreatedEventss',
     OrderSettled: 'diamondOrderSettledEventss',
@@ -2946,6 +2860,8 @@ export function getTableName(eventName: string): ValidTableName | undefined {
     AuSysOrderStatusUpdated: 'diamondAuSysOrderStatusUpdatedEventss',
     DriverAssigned: 'diamondDriverAssignedEventss',
     EmitSig: 'diamondEmitSigEventss',
+    FundsEscrowed: 'diamondFundsEscrowedEventss',
+    FundsRefunded: 'diamondFundsRefundedEventss',
     JourneyCanceled: 'diamondJourneyCanceledEventss',
     JourneyCreated: 'diamondJourneyCreatedEventss',
     NodeFeeDistributed: 'diamondNodeFeeDistributedEventss',
@@ -2954,8 +2870,6 @@ export function getTableName(eventName: string): ValidTableName | undefined {
     P2POfferCanceled: 'diamondP2POfferCanceledEventss',
     P2POfferCreated: 'diamondP2POfferCreatedEventss',
     SellerPaid: 'diamondSellerPaidEventss',
-    TokenDestinationPending: 'diamondTokenDestinationPendingEventss',
-    TokenDestinationSelected: 'diamondTokenDestinationSelectedEventss',
     ApprovalForAll: 'diamondApprovalForAllEventss',
     AssetAttributeAdded: 'diamondAssetAttributeAddedEventss',
     CustodyEstablished: 'diamondCustodyEstablishedEventss',

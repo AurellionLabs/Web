@@ -1,5 +1,5 @@
 // Auto-generated handler for nodes domain
-// Generated at: 2026-03-06T16:33:32.570Z
+// Generated at: 2026-03-09T15:35:48.991Z
 //
 // Inline aggregate writes: raw event insert + aggregate table upsert in ONE ponder.on() handler.
 // This avoids the Ponder 0.16 restriction: only one ponder.on() per event name is allowed.
@@ -16,7 +16,6 @@ import {
   diamondNodeCapacityUpdatedEvents,
   diamondNodeDeactivatedEvents,
   diamondNodeRegisteredEvents,
-  diamondNodeRegistrarUpdatedEvents,
   diamondNodeSellOrderPlacedEvents,
   diamondNodeUpdatedEvents,
   diamondSupportedAssetAddedEvents,
@@ -173,26 +172,6 @@ ponder.on('Diamond:NodeRegistered', async ({ event, context }) => {
     node_hash: nodeHash,
     owner: owner,
     node_type: nodeType,
-    block_number: event.block.number,
-    block_timestamp: BigInt(event.block.timestamp),
-    transaction_hash: event.transaction.hash,
-  });
-});
-
-/**
- * Handle NodeRegistrarUpdated event from NodesFacet
- * Signature: NodeRegistrarUpdated(address,bool)
- * Hash: 0xff3e2fb4
- */
-ponder.on('Diamond:NodeRegistrarUpdated', async ({ event, context }) => {
-  const { registrar, enabled } = event.args;
-  const id = eventId(event.transaction.hash, event.log.logIndex);
-
-  // Raw event insert
-  await context.db.insert(diamondNodeRegistrarUpdatedEvents).values({
-    id: id,
-    registrar: registrar,
-    enabled: enabled,
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,
