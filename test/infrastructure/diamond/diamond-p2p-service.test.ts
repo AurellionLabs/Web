@@ -121,6 +121,7 @@ describe('DiamondP2PService', () => {
         quantity: BigInt(100000),
         price: BigInt('10000000000000000000'),
         isSellOffer: true,
+        pickupNodeRef: SELLER_NODE_REF,
         expiresAt: 1700000000,
       });
 
@@ -146,6 +147,7 @@ describe('DiamondP2PService', () => {
         quantity: BigInt(100),
         price: BigInt(1000),
         isSellOffer: true,
+        pickupNodeRef: SELLER_NODE_REF,
       });
 
       const orderArg = context._diamond.createAuSysOrder.mock.calls[0][0];
@@ -182,6 +184,7 @@ describe('DiamondP2PService', () => {
         price: BigInt(1000),
         isSellOffer: true,
         targetCounterparty: target,
+        pickupNodeRef: SELLER_NODE_REF,
       });
 
       const orderArg = context._diamond.createAuSysOrder.mock.calls[0][0];
@@ -201,6 +204,7 @@ describe('DiamondP2PService', () => {
         price: BigInt(1000),
         isSellOffer: true,
         nodes: [selectedNodeHash],
+        pickupNodeRef: SELLER_NODE_REF,
       });
 
       const orderArg = context._diamond.createAuSysOrder.mock.calls[0][0];
@@ -238,97 +242,125 @@ describe('DiamondP2PService', () => {
       expect(orderArg.locationData.startName).toBe('Johannesburg Warehouse');
     });
 
-    it('should fallback to first owner node when selected pickup node is not owned', async () => {
-      const fallbackNodeRef =
-        '0x3333333333333333333333333333333333333333333333333333333333333333';
+    it('should populate pickup metadata when getNode returns tuple-indexed fields', async () => {
+      const ownerNodeRef =
+        '0x2222222222222222222222222222222222222222222222222222222222222222';
+      const context = createMockContext({
+        diamond: {
+          getOwnerNodes: vi.fn().mockResolvedValue([ownerNodeRef]),
+          getNode: vi.fn().mockResolvedValue({
+            7: 'Tuple Warehouse',
+            8: '-33.8688',
+            9: '151.2093',
+          }),
+        },
+      });
+      const service = new DiamondP2PService(context);
+
+      await service.createOffer({
+        token: TOKEN,
+        tokenId: TOKEN_ID,
+        quantity: BigInt(100),
+        price: BigInt(1000),
+        isSellOffer: true,
+        nodes: [SELLER],
+        pickupNodeRef: ownerNodeRef,
+      });
+
+      const orderArg = context._diamond.createAuSysOrder.mock.calls[0][0];
+      expect(orderArg.locationData.startLocation.lat).toBe('-33.8688');
+      expect(orderArg.locationData.startLocation.lng).toBe('151.2093');
+      expect(orderArg.locationData.startName).toBe('Tuple Warehouse');
+    });
+
+    it('should throw when selected pickup node has missing location metadata', async () => {
+      const ownerNodeRef =
+        '0x2222222222222222222222222222222222222222222222222222222222222222';
+      const context = createMockContext({
+        diamond: {
+          getOwnerNodes: vi.fn().mockResolvedValue([ownerNodeRef]),
+          getNode: vi.fn().mockResolvedValue({
+            lat: '',
+            lng: '151.2093',
+            addressName: 'Incomplete Warehouse',
+          }),
+        },
+      });
+      const service = new DiamondP2PService(context);
+
+      await expect(
+        service.createOffer({
+          token: TOKEN,
+          tokenId: TOKEN_ID,
+          quantity: BigInt(100),
+          price: BigInt(1000),
+          isSellOffer: true,
+          nodes: [SELLER],
+          pickupNodeRef: ownerNodeRef,
+        }),
+      ).rejects.toThrow(/missing location metadata/i);
+
+      expect(context._diamond.createAuSysOrder).not.toHaveBeenCalled();
+    });
+
+    it('should throw when selected pickup node is not owned', async () => {
       const selectedButUnowned =
         '0x4444444444444444444444444444444444444444444444444444444444444444';
-      const getNode = vi.fn().mockResolvedValue({
-        lat: '-34.0000',
-        lng: '18.5000',
-        addressName: 'Fallback Node',
-      });
       const context = createMockContext({
         diamond: {
-          getOwnerNodes: vi.fn().mockResolvedValue([fallbackNodeRef]),
-          getNode,
+          getOwnerNodes: vi.fn().mockResolvedValue([SELLER_NODE_REF]),
         },
       });
       const service = new DiamondP2PService(context);
 
-      await service.createOffer({
-        token: TOKEN,
-        tokenId: TOKEN_ID,
-        quantity: BigInt(100),
-        price: BigInt(1000),
-        isSellOffer: true,
-        nodes: [SELLER],
-        pickupNodeRef: selectedButUnowned,
-      });
+      await expect(
+        service.createOffer({
+          token: TOKEN,
+          tokenId: TOKEN_ID,
+          quantity: BigInt(100),
+          price: BigInt(1000),
+          isSellOffer: true,
+          nodes: [SELLER],
+          pickupNodeRef: selectedButUnowned,
+        }),
+      ).rejects.toThrow(/Selected pickup node is not owned/i);
 
-      expect(getNode).toHaveBeenCalledWith(fallbackNodeRef);
-      const orderArg = context._diamond.createAuSysOrder.mock.calls[0][0];
-      expect(orderArg.locationData.startName).toBe('Fallback Node');
+      expect(context._diamond.createAuSysOrder).not.toHaveBeenCalled();
     });
 
-    it('should use legacy nodes[0] only when it is an owned node reference', async () => {
-      const legacyOwnedNode =
-        '0x5555555555555555555555555555555555555555555555555555555555555555';
-      const getNode = vi.fn().mockResolvedValue({
-        lat: '-25.7479',
-        lng: '28.2293',
-        addressName: 'Legacy Selected Node',
-      });
-      const context = createMockContext({
-        diamond: {
-          getOwnerNodes: vi.fn().mockResolvedValue([legacyOwnedNode]),
-          getNode,
-        },
-      });
+    it('should throw when pickupNodeRef is missing for sell offer', async () => {
+      const context = createMockContext();
       const service = new DiamondP2PService(context);
 
-      await service.createOffer({
-        token: TOKEN,
-        tokenId: TOKEN_ID,
-        quantity: BigInt(100),
-        price: BigInt(1000),
-        isSellOffer: true,
-        nodes: [legacyOwnedNode],
-      });
+      await expect(
+        service.createOffer({
+          token: TOKEN,
+          tokenId: TOKEN_ID,
+          quantity: BigInt(100),
+          price: BigInt(1000),
+          isSellOffer: true,
+        }),
+      ).rejects.toThrow(/pickup node reference/i);
 
-      expect(getNode).toHaveBeenCalledWith(legacyOwnedNode);
-      const orderArg = context._diamond.createAuSysOrder.mock.calls[0][0];
-      expect(orderArg.locationData.startName).toBe('Legacy Selected Node');
+      expect(context._diamond.createAuSysOrder).not.toHaveBeenCalled();
     });
 
-    it('should ignore legacy nodes[0] owner address and fallback to owner node', async () => {
-      const fallbackNodeRef =
-        '0x6666666666666666666666666666666666666666666666666666666666666666';
-      const getNode = vi.fn().mockResolvedValue({
-        lat: '-33.9249',
-        lng: '18.4241',
-        addressName: 'Owner Node Fallback',
-      });
-      const context = createMockContext({
-        diamond: {
-          getOwnerNodes: vi.fn().mockResolvedValue([fallbackNodeRef]),
-          getNode,
-        },
-      });
+    it('should throw when pickupNodeRef is not a bytes32 node reference', async () => {
+      const context = createMockContext();
       const service = new DiamondP2PService(context);
 
-      await service.createOffer({
-        token: TOKEN,
-        tokenId: TOKEN_ID,
-        quantity: BigInt(100),
-        price: BigInt(1000),
-        isSellOffer: true,
-        nodes: [SELLER],
-      });
+      await expect(
+        service.createOffer({
+          token: TOKEN,
+          tokenId: TOKEN_ID,
+          quantity: BigInt(100),
+          price: BigInt(1000),
+          isSellOffer: true,
+          pickupNodeRef: SELLER,
+        }),
+      ).rejects.toThrow(/Invalid pickupNodeRef/i);
 
-      expect(getNode).toHaveBeenCalledWith(fallbackNodeRef);
-      const orderArg = context._diamond.createAuSysOrder.mock.calls[0][0];
-      expect(orderArg.locationData.startName).toBe('Owner Node Fallback');
+      expect(context._diamond.createAuSysOrder).not.toHaveBeenCalled();
     });
 
     it('should throw when sell offer pickup node cannot be resolved', async () => {
@@ -346,6 +378,7 @@ describe('DiamondP2PService', () => {
           quantity: BigInt(100),
           price: BigInt(1000),
           isSellOffer: true,
+          pickupNodeRef: SELLER_NODE_REF,
         }),
       ).rejects.toThrow(/Unable to resolve sell offer pickup metadata/i);
 
@@ -369,6 +402,7 @@ describe('DiamondP2PService', () => {
           quantity: BigInt(100),
           price: BigInt(1000),
           isSellOffer: true,
+          pickupNodeRef: SELLER_NODE_REF,
         }),
       ).rejects.toThrow('Diamond: Function does not exist');
     });
@@ -413,6 +447,7 @@ describe('DiamondP2PService', () => {
         quantity: BigInt(100),
         price: BigInt(1000),
         isSellOffer: true,
+        pickupNodeRef: SELLER_NODE_REF,
       });
 
       expect(mockERC1155.isApprovedForAll).toHaveBeenCalled();
@@ -444,6 +479,7 @@ describe('DiamondP2PService', () => {
           quantity: BigInt(100),
           price: BigInt(1000),
           isSellOffer: true,
+          pickupNodeRef: SELLER_NODE_REF,
         });
 
         await vi.runAllTimersAsync();
@@ -470,6 +506,7 @@ describe('DiamondP2PService', () => {
         quantity: BigInt(100),
         price: BigInt(1000),
         isSellOffer: true,
+        pickupNodeRef: SELLER_NODE_REF,
       });
 
       expect(mockERC1155.isApprovedForAll).toHaveBeenCalled();
@@ -900,17 +937,23 @@ describe('acceptOfferWithDelivery', () => {
     );
   });
 
-  it('should enrich missing pickup metadata from seller node before journey creation', async () => {
+  it('should use canonical order pickup metadata when delivery pickup is missing', async () => {
     const context = createAcceptWithDeliveryContext();
-    context._diamond.getOwnerNodes = vi
-      .fn()
-      .mockResolvedValue([
-        '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-      ]);
-    context._diamond.getNode = vi.fn().mockResolvedValue({
-      lat: '-33.9249',
-      lng: '18.4241',
-      addressName: 'Cape Town Node',
+    context._diamond.getAuSysOrder = vi.fn().mockResolvedValue({
+      id: OFFER_ID,
+      isSellerInitiated: true,
+      price: BigInt('1000000000000000000'),
+      tokenQuantity: BigInt(1000),
+      txFee: BigInt('20000000000000000'),
+      currentStatus: 1n,
+      seller: SELLER,
+      buyer: DELIVERY_DETAILS.receiverAddress,
+      locationData: {
+        startLocation: { lat: '-33.9249', lng: '18.4241' },
+        endLocation: { lat: '', lng: '' },
+        startName: 'Cape Town Node',
+        endName: '',
+      },
     });
     const service = new DiamondP2PService(context);
 
@@ -938,6 +981,24 @@ describe('acceptOfferWithDelivery', () => {
       DELIVERY_DETAILS.tokenQuantity,
       DELIVERY_DETAILS.assetId,
     );
+  });
+
+  it('should fail when pickup metadata is missing in both delivery and order', async () => {
+    const context = createAcceptWithDeliveryContext();
+    const service = new DiamondP2PService(context);
+
+    const deliveryWithoutPickup = {
+      ...DELIVERY_DETAILS,
+      parcelData: {
+        ...DELIVERY_DETAILS.parcelData,
+        startLocation: { lat: '', lng: '' },
+        startName: '',
+      },
+    };
+
+    await expect(
+      service.acceptOfferWithDelivery(OFFER_ID, deliveryWithoutPickup),
+    ).rejects.toThrow(/pickup location/i);
   });
 
   it('should ignore mismatched UI receiver and use canonical buyer', async () => {

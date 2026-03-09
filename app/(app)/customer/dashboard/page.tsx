@@ -464,11 +464,7 @@ export default function CustomerDashboard() {
     try {
       setP2PActionLoading(true);
 
-      const senderNode =
-        deliveryData.senderNodeAddress ||
-        order.seller ||
-        order.nodes?.[0] ||
-        '';
+      const senderNode = String(order.seller || '').trim();
 
       const delivery: P2PDeliveryDetails = {
         senderNodeAddress: senderNode,

@@ -653,6 +653,16 @@ export default function CreateP2POfferPage() {
         formData.offerType === 'sell' && selectedSellNodeOwnerAddress
           ? [selectedSellNodeOwnerAddress]
           : undefined;
+      const selectedPickupNodeRef =
+        formData.offerType === 'sell'
+          ? String(selectedSellNode?.nodeHash || '').trim()
+          : undefined;
+
+      if (formData.offerType === 'sell' && !selectedPickupNodeRef) {
+        throw new Error(
+          'Please select a valid sell node before creating this offer.',
+        );
+      }
 
       await p2pService.createOffer({
         token: NEXT_PUBLIC_DIAMOND_ADDRESS,
@@ -661,10 +671,7 @@ export default function CreateP2POfferPage() {
         price: parseUnits(formData.price, 18),
         isSellOffer: formData.offerType === 'sell',
         nodes: selectedNodeAddresses,
-        pickupNodeRef:
-          formData.offerType === 'sell'
-            ? selectedSellNode?.nodeHash
-            : undefined,
+        pickupNodeRef: selectedPickupNodeRef,
         targetCounterparty:
           formData.targetType === 'targeted'
             ? formData.targetAddress

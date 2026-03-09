@@ -226,52 +226,53 @@ export class DiamondP2PService implements IP2PService {
         const ownerNodes = await nodeMetadataFacet.getOwnerNodes(signerAddress);
 
         const selectedPickupNodeRef = normalize(input.pickupNodeRef);
-        const selectedOwnedNode =
-          selectedPickupNodeRef &&
-          isNodeRef(selectedPickupNodeRef) &&
-          findOwnedNodeRef(selectedPickupNodeRef, ownerNodes);
-
-        if (selectedPickupNodeRef && !selectedOwnedNode) {
-          console.warn(
-            `[DiamondP2PService] Selected pickup node is invalid or not owned; falling back. selected=${selectedPickupNodeRef}`,
-          );
-        }
-
-        const legacyNodeCandidate = normalize(input.nodes?.[0]);
-        const legacyOwnedNode =
-          !selectedOwnedNode &&
-          legacyNodeCandidate &&
-          isNodeRef(legacyNodeCandidate)
-            ? findOwnedNodeRef(legacyNodeCandidate, ownerNodes)
-            : undefined;
-
-        if (legacyNodeCandidate && !isNodeRef(legacyNodeCandidate)) {
-          console.warn(
-            `[DiamondP2PService] Ignoring legacy nodes[0] because it is not a node reference (likely owner address): ${legacyNodeCandidate}`,
-          );
-        } else if (
-          legacyNodeCandidate &&
-          !legacyOwnedNode &&
-          !selectedOwnedNode
-        ) {
-          console.warn(
-            `[DiamondP2PService] Legacy pickup node reference is not owned; falling back to first owner node. candidate=${legacyNodeCandidate}`,
-          );
-        }
-
-        const pickupNodeRef =
-          selectedOwnedNode || legacyOwnedNode || ownerNodes?.[0];
-        if (!pickupNodeRef) {
+        if (!selectedPickupNodeRef) {
           throw new Error(
-            `Unable to resolve pickup node for sell offer. signer=${signerAddress}`,
+            'Sell offers require a selected pickup node reference (pickupNodeRef).',
+          );
+        }
+        if (!isNodeRef(selectedPickupNodeRef)) {
+          throw new Error(
+            `Invalid pickupNodeRef for sell offer: ${selectedPickupNodeRef}`,
           );
         }
 
-        const node = await nodeMetadataFacet.getNode(pickupNodeRef);
+        const selectedOwnedNode = findOwnedNodeRef(
+          selectedPickupNodeRef,
+          ownerNodes,
+        );
+        if (!selectedOwnedNode) {
+          throw new Error(
+            `Selected pickup node is not owned by signer. selected=${selectedPickupNodeRef}, signer=${signerAddress}`,
+          );
+        }
 
-        sellStartLat = normalize(node?.lat);
-        sellStartLng = normalize(node?.lng);
-        sellStartName = normalize(node?.addressName);
+        const node = (await nodeMetadataFacet.getNode(selectedOwnedNode)) as
+          | {
+              lat?: string;
+              lng?: string;
+              addressName?: string;
+              [index: number]: unknown;
+            }
+          | undefined;
+
+        // Some ABI/typechain combinations expose tuple values only by index.
+        // Support both named and tuple-indexed field access for resilience.
+        sellStartName = normalize(
+          node?.addressName ?? (node?.[7] as string | undefined),
+        );
+        sellStartLat = normalize(
+          node?.lat ?? (node?.[8] as string | undefined),
+        );
+        sellStartLng = normalize(
+          node?.lng ?? (node?.[9] as string | undefined),
+        );
+
+        if (!sellStartName || !sellStartLat || !sellStartLng) {
+          throw new Error(
+            `Selected pickup node is missing location metadata. nodeRef=${selectedOwnedNode}`,
+          );
+        }
       } catch (resolveErr) {
         const message =
           resolveErr instanceof Error ? resolveErr.message : String(resolveErr);
@@ -505,46 +506,48 @@ export class DiamondP2PService implements IP2PService {
         );
       }
 
-      // If pickup coordinates are missing, derive them from the sender's node
+      const canonicalOrderStartLat = String(
+        order.locationData?.startLocation?.lat || '',
+      ).trim();
+      const canonicalOrderStartLng = String(
+        order.locationData?.startLocation?.lng || '',
+      ).trim();
+      const canonicalOrderStartName = String(
+        order.locationData?.startName || '',
+      ).trim();
+
+      // Use pickup metadata from delivery payload when present, otherwise
+      // canonical order metadata populated at offer creation.
       const parcelData = {
         ...delivery.parcelData,
         startLocation: {
-          lat: String(delivery.parcelData?.startLocation?.lat || '').trim(),
-          lng: String(delivery.parcelData?.startLocation?.lng || '').trim(),
+          lat:
+            String(delivery.parcelData?.startLocation?.lat || '').trim() ||
+            canonicalOrderStartLat,
+          lng:
+            String(delivery.parcelData?.startLocation?.lng || '').trim() ||
+            canonicalOrderStartLng,
         },
         endLocation: {
           lat: String(delivery.parcelData?.endLocation?.lat || '').trim(),
           lng: String(delivery.parcelData?.endLocation?.lng || '').trim(),
         },
-        startName: String(delivery.parcelData?.startName || '').trim(),
+        startName:
+          String(delivery.parcelData?.startName || '').trim() ||
+          canonicalOrderStartName,
         endName: String(delivery.parcelData?.endName || '').trim(),
       };
 
       if (!parcelData.startLocation.lat || !parcelData.startLocation.lng) {
-        try {
-          const senderNodes = await diamond.getOwnerNodes(senderAddress);
-          const senderNodeHash = senderNodes?.[0];
-          if (senderNodeHash) {
-            const senderNode = await diamond.getNode(senderNodeHash);
-            parcelData.startLocation.lat = String(senderNode?.lat || '').trim();
-            parcelData.startLocation.lng = String(senderNode?.lng || '').trim();
-            if (!parcelData.startName) {
-              parcelData.startName = String(
-                senderNode?.addressName || '',
-              ).trim();
-            }
-          }
-        } catch (resolveErr) {
-          console.warn(
-            '[DiamondP2PService] Failed to resolve pickup location from sender node:',
-            resolveErr,
-          );
-        }
+        throw new Error(
+          'Cannot schedule delivery without a pickup location. Ask the seller/node to provide pickup coordinates.',
+        );
       }
 
-      // Use sender address as last resort if startName is still empty
       if (!parcelData.startName) {
-        parcelData.startName = senderAddress;
+        throw new Error(
+          'Cannot schedule delivery without a pickup address label.',
+        );
       }
 
       // 4. Create the delivery journey

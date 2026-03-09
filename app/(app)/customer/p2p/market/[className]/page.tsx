@@ -339,8 +339,10 @@ export default function P2PMarketOffersPage() {
       try {
         const storedLocation = offer.locationData!;
         const delivery: P2PDeliveryDetails = {
+          // ToDo: fix when node can pick whcih node to fulfull order, delivery
           senderNodeAddress:
             offer.nodes && offer.nodes.length > 0 ? offer.nodes[0] : '',
+          //senderNodeAddress: String(address || '').trim(),
           receiverAddress: offer.buyer,
           parcelData: {
             startLocation: {
@@ -360,7 +362,7 @@ export default function P2PMarketOffersPage() {
           assetId: BigInt(offer.tokenId),
           deliveryAddress: storedLocation.endName,
         };
-
+        console.log('Accepting offer with delivery details:', delivery);
         await p2pService.acceptOfferWithDelivery(offer.id, delivery);
         await loadOffers();
       } catch (error: unknown) {
@@ -588,11 +590,7 @@ export default function P2PMarketOffersPage() {
       if (!order) return;
       try {
         setP2PActionLoading(true);
-        const senderNode =
-          deliveryData.senderNodeAddress ||
-          order.seller ||
-          order.nodes?.[0] ||
-          '';
+        const senderNode = String(order.seller || '').trim();
         const delivery: P2PDeliveryDetails = {
           senderNodeAddress: senderNode,
           receiverAddress: address,

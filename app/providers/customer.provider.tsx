@@ -672,58 +672,37 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
           );
         }
 
+        const canonicalStartLat = String(
+          onchainOrder.locationData?.startLocation?.lat || '',
+        ).trim();
+        const canonicalStartLng = String(
+          onchainOrder.locationData?.startLocation?.lng || '',
+        ).trim();
+        const canonicalStartName = String(
+          onchainOrder.locationData?.startName || '',
+        ).trim();
+
+        // Use delivery pickup metadata when present, otherwise canonical on-chain
+        // order metadata set during sell-offer creation from selected pickup node.
         const parcelData = {
           ...delivery.parcelData,
           startLocation: {
-            lat: String(delivery.parcelData?.startLocation?.lat || '').trim(),
-            lng: String(delivery.parcelData?.startLocation?.lng || '').trim(),
+            lat:
+              String(delivery.parcelData?.startLocation?.lat || '').trim() ||
+              canonicalStartLat,
+            lng:
+              String(delivery.parcelData?.startLocation?.lng || '').trim() ||
+              canonicalStartLng,
           },
           endLocation: {
             lat: String(delivery.parcelData?.endLocation?.lat || '').trim(),
             lng: String(delivery.parcelData?.endLocation?.lng || '').trim(),
           },
-          startName: String(delivery.parcelData?.startName || '').trim(),
+          startName:
+            String(delivery.parcelData?.startName || '').trim() ||
+            canonicalStartName,
           endName: String(delivery.parcelData?.endName || '').trim(),
         };
-
-        // If pickup coordinates are missing, derive them from the sender's
-        // first registered node to avoid creating journeys with no pickup point.
-        if (!parcelData.startLocation.lat || !parcelData.startLocation.lng) {
-          try {
-            const senderNodes = await diamond.getOwnerNodes(senderAddress);
-            let senderNodeHash = senderNodes?.[0];
-            if (!senderNodeHash) {
-              // Fallback: some UI paths may pass a node reference directly.
-              const senderRef = String(delivery.senderNodeAddress || '').trim();
-              if (
-                senderRef &&
-                !isZeroAddress(senderRef) &&
-                senderRef.toLowerCase() !== senderAddress.toLowerCase()
-              ) {
-                senderNodeHash = senderRef;
-              }
-            }
-            if (senderNodeHash) {
-              const senderNode = await diamond.getNode(senderNodeHash);
-              parcelData.startLocation.lat = String(
-                senderNode?.lat || '',
-              ).trim();
-              parcelData.startLocation.lng = String(
-                senderNode?.lng || '',
-              ).trim();
-              if (!parcelData.startName) {
-                parcelData.startName = String(
-                  senderNode?.addressName || '',
-                ).trim();
-              }
-            }
-          } catch (resolveErr) {
-            console.warn(
-              '[CustomerProvider] Failed to resolve pickup location from sender node:',
-              resolveErr,
-            );
-          }
-        }
 
         if (!parcelData.startLocation.lat || !parcelData.startLocation.lng) {
           throw new Error(
