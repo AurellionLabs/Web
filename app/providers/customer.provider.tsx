@@ -625,12 +625,31 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         // Resolve canonical participants from on-chain order state.
         // Event-derived order views can contain zero placeholders.
         const onchainOrder = await diamond.getAuSysOrder(orderId);
-        const senderAddress = isZeroAddress(delivery.senderNodeAddress)
-          ? String(onchainOrder.seller || '')
-          : delivery.senderNodeAddress;
-        const receiverAddress = isZeroAddress(delivery.receiverAddress)
-          ? String(onchainOrder.buyer || '')
-          : delivery.receiverAddress;
+        const canonicalSeller = String(onchainOrder.seller || '').trim();
+        const canonicalBuyer = String(onchainOrder.buyer || '').trim();
+        const providedSender = String(delivery.senderNodeAddress || '').trim();
+        const providedReceiver = String(delivery.receiverAddress || '').trim();
+        const senderAddress = canonicalSeller;
+        const receiverAddress = canonicalBuyer;
+
+        if (
+          providedSender &&
+          !isZeroAddress(providedSender) &&
+          providedSender.toLowerCase() !== canonicalSeller.toLowerCase()
+        ) {
+          console.warn(
+            `[CustomerProvider] Ignoring mismatched senderNodeAddress. provided=${providedSender}, seller=${canonicalSeller}`,
+          );
+        }
+        if (
+          providedReceiver &&
+          !isZeroAddress(providedReceiver) &&
+          providedReceiver.toLowerCase() !== canonicalBuyer.toLowerCase()
+        ) {
+          console.warn(
+            `[CustomerProvider] Ignoring mismatched receiverAddress. provided=${providedReceiver}, buyer=${canonicalBuyer}`,
+          );
+        }
 
         if (isZeroAddress(senderAddress)) {
           throw new Error(
@@ -653,47 +672,37 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
           );
         }
 
+        const canonicalStartLat = String(
+          onchainOrder.locationData?.startLocation?.lat || '',
+        ).trim();
+        const canonicalStartLng = String(
+          onchainOrder.locationData?.startLocation?.lng || '',
+        ).trim();
+        const canonicalStartName = String(
+          onchainOrder.locationData?.startName || '',
+        ).trim();
+
+        // Use delivery pickup metadata when present, otherwise canonical on-chain
+        // order metadata set during sell-offer creation from selected pickup node.
         const parcelData = {
           ...delivery.parcelData,
           startLocation: {
-            lat: String(delivery.parcelData?.startLocation?.lat || '').trim(),
-            lng: String(delivery.parcelData?.startLocation?.lng || '').trim(),
+            lat:
+              String(delivery.parcelData?.startLocation?.lat || '').trim() ||
+              canonicalStartLat,
+            lng:
+              String(delivery.parcelData?.startLocation?.lng || '').trim() ||
+              canonicalStartLng,
           },
           endLocation: {
             lat: String(delivery.parcelData?.endLocation?.lat || '').trim(),
             lng: String(delivery.parcelData?.endLocation?.lng || '').trim(),
           },
-          startName: String(delivery.parcelData?.startName || '').trim(),
+          startName:
+            String(delivery.parcelData?.startName || '').trim() ||
+            canonicalStartName,
           endName: String(delivery.parcelData?.endName || '').trim(),
         };
-
-        // If pickup coordinates are missing, derive them from the sender's
-        // first registered node to avoid creating journeys with no pickup point.
-        if (!parcelData.startLocation.lat || !parcelData.startLocation.lng) {
-          try {
-            const senderNodes = await diamond.getOwnerNodes(senderAddress);
-            const senderNodeHash = senderNodes?.[0];
-            if (senderNodeHash) {
-              const senderNode = await diamond.getNode(senderNodeHash);
-              parcelData.startLocation.lat = String(
-                senderNode?.lat || '',
-              ).trim();
-              parcelData.startLocation.lng = String(
-                senderNode?.lng || '',
-              ).trim();
-              if (!parcelData.startName) {
-                parcelData.startName = String(
-                  senderNode?.addressName || '',
-                ).trim();
-              }
-            }
-          } catch (resolveErr) {
-            console.warn(
-              '[CustomerProvider] Failed to resolve pickup location from sender node:',
-              resolveErr,
-            );
-          }
-        }
 
         if (!parcelData.startLocation.lat || !parcelData.startLocation.lng) {
           throw new Error(

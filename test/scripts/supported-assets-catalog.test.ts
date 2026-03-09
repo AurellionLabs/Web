@@ -13,12 +13,13 @@ describe('supported asset catalog', () => {
   it('loads the checked-in catalog and reproduces the current default class set', () => {
     const catalog = loadSupportedAssetCatalog();
 
-    expect(catalog).toHaveLength(5);
+    expect(catalog).toHaveLength(6);
     expect(getSupportedAssetClasses(catalog)).toEqual([
       'CHICKEN',
       'COW',
       'DUCK',
       'GOAT',
+      'GOLD',
       'SHEEP',
     ]);
   });
@@ -66,11 +67,12 @@ describe('supported asset catalog', () => {
       ],
     });
 
-    expect(diff.missingClasses).toEqual(['CHICKEN', 'COW', 'DUCK']);
+    expect(diff.missingClasses).toEqual(['CHICKEN', 'COW', 'DUCK', 'GOLD']);
     expect(diff.missingMetadata.map((entry) => entry.className)).toEqual([
       'CHICKEN',
       'COW',
       'DUCK',
+      'GOLD',
       'SHEEP',
     ]);
   });

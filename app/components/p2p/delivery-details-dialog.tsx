@@ -87,11 +87,11 @@ export function DeliveryDetailsDialog({
     setError(null);
   }, [open, initialDeliveryAddress]);
 
-  // Use selected node as sender, or fall back to the seller address
+  // Use only the explicitly selected node from offer.nodes.
   const senderNode =
-    offer.nodes && offer.nodes.length > 0
-      ? offer.nodes[selectedNodeIndex] || offer.nodes[0]
-      : offer.seller || offer.creator;
+    offer.nodes && offer.nodes.length > selectedNodeIndex
+      ? offer.nodes[selectedNodeIndex]
+      : '';
 
   const hasMultipleNodes = offer.nodes && offer.nodes.length > 1;
 

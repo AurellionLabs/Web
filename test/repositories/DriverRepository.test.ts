@@ -262,6 +262,18 @@ describe('DriverRepository', () => {
       expect(ids).toContain('0xJB');
       expect(ids).not.toContain('0xJC');
     });
+
+    it('should use sender node address when pickup label is missing', async () => {
+      const journey = makeJourneyCreatedEvent({ start_name: '   ' });
+
+      graphqlRequestMock.mockResolvedValueOnce({
+        journeys: { items: [journey] },
+        statusUpdates: { items: [] },
+      });
+
+      const deliveries = await repo.getAvailableDeliveries();
+      expect(deliveries[0].parcelData.startName).toBe(SENDER_ADDRESS);
+    });
   });
 
   // =====================================================================
@@ -416,6 +428,18 @@ describe('DriverRepository', () => {
       const ids = deliveries.map((d) => d.jobId);
       expect(ids).toContain('0xJ1');
       expect(ids).toContain('0xJ2');
+    });
+
+    it('should use sender node address when assigned pickup label is missing', async () => {
+      const assigned = makeDriverAssignedEvent({ start_name: '' });
+
+      graphqlRequestMock.mockResolvedValueOnce({
+        assigned: { items: [assigned] },
+        statusUpdates: { items: [] },
+      });
+
+      const deliveries = await repo.getMyDeliveries(DRIVER_ADDRESS);
+      expect(deliveries[0].parcelData.startName).toBe(SENDER_ADDRESS);
     });
   });
 });
