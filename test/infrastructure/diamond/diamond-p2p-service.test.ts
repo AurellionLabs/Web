@@ -765,10 +765,9 @@ describe('DiamondP2PService', () => {
 
       expect(mockERC1155.isApprovedForAll).toHaveBeenCalled();
       expect(mockERC1155.setApprovalForAll).toHaveBeenCalled();
-      expect(context._diamond.acceptP2POfferWithPickupNode).toHaveBeenCalledWith(
-        OFFER_ID,
-        pickupNodeRef,
-      );
+      expect(
+        context._diamond.acceptP2POfferWithPickupNode,
+      ).toHaveBeenCalledWith(OFFER_ID, pickupNodeRef);
       expect(context._diamond.acceptP2POffer).not.toHaveBeenCalled();
     });
 
@@ -792,7 +791,9 @@ describe('DiamondP2PService', () => {
       await expect(
         service.acceptOfferWithPickupNode(OFFER_ID, SELLER_NODE_REF),
       ).rejects.toThrow(/only for buyer-initiated offers/i);
-      expect(context._diamond.acceptP2POfferWithPickupNode).not.toHaveBeenCalled();
+      expect(
+        context._diamond.acceptP2POfferWithPickupNode,
+      ).not.toHaveBeenCalled();
     });
 
     it('should reject invalid pickup node refs', async () => {
@@ -813,7 +814,9 @@ describe('DiamondP2PService', () => {
       await expect(
         service.acceptOfferWithPickupNode(OFFER_ID, SELLER),
       ).rejects.toThrow(/invalid pickupnoderef/i);
-      expect(context._diamond.acceptP2POfferWithPickupNode).not.toHaveBeenCalled();
+      expect(
+        context._diamond.acceptP2POfferWithPickupNode,
+      ).not.toHaveBeenCalled();
     });
   });
 
@@ -1321,5 +1324,86 @@ describe('acceptOfferWithDelivery', () => {
     await expect(
       service.acceptOfferWithDelivery(OFFER_ID, DELIVERY_DETAILS),
     ).rejects.toThrow('InvalidETA');
+  });
+
+  it('retries createOrderJourney once when first attempt reverts with InvalidNode', async () => {
+    vi.useFakeTimers();
+    try {
+      const context = createAcceptWithDeliveryContext();
+      context._diamond.createOrderJourney
+        .mockRejectedValueOnce({
+          data: '0x30812d42',
+          message: 'execution reverted',
+        })
+        .mockResolvedValueOnce(context._journeyTx);
+      const service = new DiamondP2PService(context);
+
+      const promise = service.acceptOfferWithDelivery(
+        OFFER_ID,
+        DELIVERY_DETAILS,
+      );
+      await vi.runAllTimersAsync();
+      await expect(promise).resolves.toBeUndefined();
+      expect(context._diamond.createOrderJourney).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('falls back to provided sender/receiver when canonical participants remain unresolved after one retry', async () => {
+    vi.useFakeTimers();
+    try {
+      const context = createAcceptWithDeliveryContext();
+      context._diamond.getAuSysOrder = vi
+        .fn()
+        // Initial read before accept (approval/isSellerInitiated)
+        .mockResolvedValueOnce({
+          id: OFFER_ID,
+          isSellerInitiated: true,
+          price: BigInt('1000000000000000000'),
+          txFee: BigInt('20000000000000000'),
+          seller: SELLER,
+          buyer: DELIVERY_DETAILS.receiverAddress,
+        })
+        // Post-accept read (attempt 1)
+        .mockResolvedValueOnce({
+          id: OFFER_ID,
+          isSellerInitiated: true,
+          price: BigInt('1000000000000000000'),
+          txFee: BigInt('20000000000000000'),
+          seller: ethers.ZeroAddress,
+          buyer: ethers.ZeroAddress,
+        })
+        // Post-accept read (retry once)
+        .mockResolvedValueOnce({
+          id: OFFER_ID,
+          isSellerInitiated: true,
+          price: BigInt('1000000000000000000'),
+          txFee: BigInt('20000000000000000'),
+          seller: ethers.ZeroAddress,
+          buyer: ethers.ZeroAddress,
+        });
+
+      const service = new DiamondP2PService(context);
+      const promise = service.acceptOfferWithDelivery(
+        OFFER_ID,
+        DELIVERY_DETAILS,
+      );
+      await vi.runAllTimersAsync();
+      await expect(promise).resolves.toBeUndefined();
+
+      expect(context._diamond.createOrderJourney).toHaveBeenCalledWith(
+        OFFER_ID,
+        DELIVERY_DETAILS.senderNodeAddress,
+        DELIVERY_DETAILS.receiverAddress,
+        expect.any(Object),
+        DELIVERY_DETAILS.bountyWei,
+        DELIVERY_DETAILS.etaTimestamp,
+        DELIVERY_DETAILS.tokenQuantity,
+        DELIVERY_DETAILS.assetId,
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

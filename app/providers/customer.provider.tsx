@@ -28,6 +28,13 @@ import {
   detectJourneyRoleConflict,
   getJourneyRoleConflictMessage,
 } from '@/utils/journey-role-conflicts';
+import {
+  extractOrderParticipants,
+  extractOrderPickupMetadata,
+  isZeroAddress,
+  normalizeAddress,
+  normalizeText,
+} from '@/utils/p2p-order-resolution';
 
 type CustomerContextType = {
   orders: OrderWithAsset[];
@@ -618,22 +625,42 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         setError(null);
         // Use the Diamond contract (has createOrderJourney), not the Ausys contract
         const diamond = repoContext.getDiamondContext().getDiamond();
-        const isZeroAddress = (addr?: string | null) =>
-          !addr ||
-          addr.toLowerCase() === '0x0000000000000000000000000000000000000000';
+        const walletAddress = normalizeAddress(address);
+        if (isZeroAddress(walletAddress)) {
+          throw new Error(
+            'Cannot create delivery journey: buyer wallet is not connected.',
+          );
+        }
 
-        // Resolve canonical participants from on-chain order state.
-        // Event-derived order views can contain zero placeholders.
-        const onchainOrder = await diamond.getAuSysOrder(orderId);
-        const canonicalSeller = String(onchainOrder.seller || '').trim();
-        const canonicalBuyer = String(onchainOrder.buyer || '').trim();
-        const providedSender = String(delivery.senderNodeAddress || '').trim();
-        const providedReceiver = String(delivery.receiverAddress || '').trim();
-        const senderAddress = canonicalSeller;
-        const receiverAddress = canonicalBuyer;
+        const providedSender = normalizeAddress(delivery.senderNodeAddress);
+        const providedReceiver = normalizeAddress(delivery.receiverAddress);
 
-        if (
-          providedSender &&
+        const readOrderWithParticipantRetry = async () => {
+          let snapshot = await diamond.getAuSysOrder(orderId);
+          let participants = extractOrderParticipants(snapshot);
+          if (
+            isZeroAddress(participants.seller) ||
+            isZeroAddress(participants.buyer)
+          ) {
+            await new Promise((resolve) => setTimeout(resolve, 900));
+            snapshot = await diamond.getAuSysOrder(orderId);
+            participants = extractOrderParticipants(snapshot);
+          }
+          return { snapshot, participants };
+        };
+
+        const onchain = await readOrderWithParticipantRetry();
+        const canonicalSeller = onchain.participants.seller;
+        const canonicalBuyer = onchain.participants.buyer;
+
+        let senderAddress = canonicalSeller;
+        if (isZeroAddress(senderAddress) && !isZeroAddress(providedSender)) {
+          senderAddress = providedSender;
+          console.warn(
+            `[CustomerProvider] Falling back to provided senderNodeAddress because canonical seller is unresolved. fallback=${providedSender}`,
+          );
+        } else if (
+          !isZeroAddress(canonicalSeller) &&
           !isZeroAddress(providedSender) &&
           providedSender.toLowerCase() !== canonicalSeller.toLowerCase()
         ) {
@@ -641,8 +668,30 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
             `[CustomerProvider] Ignoring mismatched senderNodeAddress. provided=${providedSender}, seller=${canonicalSeller}`,
           );
         }
+
+        let receiverAddress = canonicalBuyer;
         if (
-          providedReceiver &&
+          !isZeroAddress(canonicalBuyer) &&
+          canonicalBuyer.toLowerCase() !== walletAddress.toLowerCase()
+        ) {
+          console.warn(
+            `[CustomerProvider] Canonical buyer does not match connected wallet. buyer=${canonicalBuyer}, wallet=${walletAddress}. Falling back to wallet.`,
+          );
+          receiverAddress = walletAddress;
+        } else if (isZeroAddress(canonicalBuyer)) {
+          const receiverFallback = !isZeroAddress(providedReceiver)
+            ? providedReceiver
+            : walletAddress;
+          if (receiverFallback.toLowerCase() !== walletAddress.toLowerCase()) {
+            throw new Error(
+              'Cannot create delivery journey: receiver fallback must match connected buyer wallet.',
+            );
+          }
+          receiverAddress = receiverFallback;
+          console.warn(
+            `[CustomerProvider] Falling back to provided receiver because canonical buyer is unresolved. fallback=${receiverFallback}`,
+          );
+        } else if (
           !isZeroAddress(providedReceiver) &&
           providedReceiver.toLowerCase() !== canonicalBuyer.toLowerCase()
         ) {
@@ -653,12 +702,12 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
 
         if (isZeroAddress(senderAddress)) {
           throw new Error(
-            'Cannot create delivery journey: seller/node sender address is unresolved.',
+            'Cannot create delivery journey: seller/node sender address is unresolved after retry.',
           );
         }
         if (isZeroAddress(receiverAddress)) {
           throw new Error(
-            'Cannot create delivery journey: receiver address is unresolved.',
+            'Cannot create delivery journey: receiver address is unresolved after retry.',
           );
         }
         const roleConflict = detectJourneyRoleConflict(
@@ -672,15 +721,9 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
           );
         }
 
-        const canonicalStartLat = String(
-          onchainOrder.locationData?.startLocation?.lat || '',
-        ).trim();
-        const canonicalStartLng = String(
-          onchainOrder.locationData?.startLocation?.lng || '',
-        ).trim();
-        const canonicalStartName = String(
-          onchainOrder.locationData?.startName || '',
-        ).trim();
+        const { startLat, startLng, startName } = extractOrderPickupMetadata(
+          onchain.snapshot,
+        );
 
         // Use delivery pickup metadata when present, otherwise canonical on-chain
         // order metadata set during sell-offer creation from selected pickup node.
@@ -688,20 +731,18 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
           ...delivery.parcelData,
           startLocation: {
             lat:
-              String(delivery.parcelData?.startLocation?.lat || '').trim() ||
-              canonicalStartLat,
+              normalizeText(delivery.parcelData?.startLocation?.lat) ||
+              startLat,
             lng:
-              String(delivery.parcelData?.startLocation?.lng || '').trim() ||
-              canonicalStartLng,
+              normalizeText(delivery.parcelData?.startLocation?.lng) ||
+              startLng,
           },
           endLocation: {
-            lat: String(delivery.parcelData?.endLocation?.lat || '').trim(),
-            lng: String(delivery.parcelData?.endLocation?.lng || '').trim(),
+            lat: normalizeText(delivery.parcelData?.endLocation?.lat),
+            lng: normalizeText(delivery.parcelData?.endLocation?.lng),
           },
-          startName:
-            String(delivery.parcelData?.startName || '').trim() ||
-            canonicalStartName,
-          endName: String(delivery.parcelData?.endName || '').trim(),
+          startName: normalizeText(delivery.parcelData?.startName) || startName,
+          endName: normalizeText(delivery.parcelData?.endName),
         };
 
         if (!parcelData.startLocation.lat || !parcelData.startLocation.lng) {

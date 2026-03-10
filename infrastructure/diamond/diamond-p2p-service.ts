@@ -22,6 +22,15 @@ import {
 import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
 import { detectJourneyRoleConflict } from '@/utils/journey-role-conflicts';
+import {
+  extractOrderBigInt,
+  extractOrderIsSellerInitiated,
+  extractOrderParticipants,
+  extractOrderPickupMetadata,
+  isZeroAddress,
+  normalizeAddress,
+  normalizeText,
+} from '@/utils/p2p-order-resolution';
 
 interface ContextWithOptionalContracts {
   getQuoteTokenContract(): ethers.Contract;
@@ -86,6 +95,8 @@ const P2P_ERROR_MAP: Record<string, string> = {
     'Only the seller can create the delivery journey for this order.',
   '0x89e4b4ad':
     'Sender, driver, and customer must use different wallet addresses.',
+  '0x30812d42':
+    'The journey participants are not recognized on-chain yet. Please retry in a few seconds.',
 };
 
 /**
@@ -187,6 +198,39 @@ export class DiamondP2PService implements IP2PService {
 
   private normalize(value: unknown): string {
     return String(value || '').trim();
+  }
+
+  private async sleep(ms: number): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private getErrorSelector(error: unknown): string | null {
+    if (!error || typeof error !== 'object') return null;
+    const err = error as Record<string, unknown>;
+
+    if (typeof err.data === 'string' && err.data.length >= 10) {
+      return err.data.slice(0, 10).toLowerCase();
+    }
+
+    if (err.error && typeof err.error === 'object') {
+      const inner = err.error as Record<string, unknown>;
+      if (typeof inner.data === 'string' && inner.data.length >= 10) {
+        return inner.data.slice(0, 10).toLowerCase();
+      }
+    }
+
+    if (typeof err.message === 'string') {
+      const match = err.message.match(/data="(0x[a-fA-F0-9]{8,})"/);
+      if (match) {
+        return match[1].slice(0, 10).toLowerCase();
+      }
+    }
+
+    return null;
+  }
+
+  private isInvalidNodeError(error: unknown): boolean {
+    return this.getErrorSelector(error) === '0x30812d42';
   }
 
   private isNodeRef(value: string): boolean {
@@ -523,25 +567,159 @@ export class DiamondP2PService implements IP2PService {
     delivery: P2PDeliveryDetails,
   ): Promise<void> {
     const diamond = this.context.getDiamond();
-    const isZeroAddress = (addr?: string | null) =>
-      !addr || addr.toLowerCase() === ethers.ZeroAddress.toLowerCase();
 
     try {
+      const signerAddress = normalizeAddress(
+        await this.context.getSignerAddress(),
+      );
+      const signerAddressLc = signerAddress.toLowerCase();
+      const providedSender = normalizeAddress(delivery.senderNodeAddress);
+      const providedReceiver = normalizeAddress(delivery.receiverAddress);
+
+      // Read the accepted order from-chain with a short retry window.
+      // Immediately after accept, participant fields can lag on some RPCs.
+      const readOrderWithParticipantRetry = async () => {
+        let snapshot = await diamond.getAuSysOrder(offerId);
+        let participants = extractOrderParticipants(snapshot);
+        if (
+          isZeroAddress(participants.seller) ||
+          isZeroAddress(participants.buyer)
+        ) {
+          await this.sleep(900);
+          snapshot = await diamond.getAuSysOrder(offerId);
+          participants = extractOrderParticipants(snapshot);
+        }
+        return { snapshot, participants };
+      };
+
+      // Canonicalize sender/receiver from on-chain order state and only use
+      // UI-provided values as guarded fallbacks while participants propagate.
+      const buildJourneyInput = (snapshot: unknown) => {
+        const participants = extractOrderParticipants(snapshot);
+        const canonicalSeller = participants.seller;
+        const canonicalBuyer = participants.buyer;
+
+        let senderAddress = canonicalSeller;
+        if (isZeroAddress(senderAddress) && !isZeroAddress(providedSender)) {
+          senderAddress = providedSender;
+          console.warn(
+            `[DiamondP2PService] Falling back to provided senderNodeAddress because canonical seller is unresolved. fallback=${providedSender}`,
+          );
+        } else if (
+          !isZeroAddress(canonicalSeller) &&
+          !isZeroAddress(providedSender) &&
+          providedSender.toLowerCase() !== canonicalSeller.toLowerCase()
+        ) {
+          console.warn(
+            `[DiamondP2PService] Ignoring mismatched senderNodeAddress from UI. provided=${providedSender}, seller=${canonicalSeller}`,
+          );
+        }
+
+        let receiverAddress = canonicalBuyer;
+        if (
+          !isZeroAddress(canonicalBuyer) &&
+          canonicalBuyer.toLowerCase() !== signerAddressLc
+        ) {
+          console.warn(
+            `[DiamondP2PService] Canonical buyer does not match signer after accept. buyer=${canonicalBuyer}, signer=${signerAddress}. Falling back to signer.`,
+          );
+          receiverAddress = signerAddress;
+        } else if (isZeroAddress(canonicalBuyer)) {
+          const receiverFallback = !isZeroAddress(providedReceiver)
+            ? providedReceiver
+            : signerAddress;
+          if (receiverFallback.toLowerCase() !== signerAddressLc) {
+            throw new Error(
+              'Cannot create journey: receiver fallback must match the connected buyer wallet.',
+            );
+          }
+          receiverAddress = receiverFallback;
+          console.warn(
+            `[DiamondP2PService] Falling back to provided receiver because canonical buyer is unresolved. fallback=${receiverFallback}`,
+          );
+        } else if (
+          !isZeroAddress(providedReceiver) &&
+          providedReceiver.toLowerCase() !== canonicalBuyer.toLowerCase()
+        ) {
+          console.warn(
+            `[DiamondP2PService] Ignoring mismatched receiverAddress from UI. provided=${providedReceiver}, buyer=${canonicalBuyer}`,
+          );
+        }
+
+        if (isZeroAddress(senderAddress)) {
+          throw new Error(
+            'Cannot create journey: seller/node sender is unresolved after offer acceptance.',
+          );
+        }
+        if (isZeroAddress(receiverAddress)) {
+          throw new Error(
+            'Cannot create journey: receiver address is unresolved after offer acceptance.',
+          );
+        }
+
+        const roleConflict = detectJourneyRoleConflict(
+          senderAddress,
+          receiverAddress,
+        );
+        if (roleConflict.hasConflict) {
+          throw new Error(
+            roleConflict.message ||
+              'Sender, driver, and customer must use different wallet addresses.',
+          );
+        }
+
+        const { startLat, startLng, startName } =
+          extractOrderPickupMetadata(snapshot);
+        const parcelData = {
+          ...delivery.parcelData,
+          startLocation: {
+            lat:
+              normalizeText(delivery.parcelData?.startLocation?.lat) ||
+              startLat,
+            lng:
+              normalizeText(delivery.parcelData?.startLocation?.lng) ||
+              startLng,
+          },
+          endLocation: {
+            lat: normalizeText(delivery.parcelData?.endLocation?.lat),
+            lng: normalizeText(delivery.parcelData?.endLocation?.lng),
+          },
+          startName: normalizeText(delivery.parcelData?.startName) || startName,
+          endName: normalizeText(delivery.parcelData?.endName),
+        };
+
+        if (!parcelData.startLocation.lat || !parcelData.startLocation.lng) {
+          throw new Error(
+            'Cannot schedule delivery without a pickup location. Ask the seller/node to provide pickup coordinates.',
+          );
+        }
+        if (!parcelData.startName) {
+          throw new Error(
+            'Cannot schedule delivery without a pickup address label.',
+          );
+        }
+
+        return {
+          senderAddress,
+          receiverAddress,
+          parcelData,
+        };
+      };
+
       // 1. Fetch offer to determine approval needs
       const order = await diamond.getAuSysOrder(offerId);
-      if (!order.isSellerInitiated) {
+      if (!extractOrderIsSellerInitiated(order)) {
         throw new Error(
           'Buy offers must be accepted with a selected fulfillment node first. Then the buyer can schedule delivery from dashboard.',
         );
       }
-      const signerAddress = await this.context.getSignerAddress();
 
       // 2. Handle approvals based on offer type
       // Sell offer: acceptor is BUYER → ERC20 approval for price + txFee + bounty
       const payTokenAddress = await this.getConfiguredPayTokenAddress();
       const totalCost =
-        BigInt(order.price.toString()) +
-        BigInt(order.txFee.toString()) +
+        extractOrderBigInt(order, 'price') +
+        extractOrderBigInt(order, 'txFee') +
         delivery.bountyWei;
       await this.ensureQuoteTokenApproval(totalCost, payTokenAddress);
 
@@ -553,97 +731,16 @@ export class DiamondP2PService implements IP2PService {
         throw new Error('acceptP2POffer transaction failed on-chain');
       }
 
-      // Resolve canonical participants from the accepted offer and the
-      // transaction sender instead of relying on a follow-up read that may lag.
-      const buyerAddress = signerAddress;
-      const senderAddress = String(order.seller || '');
-      // Receiver must match the canonical on-chain buyer for createOrderJourney.
-      // A stale UI receiver can cause InvalidNode() even after accept succeeds.
-      const providedReceiver = String(delivery.receiverAddress || '').trim();
-      const receiverAddress = buyerAddress;
-      if (
-        providedReceiver &&
-        !isZeroAddress(providedReceiver) &&
-        providedReceiver.toLowerCase() !== buyerAddress.toLowerCase()
-      ) {
-        console.warn(
-          `[DiamondP2PService] Ignoring mismatched receiverAddress from UI. provided=${providedReceiver}, buyer=${buyerAddress}`,
-        );
-      }
-
-      if (isZeroAddress(senderAddress)) {
-        throw new Error(
-          'Cannot create journey: seller/node sender is unresolved after offer acceptance.',
-        );
-      }
-      if (isZeroAddress(receiverAddress)) {
-        throw new Error(
-          'Cannot create journey: receiver address is unresolved after offer acceptance.',
-        );
-      }
-      const roleConflict = detectJourneyRoleConflict(
-        senderAddress,
-        receiverAddress,
-      );
-      if (roleConflict.hasConflict) {
-        throw new Error(
-          roleConflict.message ||
-            'Sender, driver, and customer must use different wallet addresses.',
-        );
-      }
-
-      const canonicalOrderStartLat = String(
-        order.locationData?.startLocation?.lat || '',
-      ).trim();
-      const canonicalOrderStartLng = String(
-        order.locationData?.startLocation?.lng || '',
-      ).trim();
-      const canonicalOrderStartName = String(
-        order.locationData?.startName || '',
-      ).trim();
-
-      const resolvedStartLocation = {
-        lat:
-          String(delivery.parcelData?.startLocation?.lat || '').trim() ||
-          canonicalOrderStartLat,
-        lng:
-          String(delivery.parcelData?.startLocation?.lng || '').trim() ||
-          canonicalOrderStartLng,
-      };
-      const resolvedStartName =
-        String(delivery.parcelData?.startName || '').trim() ||
-        canonicalOrderStartName;
-
-      const parcelData = {
-        ...delivery.parcelData,
-        startLocation: resolvedStartLocation,
-        endLocation: {
-          lat: String(delivery.parcelData?.endLocation?.lat || '').trim(),
-          lng: String(delivery.parcelData?.endLocation?.lng || '').trim(),
-        },
-        startName: resolvedStartName,
-        endName: String(delivery.parcelData?.endName || '').trim(),
-      };
-
-      if (!parcelData.startLocation.lat || !parcelData.startLocation.lng) {
-        throw new Error(
-          'Cannot schedule delivery without a pickup location. Ask the seller/node to provide pickup coordinates.',
-        );
-      }
-
-      if (!parcelData.startName) {
-        throw new Error(
-          'Cannot schedule delivery without a pickup address label.',
-        );
-      }
+      let postAccept = await readOrderWithParticipantRetry();
+      let journeyInput = buildJourneyInput(postAccept.snapshot);
 
       // 4. Create the delivery journey
       try {
         const journeyTx = await diamond.createOrderJourney(
           offerId,
-          senderAddress,
-          receiverAddress,
-          parcelData,
+          journeyInput.senderAddress,
+          journeyInput.receiverAddress,
+          journeyInput.parcelData,
           delivery.bountyWei,
           delivery.etaTimestamp,
           delivery.tokenQuantity,
@@ -651,6 +748,25 @@ export class DiamondP2PService implements IP2PService {
         );
         await journeyTx.wait();
       } catch (journeyError) {
+        // Retry once for InvalidNode-like races after accept settles.
+        if (this.isInvalidNodeError(journeyError)) {
+          await this.sleep(1000);
+          postAccept = await readOrderWithParticipantRetry();
+          journeyInput = buildJourneyInput(postAccept.snapshot);
+          const retryJourneyTx = await diamond.createOrderJourney(
+            offerId,
+            journeyInput.senderAddress,
+            journeyInput.receiverAddress,
+            journeyInput.parcelData,
+            delivery.bountyWei,
+            delivery.etaTimestamp,
+            delivery.tokenQuantity,
+            delivery.assetId,
+          );
+          await retryJourneyTx.wait();
+          return;
+        }
+
         // Offer was accepted but journey creation failed. The order is now
         // in PROCESSING state without a journey. The UI shows a "Schedule
         // Delivery" fallback button for this case.

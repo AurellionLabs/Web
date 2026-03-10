@@ -65,6 +65,8 @@ export interface DeliveryDetailsDialogProps {
   lockDeliveryAddress?: boolean;
   /** Optional node options for strict pickup-node selection */
   pickupNodeOptions?: PickupNodeOption[];
+  /** If true, user must select a fulfillment node from pickupNodeOptions */
+  requirePickupNodeSelection?: boolean;
   /** Optional custom header title */
   title?: string;
   /** Optional custom header subtitle */
@@ -88,6 +90,7 @@ export function DeliveryDetailsDialog({
   initialDeliveryAddress,
   lockDeliveryAddress = false,
   pickupNodeOptions,
+  requirePickupNodeSelection = false,
   title,
   subtitle,
   confirmLabel,
@@ -113,42 +116,40 @@ export function DeliveryDetailsDialog({
   const [autocomplete, setAutocomplete] =
     useState<google.maps.places.Autocomplete | null>(null);
 
-  const fallbackNodeOptions = useMemo<PickupNodeOption[]>(
-    () =>
-      (offer.nodes || []).map((node) => {
-        const nodeRef = String(node || '').trim();
-        return {
-          pickupNodeRef: nodeRef,
-          senderNodeAddress: nodeRef,
-          label: `${nodeRef.slice(0, 6)}...${nodeRef.slice(-4)}`,
-          startName: '',
-          startLocation: { lat: '', lng: '' },
-        };
-      }),
-    [offer.nodes],
+  const effectiveNodeOptions = useMemo<PickupNodeOption[]>(
+    () => pickupNodeOptions || [],
+    [pickupNodeOptions],
   );
 
-  const effectiveNodeOptions = useMemo<PickupNodeOption[]>(
-    () =>
-      pickupNodeOptions && pickupNodeOptions.length > 0
-        ? pickupNodeOptions
-        : fallbackNodeOptions,
-    [pickupNodeOptions, fallbackNodeOptions],
-  );
+  const defaultSenderNodeAddress = useMemo(() => {
+    const sellerAddress = String(offer.seller || '').trim();
+    if (sellerAddress) return sellerAddress;
+    return String(offer.creator || '').trim();
+  }, [offer.creator, offer.seller]);
 
   useEffect(() => {
     if (!open) return;
     setDeliveryAddress(initialDeliveryAddress || '');
     setDeliveryCoords(null);
     setError(null);
-    setSelectedPickupNodeRef(effectiveNodeOptions[0]?.pickupNodeRef || '');
-  }, [open, initialDeliveryAddress, effectiveNodeOptions]);
+    setSelectedPickupNodeRef(
+      requirePickupNodeSelection
+        ? effectiveNodeOptions[0]?.pickupNodeRef || ''
+        : '',
+    );
+  }, [
+    open,
+    initialDeliveryAddress,
+    effectiveNodeOptions,
+    requirePickupNodeSelection,
+  ]);
 
   const selectedNode =
     effectiveNodeOptions.find(
       (option) => option.pickupNodeRef === selectedPickupNodeRef,
     ) || effectiveNodeOptions[0];
-  const hasMultipleNodes = effectiveNodeOptions.length > 0;
+  const hasMultipleNodes =
+    requirePickupNodeSelection && effectiveNodeOptions.length > 0;
 
   const formatPrice = (price: bigint) => {
     return parseFloat(formatUnits(price, 18)).toLocaleString(undefined, {
@@ -182,7 +183,7 @@ export function DeliveryDetailsDialog({
       );
       return;
     }
-    if (pickupNodeOptions && !selectedNode) {
+    if (requirePickupNodeSelection && !selectedNode) {
       setError('Please select which node will fulfill this order.');
       return;
     }
@@ -190,10 +191,18 @@ export function DeliveryDetailsDialog({
     try {
       await onConfirm({
         deliveryAddress,
-        senderNodeAddress: selectedNode?.senderNodeAddress || '',
-        pickupNodeRef: selectedNode?.pickupNodeRef || undefined,
-        pickupStartName: selectedNode?.startName || undefined,
-        pickupStartLocation: selectedNode?.startLocation || undefined,
+        senderNodeAddress: requirePickupNodeSelection
+          ? selectedNode?.senderNodeAddress || ''
+          : defaultSenderNodeAddress,
+        pickupNodeRef: requirePickupNodeSelection
+          ? selectedNode?.pickupNodeRef || undefined
+          : undefined,
+        pickupStartName: requirePickupNodeSelection
+          ? selectedNode?.startName || undefined
+          : undefined,
+        pickupStartLocation: requirePickupNodeSelection
+          ? selectedNode?.startLocation || undefined
+          : undefined,
         deliveryCoords: deliveryCoords || undefined,
       });
     } catch (err) {
@@ -218,7 +227,8 @@ export function DeliveryDetailsDialog({
   const isConfirmDisabled =
     isSubmitting ||
     !deliveryAddress.trim() ||
-    (!lockDeliveryAddress && !deliveryCoords);
+    (!lockDeliveryAddress && !deliveryCoords) ||
+    (requirePickupNodeSelection && effectiveNodeOptions.length === 0);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -240,9 +250,7 @@ export function DeliveryDetailsDialog({
               <h2 className="text-lg font-semibold text-white">
                 {resolvedTitle}
               </h2>
-              <p className="text-sm text-white/80">
-                {resolvedSubtitle}
-              </p>
+              <p className="text-sm text-white/80">{resolvedSubtitle}</p>
             </div>
           </div>
         </div>
@@ -319,6 +327,12 @@ export function DeliveryDetailsDialog({
               <p className="text-xs text-white/70">
                 Choose which node will fulfill this order
               </p>
+            </div>
+          )}
+          {requirePickupNodeSelection && effectiveNodeOptions.length === 0 && (
+            <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+              No eligible fulfillment nodes found. Verify this wallet owns a
+              node with inventory for the offer.
             </div>
           )}
 

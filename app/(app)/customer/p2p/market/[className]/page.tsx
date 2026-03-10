@@ -408,7 +408,9 @@ export default function P2PMarketOffersPage() {
         return eligibleOptions;
       }
 
-      if (candidateResults.some((result) => result.kind === 'missing_metadata')) {
+      if (
+        candidateResults.some((result) => result.kind === 'missing_metadata')
+      ) {
         throw new Error(
           'At least one eligible node is missing pickup location metadata. Update node address and coordinates before fulfilling this order.',
         );
@@ -492,9 +494,7 @@ export default function P2PMarketOffersPage() {
               endName: deliveryData.deliveryAddress,
             },
             bountyWei: BigInt('500000000000000000'), // 0.5 USDT default bounty
-            etaTimestamp: BigInt(
-              Math.floor(Date.now() / 1000) + 7 * 24 * 3600,
-            ), // 7 days
+            etaTimestamp: BigInt(Math.floor(Date.now() / 1000) + 7 * 24 * 3600), // 7 days
             tokenQuantity: BigInt(selectedOffer.quantity.toString()),
             assetId: BigInt(selectedOffer.tokenId),
             deliveryAddress: deliveryData.deliveryAddress,
@@ -1336,9 +1336,8 @@ export default function P2PMarketOffersPage() {
               : selectedOffer.locationData?.endName || ''
           }
           lockDeliveryAddress={!selectedOffer.isSellerInitiated}
-          pickupNodeOptions={
-            selectedOffer.isSellerInitiated ? undefined : pickupNodeOptions
-          }
+          requirePickupNodeSelection={!selectedOffer.isSellerInitiated}
+          pickupNodeOptions={pickupNodeOptions}
         />
       )}
 
@@ -1398,6 +1397,7 @@ export default function P2PMarketOffersPage() {
                   stuckOrder.locationData?.endLocation?.lat &&
                   stuckOrder.locationData?.endLocation?.lng,
               )}
+              requirePickupNodeSelection={false}
             />
           );
         })()}
