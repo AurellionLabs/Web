@@ -38,6 +38,9 @@ import type {
   AuSysOrderStatusUpdatesResponse,
   JourneysByOrderResponse,
   JourneyStatusUpdatesAllResponse,
+  // Aliased response type for GET_ALL_UNIFIED_ORDER_EVENTS (uses GQL aliases:
+  // created / logistics / journeyUpdates / settled — NOT raw table names)
+  UnifiedOrderEventsResponse as AllUnifiedOrderEventsResponse,
 } from '../shared/graph-queries';
 import {
   aggregateUnifiedOrders,
@@ -233,35 +236,37 @@ export class OrderRepository implements IOrderRepository {
     try {
       const nodeAddress = address.toLowerCase();
 
-      const [orderResponse, logisticsResponse] = await Promise.all([
-        graphqlRequest<UnifiedOrderEventsResponse>(
-          this.graphQLEndpoint,
-          GET_ALL_UNIFIED_ORDER_EVENTS,
-          { limit: 500 },
-        ),
-        graphqlRequest<LogisticsEventsResponse>(
-          this.graphQLEndpoint,
-          GET_LOGISTICS_ORDER_CREATED_EVENTS,
-          { limit: 500 },
-        ),
-      ]);
+      // GET_ALL_UNIFIED_ORDER_EVENTS uses GQL aliases so the response shape
+      // is { created, logistics, journeyUpdates, settled } — NOT raw table names.
+      const orderResponse = await graphqlRequest<AllUnifiedOrderEventsResponse>(
+        this.graphQLEndpoint,
+        GET_ALL_UNIFIED_ORDER_EVENTS,
+        { limit: 500 },
+      );
+
+      const logisticsItems = orderResponse.logistics?.items || [];
 
       const orders = aggregateUnifiedOrders({
-        created: orderResponse.diamondUnifiedOrderCreatedEventss?.items || [],
-        logistics:
-          logisticsResponse.diamondLogisticsOrderCreatedEventss?.items || [],
-        journeyUpdates: [],
-        settled: [],
+        created: orderResponse.created?.items || [],
+        logistics: logisticsItems,
+        journeyUpdates: orderResponse.journeyUpdates?.items || [],
+        settled: orderResponse.settled?.items || [],
       });
 
+      // Filter by the `node` field on the LogisticsOrderCreated event,
+      // not by journeyIds (which are bytes32 hashes, not node addresses).
+      const nodeLinkedOrderIds = new Set(
+        logisticsItems
+          .filter((l) => l.node?.toLowerCase() === nodeAddress)
+          .map((l) => l.unified_order_id.toLowerCase()),
+      );
+
       const nodeOrders = orders.filter((order) =>
-        order.journeyIds.some((jid) => jid.toLowerCase() === nodeAddress),
+        nodeLinkedOrderIds.has(order.unifiedOrderId.toLowerCase()),
       );
 
       const logisticsByOrder = new Map(
-        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items.map(
-          (l) => [l.unified_order_id.toLowerCase(), l],
-        ) || [],
+        logisticsItems.map((l) => [l.unified_order_id.toLowerCase(), l]),
       );
 
       return nodeOrders.map((order) => {
