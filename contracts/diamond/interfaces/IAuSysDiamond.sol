@@ -17,6 +17,7 @@ interface IAuSysDiamond {
     ) external returns (bytes32);
     function getAuSysOrder(bytes32 id) external view returns (DiamondStorage.AuSysOrder memory);
     function acceptP2POffer(bytes32 orderId) external;
+    function acceptP2POfferWithPickupNode(bytes32 orderId, bytes32 pickupNodeRef) external;
     function cancelP2POffer(bytes32 orderId) external;
     function createJourney(
         address sender,

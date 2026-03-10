@@ -2921,6 +2921,24 @@ export const DIAMOND_ABI: any[] = [
   {
     inputs: [
       {
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        internalType: 'bytes32',
+        name: 'pickupNodeRef',
+        type: 'bytes32',
+      },
+    ],
+    name: 'acceptP2POfferWithPickupNode',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
         internalType: 'address',
         name: 'driver',
         type: 'address',

@@ -22,6 +22,15 @@ import {
 import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
 import { detectJourneyRoleConflict } from '@/utils/journey-role-conflicts';
+import {
+  extractOrderBigInt,
+  extractOrderIsSellerInitiated,
+  extractOrderParticipants,
+  extractOrderPickupMetadata,
+  isZeroAddress,
+  normalizeAddress,
+  normalizeText,
+} from '@/utils/p2p-order-resolution';
 
 interface ContextWithOptionalContracts {
   getQuoteTokenContract(): ethers.Contract;
@@ -69,6 +78,10 @@ const P2P_ERROR_MAP: Record<string, string> = {
   '0x6035cb58': 'Only the offer creator can cancel this offer.',
   '0xe6c4247b': 'Invalid address in the offer.',
   '0x2c5211c6': 'Invalid amount – price or quantity cannot be zero.',
+  '0xcadf2a7c':
+    'A selected fulfillment node is required for this buy offer. Select a node and try again.',
+  '0xd08a05d5':
+    'The selected pickup node is not owned by your wallet. Select one of your own nodes.',
   '0xb7f05f41': 'Payment token has not been configured on the contract.',
   '0xe237d922':
     'The Diamond contract needs approval to transfer your tokens. This should be requested automatically.',
@@ -76,8 +89,14 @@ const P2P_ERROR_MAP: Record<string, string> = {
     'Insufficient token balance. You do not have enough of this asset to create the offer.',
   '0x48f5c3ed':
     'You are not authorized to create the delivery journey. Only the buyer, seller, or admin can do this.',
+  '0x4a2ff497':
+    'Only the buyer can create the delivery journey for this order.',
+  '0x8ed39dde':
+    'Only the seller can create the delivery journey for this order.',
   '0x89e4b4ad':
     'Sender, driver, and customer must use different wallet addresses.',
+  '0x30812d42':
+    'The journey participants are not recognized on-chain yet. Please retry in a few seconds.',
 };
 
 /**
@@ -177,6 +196,123 @@ export class DiamondP2PService implements IP2PService {
     );
   }
 
+  private normalize(value: unknown): string {
+    return String(value || '').trim();
+  }
+
+  private async sleep(ms: number): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private getErrorSelector(error: unknown): string | null {
+    if (!error || typeof error !== 'object') return null;
+    const err = error as Record<string, unknown>;
+
+    if (typeof err.data === 'string' && err.data.length >= 10) {
+      return err.data.slice(0, 10).toLowerCase();
+    }
+
+    if (err.error && typeof err.error === 'object') {
+      const inner = err.error as Record<string, unknown>;
+      if (typeof inner.data === 'string' && inner.data.length >= 10) {
+        return inner.data.slice(0, 10).toLowerCase();
+      }
+    }
+
+    if (typeof err.message === 'string') {
+      const match = err.message.match(/data="(0x[a-fA-F0-9]{8,})"/);
+      if (match) {
+        return match[1].slice(0, 10).toLowerCase();
+      }
+    }
+
+    return null;
+  }
+
+  private isInvalidNodeError(error: unknown): boolean {
+    return this.getErrorSelector(error) === '0x30812d42';
+  }
+
+  private isNodeRef(value: string): boolean {
+    return ethers.isHexString(value, 32);
+  }
+
+  private findOwnedNodeRef(
+    candidate: string,
+    ownerNodes: string[],
+  ): string | undefined {
+    const normalizedCandidate = this.normalize(candidate).toLowerCase();
+    if (!normalizedCandidate) return undefined;
+    return ownerNodes.find(
+      (ownerNodeRef) =>
+        this.normalize(ownerNodeRef).toLowerCase() === normalizedCandidate,
+    );
+  }
+
+  private async resolveSelectedPickupNode(
+    nodeMetadataFacet: DiamondNodeMetadataContract,
+    signerAddress: string,
+    pickupNodeRef: string,
+    contextLabel: string,
+  ): Promise<{
+    pickupNodeRef: string;
+    startName: string;
+    startLat: string;
+    startLng: string;
+  }> {
+    const selectedPickupNodeRef = this.normalize(pickupNodeRef);
+    if (!selectedPickupNodeRef) {
+      throw new Error(
+        `${contextLabel} requires a selected pickup node reference (pickupNodeRef).`,
+      );
+    }
+    if (!this.isNodeRef(selectedPickupNodeRef)) {
+      throw new Error(
+        `Invalid pickupNodeRef for ${contextLabel}: ${selectedPickupNodeRef}`,
+      );
+    }
+
+    const ownerNodes = await nodeMetadataFacet.getOwnerNodes(signerAddress);
+    const selectedOwnedNode = this.findOwnedNodeRef(
+      selectedPickupNodeRef,
+      ownerNodes,
+    );
+    if (!selectedOwnedNode) {
+      throw new Error(
+        `Selected pickup node is not owned by signer. selected=${selectedPickupNodeRef}, signer=${signerAddress}`,
+      );
+    }
+
+    const node = (await nodeMetadataFacet.getNode(selectedOwnedNode)) as
+      | {
+          lat?: string;
+          lng?: string;
+          addressName?: string;
+          [index: number]: unknown;
+        }
+      | undefined;
+
+    // Some ABI/typechain combinations expose tuple values only by index.
+    const startName = this.normalize(
+      node?.addressName ?? (node?.[7] as string | undefined),
+    );
+    const startLat = this.normalize(node?.lat ?? (node?.[8] as string));
+    const startLng = this.normalize(node?.lng ?? (node?.[9] as string));
+
+    if (!startName || !startLat || !startLng) {
+      throw new Error(
+        `Selected pickup node is missing location metadata. nodeRef=${selectedOwnedNode}`,
+      );
+    }
+
+    return {
+      pickupNodeRef: selectedOwnedNode,
+      startName,
+      startLat,
+      startLng,
+    };
+  }
+
   /**
    * Create a new P2P offer
    * @param input The offer details
@@ -204,75 +340,16 @@ export class DiamondP2PService implements IP2PService {
         );
       }
 
-      const normalize = (value: string | undefined | null): string =>
-        String(value || '').trim();
-
-      const isNodeRef = (value: string): boolean =>
-        ethers.isHexString(value, 32);
-
-      const findOwnedNodeRef = (
-        candidate: string,
-        ownerNodes: string[],
-      ): string | undefined => {
-        const normalizedCandidate = normalize(candidate).toLowerCase();
-        if (!normalizedCandidate) return undefined;
-        return ownerNodes.find(
-          (ownerNodeRef) =>
-            normalize(ownerNodeRef).toLowerCase() === normalizedCandidate,
-        );
-      };
-
       try {
-        const ownerNodes = await nodeMetadataFacet.getOwnerNodes(signerAddress);
-
-        const selectedPickupNodeRef = normalize(input.pickupNodeRef);
-        if (!selectedPickupNodeRef) {
-          throw new Error(
-            'Sell offers require a selected pickup node reference (pickupNodeRef).',
-          );
-        }
-        if (!isNodeRef(selectedPickupNodeRef)) {
-          throw new Error(
-            `Invalid pickupNodeRef for sell offer: ${selectedPickupNodeRef}`,
-          );
-        }
-
-        const selectedOwnedNode = findOwnedNodeRef(
-          selectedPickupNodeRef,
-          ownerNodes,
+        const resolved = await this.resolveSelectedPickupNode(
+          nodeMetadataFacet,
+          signerAddress,
+          input.pickupNodeRef || '',
+          'sell offer creation',
         );
-        if (!selectedOwnedNode) {
-          throw new Error(
-            `Selected pickup node is not owned by signer. selected=${selectedPickupNodeRef}, signer=${signerAddress}`,
-          );
-        }
-
-        const node = (await nodeMetadataFacet.getNode(selectedOwnedNode)) as
-          | {
-              lat?: string;
-              lng?: string;
-              addressName?: string;
-              [index: number]: unknown;
-            }
-          | undefined;
-
-        // Some ABI/typechain combinations expose tuple values only by index.
-        // Support both named and tuple-indexed field access for resilience.
-        sellStartName = normalize(
-          node?.addressName ?? (node?.[7] as string | undefined),
-        );
-        sellStartLat = normalize(
-          node?.lat ?? (node?.[8] as string | undefined),
-        );
-        sellStartLng = normalize(
-          node?.lng ?? (node?.[9] as string | undefined),
-        );
-
-        if (!sellStartName || !sellStartLat || !sellStartLng) {
-          throw new Error(
-            `Selected pickup node is missing location metadata. nodeRef=${selectedOwnedNode}`,
-          );
-        }
+        sellStartName = resolved.startName;
+        sellStartLat = resolved.startLat;
+        sellStartLng = resolved.startLng;
       } catch (resolveErr) {
         const message =
           resolveErr instanceof Error ? resolveErr.message : String(resolveErr);
@@ -397,8 +474,9 @@ export class DiamondP2PService implements IP2PService {
           BigInt(order.price.toString()) + BigInt(order.txFee.toString());
         await this.ensureQuoteTokenApproval(totalCost, payTokenAddress);
       } else {
-        // Buy offer: acceptor is SELLER → needs ERC1155 approval to escrow tokens
-        await this.ensureERC1155Approval(order.token);
+        throw new Error(
+          'Buy offer acceptance requires a selected fulfillment node. Use acceptOfferWithPickupNode.',
+        );
       }
 
       const tx = await diamond.acceptP2POffer(offerId);
@@ -407,6 +485,62 @@ export class DiamondP2PService implements IP2PService {
     } catch (error) {
       console.error('[DiamondP2PService] Error accepting offer:', error);
       // Re-throw with decoded message for the UI
+      const decoded = decodeP2PError(error);
+      const wrapped = new Error(decoded);
+      (wrapped as any).originalError = error;
+      throw wrapped;
+    }
+  }
+
+  async acceptOfferWithPickupNode(
+    offerId: string,
+    pickupNodeRef: string,
+  ): Promise<void> {
+    const diamond = this.context.getDiamond();
+    const signerAddress = await this.context.getSignerAddress();
+
+    try {
+      const order = await diamond.getAuSysOrder(offerId);
+      if (order.isSellerInitiated) {
+        throw new Error(
+          'This accept path is only for buyer-initiated offers. Use acceptOfferWithDelivery for sell offers.',
+        );
+      }
+
+      const nodeMetadataFacet = diamond as DiamondNodeMetadataContract;
+      if (
+        typeof nodeMetadataFacet.getOwnerNodes !== 'function' ||
+        typeof nodeMetadataFacet.getNode !== 'function'
+      ) {
+        throw new Error(
+          'Buy-offer pickup node resolution is unavailable on this contract instance.',
+        );
+      }
+
+      const selected = await this.resolveSelectedPickupNode(
+        nodeMetadataFacet,
+        signerAddress,
+        pickupNodeRef,
+        'buy-offer acceptance',
+      );
+
+      // Buyer-created offer accepted by seller escrows ERC1155.
+      await this.ensureERC1155Approval(order.token);
+
+      const tx = await (
+        diamond as ethers.Contract & {
+          acceptP2POfferWithPickupNode: (
+            offerId: string,
+            pickupNodeRef: string,
+          ) => Promise<{ wait: () => Promise<unknown> }>;
+        }
+      ).acceptP2POfferWithPickupNode(offerId, selected.pickupNodeRef);
+      await tx.wait();
+    } catch (error) {
+      console.error(
+        '[DiamondP2PService] Error accepting offer with pickup node:',
+        error,
+      );
       const decoded = decodeP2PError(error);
       const wrapped = new Error(decoded);
       (wrapped as any).originalError = error;
@@ -433,26 +567,161 @@ export class DiamondP2PService implements IP2PService {
     delivery: P2PDeliveryDetails,
   ): Promise<void> {
     const diamond = this.context.getDiamond();
-    const isZeroAddress = (addr?: string | null) =>
-      !addr || addr.toLowerCase() === ethers.ZeroAddress.toLowerCase();
 
     try {
+      const signerAddress = normalizeAddress(
+        await this.context.getSignerAddress(),
+      );
+      const signerAddressLc = signerAddress.toLowerCase();
+      const providedSender = normalizeAddress(delivery.senderNodeAddress);
+      const providedReceiver = normalizeAddress(delivery.receiverAddress);
+
+      // Read the accepted order from-chain with a short retry window.
+      // Immediately after accept, participant fields can lag on some RPCs.
+      const readOrderWithParticipantRetry = async () => {
+        let snapshot = await diamond.getAuSysOrder(offerId);
+        let participants = extractOrderParticipants(snapshot);
+        if (
+          isZeroAddress(participants.seller) ||
+          isZeroAddress(participants.buyer)
+        ) {
+          await this.sleep(900);
+          snapshot = await diamond.getAuSysOrder(offerId);
+          participants = extractOrderParticipants(snapshot);
+        }
+        return { snapshot, participants };
+      };
+
+      // Canonicalize sender/receiver from on-chain order state and only use
+      // UI-provided values as guarded fallbacks while participants propagate.
+      const buildJourneyInput = (snapshot: unknown) => {
+        const participants = extractOrderParticipants(snapshot);
+        const canonicalSeller = participants.seller;
+        const canonicalBuyer = participants.buyer;
+
+        let senderAddress = canonicalSeller;
+        if (isZeroAddress(senderAddress) && !isZeroAddress(providedSender)) {
+          senderAddress = providedSender;
+          console.warn(
+            `[DiamondP2PService] Falling back to provided senderNodeAddress because canonical seller is unresolved. fallback=${providedSender}`,
+          );
+        } else if (
+          !isZeroAddress(canonicalSeller) &&
+          !isZeroAddress(providedSender) &&
+          providedSender.toLowerCase() !== canonicalSeller.toLowerCase()
+        ) {
+          console.warn(
+            `[DiamondP2PService] Ignoring mismatched senderNodeAddress from UI. provided=${providedSender}, seller=${canonicalSeller}`,
+          );
+        }
+
+        let receiverAddress = canonicalBuyer;
+        if (
+          !isZeroAddress(canonicalBuyer) &&
+          canonicalBuyer.toLowerCase() !== signerAddressLc
+        ) {
+          console.warn(
+            `[DiamondP2PService] Canonical buyer does not match signer after accept. buyer=${canonicalBuyer}, signer=${signerAddress}. Falling back to signer.`,
+          );
+          receiverAddress = signerAddress;
+        } else if (isZeroAddress(canonicalBuyer)) {
+          const receiverFallback = !isZeroAddress(providedReceiver)
+            ? providedReceiver
+            : signerAddress;
+          if (receiverFallback.toLowerCase() !== signerAddressLc) {
+            throw new Error(
+              'Cannot create journey: receiver fallback must match the connected buyer wallet.',
+            );
+          }
+          receiverAddress = receiverFallback;
+          console.warn(
+            `[DiamondP2PService] Falling back to provided receiver because canonical buyer is unresolved. fallback=${receiverFallback}`,
+          );
+        } else if (
+          !isZeroAddress(providedReceiver) &&
+          providedReceiver.toLowerCase() !== canonicalBuyer.toLowerCase()
+        ) {
+          console.warn(
+            `[DiamondP2PService] Ignoring mismatched receiverAddress from UI. provided=${providedReceiver}, buyer=${canonicalBuyer}`,
+          );
+        }
+
+        if (isZeroAddress(senderAddress)) {
+          throw new Error(
+            'Cannot create journey: seller/node sender is unresolved after offer acceptance.',
+          );
+        }
+        if (isZeroAddress(receiverAddress)) {
+          throw new Error(
+            'Cannot create journey: receiver address is unresolved after offer acceptance.',
+          );
+        }
+
+        const roleConflict = detectJourneyRoleConflict(
+          senderAddress,
+          receiverAddress,
+        );
+        if (roleConflict.hasConflict) {
+          throw new Error(
+            roleConflict.message ||
+              'Sender, driver, and customer must use different wallet addresses.',
+          );
+        }
+
+        const { startLat, startLng, startName } =
+          extractOrderPickupMetadata(snapshot);
+        const parcelData = {
+          ...delivery.parcelData,
+          startLocation: {
+            lat:
+              normalizeText(delivery.parcelData?.startLocation?.lat) ||
+              startLat,
+            lng:
+              normalizeText(delivery.parcelData?.startLocation?.lng) ||
+              startLng,
+          },
+          endLocation: {
+            lat: normalizeText(delivery.parcelData?.endLocation?.lat),
+            lng: normalizeText(delivery.parcelData?.endLocation?.lng),
+          },
+          startName: normalizeText(delivery.parcelData?.startName) || startName,
+          endName: normalizeText(delivery.parcelData?.endName),
+        };
+
+        if (!parcelData.startLocation.lat || !parcelData.startLocation.lng) {
+          throw new Error(
+            'Cannot schedule delivery without a pickup location. Ask the seller/node to provide pickup coordinates.',
+          );
+        }
+        if (!parcelData.startName) {
+          throw new Error(
+            'Cannot schedule delivery without a pickup address label.',
+          );
+        }
+
+        return {
+          senderAddress,
+          receiverAddress,
+          parcelData,
+        };
+      };
+
       // 1. Fetch offer to determine approval needs
       const order = await diamond.getAuSysOrder(offerId);
+      if (!extractOrderIsSellerInitiated(order)) {
+        throw new Error(
+          'Buy offers must be accepted with a selected fulfillment node first. Then the buyer can schedule delivery from dashboard.',
+        );
+      }
 
       // 2. Handle approvals based on offer type
-      if (order.isSellerInitiated) {
-        // Sell offer: acceptor is BUYER → ERC20 approval for price + txFee + bounty
-        const payTokenAddress = await this.getConfiguredPayTokenAddress();
-        const totalCost =
-          BigInt(order.price.toString()) +
-          BigInt(order.txFee.toString()) +
-          delivery.bountyWei;
-        await this.ensureQuoteTokenApproval(totalCost, payTokenAddress);
-      } else {
-        // Buy offer: acceptor is SELLER → ERC1155 approval to escrow tokens
-        await this.ensureERC1155Approval(order.token);
-      }
+      // Sell offer: acceptor is BUYER → ERC20 approval for price + txFee + bounty
+      const payTokenAddress = await this.getConfiguredPayTokenAddress();
+      const totalCost =
+        extractOrderBigInt(order, 'price') +
+        extractOrderBigInt(order, 'txFee') +
+        delivery.bountyWei;
+      await this.ensureQuoteTokenApproval(totalCost, payTokenAddress);
 
       // 3. Accept the offer
       const acceptTx = await diamond.acceptP2POffer(offerId);
@@ -462,101 +731,16 @@ export class DiamondP2PService implements IP2PService {
         throw new Error('acceptP2POffer transaction failed on-chain');
       }
 
-      // Resolve canonical participants from the accepted offer and the
-      // transaction sender instead of relying on a follow-up read that may lag.
-      const signerAddress = await this.context.getSignerAddress();
-      const buyerAddress = order.isSellerInitiated
-        ? signerAddress
-        : String(order.buyer || '');
-      const senderAddress = order.isSellerInitiated
-        ? String(order.seller || '')
-        : signerAddress;
-      // Receiver must match the canonical on-chain buyer for createOrderJourney.
-      // A stale UI receiver can cause InvalidNode() even after accept succeeds.
-      const providedReceiver = String(delivery.receiverAddress || '').trim();
-      const receiverAddress = buyerAddress;
-      if (
-        providedReceiver &&
-        !isZeroAddress(providedReceiver) &&
-        providedReceiver.toLowerCase() !== buyerAddress.toLowerCase()
-      ) {
-        console.warn(
-          `[DiamondP2PService] Ignoring mismatched receiverAddress from UI. provided=${providedReceiver}, buyer=${buyerAddress}`,
-        );
-      }
-
-      if (isZeroAddress(senderAddress)) {
-        throw new Error(
-          'Cannot create journey: seller/node sender is unresolved after offer acceptance.',
-        );
-      }
-      if (isZeroAddress(receiverAddress)) {
-        throw new Error(
-          'Cannot create journey: receiver address is unresolved after offer acceptance.',
-        );
-      }
-      const roleConflict = detectJourneyRoleConflict(
-        senderAddress,
-        receiverAddress,
-      );
-      if (roleConflict.hasConflict) {
-        throw new Error(
-          roleConflict.message ||
-            'Sender, driver, and customer must use different wallet addresses.',
-        );
-      }
-
-      const canonicalOrderStartLat = String(
-        order.locationData?.startLocation?.lat || '',
-      ).trim();
-      const canonicalOrderStartLng = String(
-        order.locationData?.startLocation?.lng || '',
-      ).trim();
-      const canonicalOrderStartName = String(
-        order.locationData?.startName || '',
-      ).trim();
-
-      // Use pickup metadata from delivery payload when present, otherwise
-      // canonical order metadata populated at offer creation.
-      const parcelData = {
-        ...delivery.parcelData,
-        startLocation: {
-          lat:
-            String(delivery.parcelData?.startLocation?.lat || '').trim() ||
-            canonicalOrderStartLat,
-          lng:
-            String(delivery.parcelData?.startLocation?.lng || '').trim() ||
-            canonicalOrderStartLng,
-        },
-        endLocation: {
-          lat: String(delivery.parcelData?.endLocation?.lat || '').trim(),
-          lng: String(delivery.parcelData?.endLocation?.lng || '').trim(),
-        },
-        startName:
-          String(delivery.parcelData?.startName || '').trim() ||
-          canonicalOrderStartName,
-        endName: String(delivery.parcelData?.endName || '').trim(),
-      };
-
-      if (!parcelData.startLocation.lat || !parcelData.startLocation.lng) {
-        throw new Error(
-          'Cannot schedule delivery without a pickup location. Ask the seller/node to provide pickup coordinates.',
-        );
-      }
-
-      if (!parcelData.startName) {
-        throw new Error(
-          'Cannot schedule delivery without a pickup address label.',
-        );
-      }
+      let postAccept = await readOrderWithParticipantRetry();
+      let journeyInput = buildJourneyInput(postAccept.snapshot);
 
       // 4. Create the delivery journey
       try {
         const journeyTx = await diamond.createOrderJourney(
           offerId,
-          senderAddress,
-          receiverAddress,
-          parcelData,
+          journeyInput.senderAddress,
+          journeyInput.receiverAddress,
+          journeyInput.parcelData,
           delivery.bountyWei,
           delivery.etaTimestamp,
           delivery.tokenQuantity,
@@ -564,6 +748,25 @@ export class DiamondP2PService implements IP2PService {
         );
         await journeyTx.wait();
       } catch (journeyError) {
+        // Retry once for InvalidNode-like races after accept settles.
+        if (this.isInvalidNodeError(journeyError)) {
+          await this.sleep(1000);
+          postAccept = await readOrderWithParticipantRetry();
+          journeyInput = buildJourneyInput(postAccept.snapshot);
+          const retryJourneyTx = await diamond.createOrderJourney(
+            offerId,
+            journeyInput.senderAddress,
+            journeyInput.receiverAddress,
+            journeyInput.parcelData,
+            delivery.bountyWei,
+            delivery.etaTimestamp,
+            delivery.tokenQuantity,
+            delivery.assetId,
+          );
+          await retryJourneyTx.wait();
+          return;
+        }
+
         // Offer was accepted but journey creation failed. The order is now
         // in PROCESSING state without a journey. The UI shows a "Schedule
         // Delivery" fallback button for this case.

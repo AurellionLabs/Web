@@ -186,6 +186,11 @@ export interface IP2PRepository {
 export interface P2PDeliveryDetails {
   /** Node address of the sender (typically the seller's custody node) */
   senderNodeAddress: string;
+  /**
+   * Selected pickup node reference (bytes32 node hash).
+   * Required when accepting customer-initiated buy offers.
+   */
+  pickupNodeRef?: string;
   /** Address of the receiver (the buyer) */
   receiverAddress: string;
   /** Start and end locations for the delivery journey */
@@ -216,7 +221,16 @@ export interface IP2PService {
   acceptOffer(offerId: string): Promise<void>;
 
   /**
-   * Accept a P2P offer and immediately schedule delivery.
+   * Accept a buyer-initiated offer with a selected fulfillment node.
+   * Persists pickup metadata on the order; delivery is scheduled later by buyer.
+   */
+  acceptOfferWithPickupNode(
+    offerId: string,
+    pickupNodeRef: string,
+  ): Promise<void>;
+
+  /**
+   * Accept a seller-initiated offer and immediately schedule delivery.
    * Fires acceptP2POffer then createOrderJourney in sequence.
    * ERC20 approval covers price + txFee + bounty.
    *

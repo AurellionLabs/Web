@@ -1184,6 +1184,7 @@ export default function CustomerDashboard() {
                   stuckOrder.locationData?.endLocation?.lat &&
                   stuckOrder.locationData?.endLocation?.lng,
               )}
+              requirePickupNodeSelection={false}
             />
           );
         })()}

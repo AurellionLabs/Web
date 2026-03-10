@@ -14,7 +14,7 @@
  *
  * Buy offer flow:
  *   1. Buyer: ERC20 approve(price+txFee) → createAuSysOrder (escrows ERC20)
- *   2. Seller: ERC1155 setApprovalForAll → acceptP2POffer (escrows ERC1155)
+ *   2. Seller: ERC1155 setApprovalForAll → acceptP2POfferWithPickupNode (escrows ERC1155 + persists pickup metadata)
  *   3. Buyer: ERC20 approve(bounty) → createOrderJourney (escrows bounty)
  */
 
@@ -98,6 +98,7 @@ function makeBuyOrder() {
 function makeDeliveryDetails() {
   return {
     senderNodeAddress: '0xNodeSender000000000000000000000000000000',
+    pickupNodeRef: SELLER_PICKUP_NODE,
     receiverAddress: BUYER,
     parcelData: {
       startLocation: { lat: '-26.2', lng: '28.0' },
@@ -132,6 +133,7 @@ function createFlowContext(opts: MockContextOptions = {}) {
   const diamond = {
     createAuSysOrder: vi.fn().mockResolvedValue(createTx),
     acceptP2POffer: vi.fn().mockResolvedValue(acceptTx),
+    acceptP2POfferWithPickupNode: vi.fn().mockResolvedValue(acceptTx),
     cancelP2POffer: vi.fn().mockResolvedValue(cancelTx),
     createOrderJourney: vi.fn().mockResolvedValue(journeyTx),
     getOwnerNodes: vi.fn().mockResolvedValue([SELLER_PICKUP_NODE]),
@@ -352,9 +354,9 @@ describe('P2P Logical Flow Tests', () => {
       expect(ctx._quoteToken.approve).not.toHaveBeenCalled();
     });
 
-    it('Step 2: seller accepts buy offer — MUST check ERC1155 approval before acceptP2POffer', async () => {
-      // Contract: acceptP2POffer escrows ERC1155 from seller when accepting buy offer
-      // Frontend MUST ensure ERC1155 approval before calling acceptP2POffer
+    it('Step 2: seller accepts buy offer — MUST check ERC1155 approval before acceptP2POfferWithPickupNode', async () => {
+      // Contract: acceptP2POfferWithPickupNode escrows ERC1155 from seller
+      // and persists selected-node pickup metadata.
       const ctx = createFlowContext({
         signerAddress: SELLER,
         order: makeBuyOrder(), // buy offer — acceptor is seller
@@ -362,15 +364,18 @@ describe('P2P Logical Flow Tests', () => {
       });
       const service = new DiamondP2PService(ctx);
 
-      await service.acceptOffer(OFFER_ID);
+      await service.acceptOfferWithPickupNode(OFFER_ID, SELLER_PICKUP_NODE);
 
       // MUST check ERC1155 approval (seller transfers tokens)
       expect(ctx._erc1155.isApprovedForAll).toHaveBeenCalled();
       expect(ctx._erc1155.setApprovalForAll).toHaveBeenCalled();
       // MUST NOT check ERC20 (seller doesn't pay quote token)
       expect(ctx._quoteToken.allowance).not.toHaveBeenCalled();
-      // Must call acceptP2POffer
-      expect(ctx._diamond.acceptP2POffer).toHaveBeenCalledWith(OFFER_ID);
+      // Must call pickup-aware accept
+      expect(ctx._diamond.acceptP2POfferWithPickupNode).toHaveBeenCalledWith(
+        OFFER_ID,
+        SELLER_PICKUP_NODE,
+      );
     });
 
     it('Step 2: seller accepts buy offer — skips ERC1155 approval when already approved', async () => {
@@ -381,11 +386,14 @@ describe('P2P Logical Flow Tests', () => {
       });
       const service = new DiamondP2PService(ctx);
 
-      await service.acceptOffer(OFFER_ID);
+      await service.acceptOfferWithPickupNode(OFFER_ID, SELLER_PICKUP_NODE);
 
       expect(ctx._erc1155.isApprovedForAll).toHaveBeenCalled();
       expect(ctx._erc1155.setApprovalForAll).not.toHaveBeenCalled();
-      expect(ctx._diamond.acceptP2POffer).toHaveBeenCalledWith(OFFER_ID);
+      expect(ctx._diamond.acceptP2POfferWithPickupNode).toHaveBeenCalledWith(
+        OFFER_ID,
+        SELLER_PICKUP_NODE,
+      );
     });
   });
 
@@ -494,7 +502,7 @@ describe('P2P Logical Flow Tests', () => {
       expect(ctx._diamond.acceptP2POffer).toHaveBeenCalled();
     });
 
-    it('accept buy offer + no ERC1155 approval → requests approval → accepts', async () => {
+    it('accept buy offer + no ERC1155 approval → requests approval → accepts with pickup node', async () => {
       const ctx = createFlowContext({
         signerAddress: SELLER,
         order: makeBuyOrder(),
@@ -502,13 +510,16 @@ describe('P2P Logical Flow Tests', () => {
       });
       const service = new DiamondP2PService(ctx);
 
-      await service.acceptOffer(OFFER_ID);
+      await service.acceptOfferWithPickupNode(OFFER_ID, SELLER_PICKUP_NODE);
 
       expect(ctx._erc1155.setApprovalForAll).toHaveBeenCalled();
-      expect(ctx._diamond.acceptP2POffer).toHaveBeenCalled();
+      expect(ctx._diamond.acceptP2POfferWithPickupNode).toHaveBeenCalledWith(
+        OFFER_ID,
+        SELLER_PICKUP_NODE,
+      );
     });
 
-    it('accept buy offer + has ERC1155 approval → skips approval → accepts', async () => {
+    it('accept buy offer + has ERC1155 approval → skips approval → accepts with pickup node', async () => {
       const ctx = createFlowContext({
         signerAddress: SELLER,
         order: makeBuyOrder(),
@@ -516,10 +527,13 @@ describe('P2P Logical Flow Tests', () => {
       });
       const service = new DiamondP2PService(ctx);
 
-      await service.acceptOffer(OFFER_ID);
+      await service.acceptOfferWithPickupNode(OFFER_ID, SELLER_PICKUP_NODE);
 
       expect(ctx._erc1155.setApprovalForAll).not.toHaveBeenCalled();
-      expect(ctx._diamond.acceptP2POffer).toHaveBeenCalled();
+      expect(ctx._diamond.acceptP2POfferWithPickupNode).toHaveBeenCalledWith(
+        OFFER_ID,
+        SELLER_PICKUP_NODE,
+      );
     });
   });
 
@@ -796,27 +810,18 @@ describe('P2P Logical Flow Tests', () => {
       );
     });
 
-    it('buy offer: acceptOfferWithDelivery — seller needs ERC1155 approval', async () => {
-      // When a seller accepts a buy offer with delivery, the seller needs ERC1155 approval
-      // and the buyer (offer creator) would need ERC20 for bounty,
-      // but since the acceptor is the seller, ERC1155 is the key approval here
+    it('buy offer: acceptOfferWithDelivery is rejected (buy uses selected-node accept first)', async () => {
       const ctx = createFlowContext({
         signerAddress: SELLER,
         order: makeBuyOrder(),
-        erc1155Approved: false, // needs approval
       });
       const service = new DiamondP2PService(ctx);
 
-      await service.acceptOfferWithDelivery(OFFER_ID, makeDeliveryDetails());
-
-      // Seller must have ERC1155 approval
-      expect(ctx._erc1155.isApprovedForAll).toHaveBeenCalled();
-      expect(ctx._erc1155.setApprovalForAll).toHaveBeenCalled();
-      // Seller does NOT need ERC20 approval (seller doesn't pay)
-      expect(ctx._quoteToken.allowance).not.toHaveBeenCalled();
-      // Both contract calls must happen
-      expect(ctx._diamond.acceptP2POffer).toHaveBeenCalled();
-      expect(ctx._diamond.createOrderJourney).toHaveBeenCalled();
+      await expect(
+        service.acceptOfferWithDelivery(OFFER_ID, makeDeliveryDetails()),
+      ).rejects.toThrow(/selected fulfillment node/i);
+      expect(ctx._diamond.acceptP2POffer).not.toHaveBeenCalled();
+      expect(ctx._diamond.createOrderJourney).not.toHaveBeenCalled();
     });
   });
 
@@ -971,9 +976,13 @@ describe('P2P Logical Flow Tests', () => {
       });
       const acceptService = new DiamondP2PService(acceptCtx);
 
-      await acceptService.acceptOffer(OFFER_ID);
+      await acceptService.acceptOfferWithPickupNode(
+        OFFER_ID,
+        SELLER_PICKUP_NODE,
+      );
 
       expect(acceptCtx._quoteToken.allowance).not.toHaveBeenCalled();
+      expect(acceptCtx._diamond.acceptP2POfferWithPickupNode).toHaveBeenCalled();
     });
   });
 });
