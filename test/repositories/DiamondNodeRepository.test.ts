@@ -454,28 +454,16 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
     expect(uniqueIds.size).toBe(orders.length);
   });
 
-  it('should not show node-less P2P orders on node dashboards', async () => {
+  it('should show node owner P2P orders even without explicit node ref', async () => {
+    // P2P order created by the node owner (no nodes array) — should appear
+    // because ownerAddr match covers seller-initiated offers from this wallet.
     const p2pCreated = makeP2POfferCreatedEvent({
-      order_id: '0xNoNodeRefOrder',
-      seller: WALLET_ADDRESS,
+      order_id: '0xOwnerOfferNoNodeRef',
+      creator: WALLET_ADDRESS,
       nodes: [],
     });
 
-    // First getNodeOrders call (NODE_HASH)
     graphqlRequestMock
-      .mockResolvedValueOnce(EMPTY_UNIFIED) // 0
-      .mockResolvedValueOnce({
-        diamondP2POfferCreatedEventss: { items: [p2pCreated] },
-      }) // 1
-      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 2
-      .mockResolvedValueOnce({
-        diamondP2POfferCreatedEventss: { items: [p2pCreated] },
-      }) // 3
-      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 4
-      .mockResolvedValueOnce(EMPTY_STATUS) // 5
-      .mockResolvedValueOnce(EMPTY_JOURNEYS) // 6
-      .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS) // 7
-      // Second getNodeOrders call (SECOND_NODE_HASH) — 8 more mocks
       .mockResolvedValueOnce(EMPTY_UNIFIED) // 0
       .mockResolvedValueOnce({
         diamondP2POfferCreatedEventss: { items: [p2pCreated] },
@@ -489,19 +477,34 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
       .mockResolvedValueOnce(EMPTY_JOURNEYS) // 6
       .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 7
 
-    const primaryOrders = await repository.getNodeOrders(
-      NODE_HASH,
-      WALLET_ADDRESS,
-    );
-    const secondNodeOrders = await repository.getNodeOrders(
-      SECOND_NODE_HASH,
-      WALLET_ADDRESS,
-    );
+    const orders = await repository.getNodeOrders(NODE_HASH, WALLET_ADDRESS);
+    // Owner's P2P offer SHOULD appear on their node dashboard
+    expect(orders.some((o) => o.id === '0xOwnerOfferNoNodeRef')).toBe(true);
+  });
 
-    expect(primaryOrders.some((o) => o.id === '0xNoNodeRefOrder')).toBe(false);
-    expect(secondNodeOrders.some((o) => o.id === '0xNoNodeRefOrder')).toBe(
-      false,
-    );
+  it('should NOT show P2P orders from unrelated wallets', async () => {
+    // P2P order created by a third party — should not appear on this node
+    const thirdPartyOffer = makeP2POfferCreatedEvent({
+      order_id: '0xThirdPartyOffer',
+      creator: COUNTERPARTY, // NOT the node owner
+      nodes: [],
+    });
+
+    graphqlRequestMock
+      .mockResolvedValueOnce(EMPTY_UNIFIED) // 0
+      .mockResolvedValueOnce(EMPTY_P2P_CREATED) // 1: creator query → no results for owner
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 2
+      .mockResolvedValueOnce({
+        // 3: all created — third party offer is here but won't pass filter
+        diamondP2POfferCreatedEventss: { items: [thirdPartyOffer] },
+      })
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 4
+      .mockResolvedValueOnce(EMPTY_STATUS) // 5
+      .mockResolvedValueOnce(EMPTY_JOURNEYS) // 6
+      .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 7
+
+    const orders = await repository.getNodeOrders(NODE_HASH, WALLET_ADDRESS);
+    expect(orders.some((o) => o.id === '0xThirdPartyOffer')).toBe(false);
   });
 
   it('should handle mixed CLOB + P2P results correctly', async () => {

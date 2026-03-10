@@ -741,18 +741,38 @@ export class DiamondNodeRepository implements NodeRepository {
         }
       }
 
+      // Derive the 20-byte wallet address from the node hash.
+      // The node hash is bytes32(address) left-padded with zeros (66 chars),
+      // so the last 40 hex chars are the actual 20-byte address.
+      // If nodeHash is already a 20-byte address (42 chars), use it directly.
+      const nodeAddr20 =
+        hash.length === 66
+          ? ('0x' + hash.slice(-40)).toLowerCase()
+          : hash.toLowerCase();
+      // Also accept the owner wallet address as a match for P2P orders.
+      const ownerAddr = owner?.toLowerCase();
+
       for (const order of p2pOrders) {
         const oid = order.id.toLowerCase();
         if (seenIds.has(oid)) continue;
 
         // For node dashboards, include P2P orders only when this node is
         // explicitly linked by the order metadata or the created journey.
+        // Check both the bytes32 hash AND the derived 20-byte address since
+        // the indexer stores wallet addresses (20-byte), not padded hashes.
         const orderNodes = (order.nodes || []).map((n) => n.toLowerCase());
         const journeySender = orderSenderMap.get(oid);
+        const sellerLc = order.seller?.toLowerCase();
         const isLinkedToThisNode =
           orderNodes.includes(hash) ||
-          order.seller?.toLowerCase() === hash ||
-          journeySender === hash;
+          orderNodes.includes(nodeAddr20) ||
+          (ownerAddr && orderNodes.includes(ownerAddr)) ||
+          sellerLc === hash ||
+          sellerLc === nodeAddr20 ||
+          (ownerAddr && sellerLc === ownerAddr) ||
+          journeySender === hash ||
+          journeySender === nodeAddr20 ||
+          (ownerAddr && journeySender === ownerAddr);
         if (!isLinkedToThisNode) continue;
 
         seenIds.add(oid);
