@@ -637,7 +637,8 @@ export default function P2PMarketOffersPage() {
           description: toastDescription,
           variant: 'destructive',
         });
-        throw err;
+        // Do NOT re-throw — error is already shown via toast; re-throwing
+        // would propagate to the React error boundary and show a full-page crash.
       } finally {
         setP2PActionLoading(false);
       }

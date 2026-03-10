@@ -513,7 +513,8 @@ export default function CustomerDashboard() {
         description: toastDescription,
         variant: 'destructive',
       });
-      throw err; // Re-throw so dialog can show the error
+      // Do NOT re-throw — error already shown via toast; re-throwing
+      // escapes to the React error boundary and shows a full-page crash.
     } finally {
       setP2PActionLoading(false);
     }

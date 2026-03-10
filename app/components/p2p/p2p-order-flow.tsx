@@ -154,6 +154,7 @@ function getStatusMessage(
   switch (stepIndex) {
     case 0:
       return 'No delivery journey yet. Schedule delivery to move this order forward.';
+    // Note: unmatched offers (seller == 0x0) are handled at render time via isUnmatchedOffer
     case 1:
       return 'Journey created. Waiting for sender and driver to sign for pickup.';
     case 2:
@@ -499,10 +500,18 @@ export function P2POrderFlow({
     }
   };
 
+  // An unmatched offer has no counterparty yet (seller is zero / absent).
+  // We must NOT show "Schedule Delivery" for these — the seller field won't
+  // be resolved, createP2PJourney will fail, and the error will confuse users.
+  const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+  const isUnmatchedOffer =
+    !order.seller || order.seller.toLowerCase() === ZERO_ADDRESS;
+
   // Determine which action to show
   const showScheduleButton =
     currentStep === 0 &&
     onScheduleDelivery &&
+    !isUnmatchedOffer &&
     order.currentStatus !== OrderStatus.SETTLED;
 
   // Only allow pickup signing if driver has already signed (i.e., a driver has
@@ -596,6 +605,11 @@ export function P2POrderFlow({
           <span className="flex items-center gap-2 text-white/80">
             <Loader2 className="w-3 h-3 animate-spin" />
             Checking delivery status...
+          </span>
+        ) : isUnmatchedOffer && currentStep === 0 ? (
+          <span className="text-amber-300/80">
+            Open offer — waiting for a seller to accept before delivery can be
+            scheduled.
           </span>
         ) : (
           statusMessage
