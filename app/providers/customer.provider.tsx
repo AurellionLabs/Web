@@ -450,11 +450,29 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
               'Sender, driver, and customer must use different wallet addresses.',
           );
         }
-        if (Number(journey.currentStatus) === 0) {
-          // Pending pickup — not ready for handoff.
+        const journeyStatus = Number(journey.currentStatus);
+
+        if (journeyStatus === 0) {
+          // Pending pickup — driver hasn't done handOn yet.
           return 'driver_not_signed';
         }
 
+        if (journeyStatus >= 2) {
+          // Journey already delivered (status 2 = JOURNEY_DELIVERED).
+          // The driver's handOff completed; calling handOff again would revert
+          // with JourneyNotInProgress. Just refresh and surface as settled.
+          setOrders((prev) =>
+            prev.map((o) =>
+              o.id === orderId
+                ? { ...o, currentStatus: OrderStatus.SETTLED }
+                : o,
+            ),
+          );
+          await loadCustomerOrders();
+          return 'settled';
+        }
+
+        // Status === 1 (JOURNEY_IN_TRANSIT) — proceed with handOff.
         const handOffTx = await ausys.handOff(journeyId as BytesLike);
         await handOffTx.wait();
 
@@ -480,6 +498,22 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         // ReceiverNotSigned (0x04d27bc2) — receiver hasn't signed yet
         if (msg.includes('0x04d27bc2') || msg.includes('ReceiverNotSigned')) {
           return 'driver_not_signed';
+        }
+        // JourneyNotInProgress (0xd4d48a2a) — journey already delivered;
+        // treat as settled (driver completed handOff from their side).
+        if (
+          msg.includes('0xd4d48a2a') ||
+          msg.includes('JourneyNotInProgress')
+        ) {
+          setOrders((prev) =>
+            prev.map((o) =>
+              o.id === orderId
+                ? { ...o, currentStatus: OrderStatus.SETTLED }
+                : o,
+            ),
+          );
+          await loadCustomerOrders();
+          return 'settled';
         }
         console.error('[CustomerProvider] completeP2PHandoff error:', err);
         setError('Failed to complete handoff');

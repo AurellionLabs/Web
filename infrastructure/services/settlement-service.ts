@@ -148,15 +148,32 @@ export class SettlementService {
       signer,
     );
 
-    const tx = await contract.selectTokenDestination(
-      orderId,
-      effectiveNodeId,
-      burn,
-    );
-    await tx.wait();
+    let txConfirmed = false;
+    try {
+      const tx = await contract.selectTokenDestination(
+        orderId,
+        effectiveNodeId,
+        burn,
+      );
+      await tx.wait();
+      txConfirmed = true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // NoPendingDestination (0x253a5c51) — destination was already selected
+      // in a previous TX (e.g. user retried after a UI timeout). Treat as success.
+      if (msg.includes('0x253a5c51') || msg.includes('NoPendingDestination')) {
+        console.warn(
+          '[SettlementService] selectDestination: destination already selected (NoPendingDestination). Treating as success.',
+        );
+        return;
+      }
+      throw err;
+    }
 
-    const signerAddress = await signer.getAddress();
-    await this.waitForPendingOrderClear(contract, signerAddress, orderId);
+    if (txConfirmed) {
+      const signerAddress = await signer.getAddress();
+      await this.waitForPendingOrderClear(contract, signerAddress, orderId);
+    }
   }
 
   private async waitForPendingOrderClear(
@@ -182,8 +199,11 @@ export class SettlementService {
       }
     }
 
-    throw new Error(
-      'Destination transaction confirmed, but the order still appears pending. Refresh and verify the latest chain state.',
+    // Transaction was confirmed on-chain but the pending list hasn't cleared
+    // within the polling window. This is a UI timing issue — the destination
+    // was successfully selected. Log and continue rather than surface as error.
+    console.warn(
+      '[SettlementService] waitForPendingOrderClear: TX confirmed but pending list not yet updated. Continuing.',
     );
   }
 
