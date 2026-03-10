@@ -607,6 +607,22 @@ export class DiamondNodeRepository implements NodeRepository {
     const owner = ownerAddress?.toLowerCase();
 
     try {
+      // 0. Fetch the set of token IDs this specific node supports.
+      //    Used below to filter old-format P2P orders that lack a per-node-hash
+      //    link (the AuSysOrderCreated event only stored wallet addresses, not
+      //    bytes32 node hashes). Cross-referencing by token_id correctly scopes
+      //    orders to nodes that actually hold the relevant inventory.
+      const supportedAssetsResp = await graphqlRequest<AssetEventsResponse>(
+        this.graphQLEndpoint,
+        GET_SUPPORTED_ASSET_ADDED_EVENTS,
+        { limit: 1000 },
+      );
+      const nodeTokenIds = new Set(
+        (supportedAssetsResp.diamondSupportedAssetAddedEventss?.items || [])
+          .filter((a) => a.node_hash?.toLowerCase() === hash)
+          .map((a) => a.token_id?.toLowerCase()),
+      );
+
       // 1. Fetch CLOB orders + logistics data via the unified query.
       //    GET_ALL_UNIFIED_ORDER_EVENTS uses GQL aliases: created / logistics /
       //    journeyUpdates / settled — NOT diamondUnifiedOrderCreatedEventss.
@@ -749,8 +765,6 @@ export class DiamondNodeRepository implements NodeRepository {
         hash.length === 66
           ? ('0x' + hash.slice(-40)).toLowerCase()
           : hash.toLowerCase();
-      // Also accept the owner wallet address as a match for P2P orders.
-      const ownerAddr = owner?.toLowerCase();
 
       for (const order of p2pOrders) {
         const oid = order.id.toLowerCase();
@@ -758,22 +772,32 @@ export class DiamondNodeRepository implements NodeRepository {
 
         // For node dashboards, include P2P orders only when this node is
         // explicitly linked by the order metadata or the created journey.
-        // Check both the bytes32 hash AND the derived 20-byte address since
-        // the indexer stores wallet addresses (20-byte), not padded hashes.
+        //
+        // Old AuSysOrderCreated events stored wallet addresses (not bytes32
+        // node hashes) in the `nodes` field, so we check both formats.
+        // When no explicit node link exists (pre-scoping-change orders),
+        // fall back to: is the order's token_id one this node supports?
+        // This correctly scopes orders to the node holding the inventory
+        // without leaking orders onto sibling nodes of the same wallet.
         const orderNodes = (order.nodes || []).map((n) => n.toLowerCase());
         const journeySender = orderSenderMap.get(oid);
         const sellerLc = order.seller?.toLowerCase();
-        const isLinkedToThisNode =
+        const orderTokenId = order.tokenId?.toLowerCase();
+
+        const hasExplicitNodeLink =
           orderNodes.includes(hash) ||
           orderNodes.includes(nodeAddr20) ||
-          (ownerAddr && orderNodes.includes(ownerAddr)) ||
           sellerLc === hash ||
           sellerLc === nodeAddr20 ||
-          (ownerAddr && sellerLc === ownerAddr) ||
           journeySender === hash ||
-          journeySender === nodeAddr20 ||
-          (ownerAddr && journeySender === ownerAddr);
-        if (!isLinkedToThisNode) continue;
+          journeySender === nodeAddr20;
+
+        const hasTokenIdLink =
+          nodeTokenIds.size > 0 &&
+          orderTokenId != null &&
+          nodeTokenIds.has(orderTokenId);
+
+        if (!hasExplicitNodeLink && !hasTokenIdLink) continue;
 
         seenIds.add(oid);
         allOrders.push(order);
