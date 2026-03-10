@@ -1179,18 +1179,22 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         require(s.nodes[_nodeHash].validNode, 'Invalid node');
         require(_itemOwner != address(0), 'Invalid item owner');
 
-        // Call AssetsFacet.nodeMint via delegatecall
+        // Call AssetsFacet.nodeMintForNode via delegatecall so custody is
+        // attributed to the SPECIFIC node, not the first active node for the wallet.
+        // Using nodeMint here was the bug: it calls _getFirstActiveNode(msg.sender)
+        // which always returns node[0] regardless of which _nodeHash was passed.
         (bool success, bytes memory result) = address(this).delegatecall(
             abi.encodeWithSignature(
-                "nodeMint(address,(string,string,(string,string[],string)[]),uint256,string,bytes)",
+                "nodeMintForNode(address,(string,string,(string,string[],string)[]),uint256,string,bytes,bytes32)",
                 _itemOwner,
                 _asset,
                 _amount,
                 _className,
-                _data
+                _data,
+                _nodeHash
             )
         );
-        require(success, "nodeMint failed");
+        require(success, "nodeMintForNode failed");
 
         // Decode the returned tokenId
         (, tokenId) = abi.decode(result, (bytes32, uint256));
