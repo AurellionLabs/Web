@@ -634,10 +634,24 @@ export class DiamondNodeRepository implements NodeRepository {
 
       const logisticsItems = orderResponse.logistics?.items || [];
 
-      // Find order IDs linked to this node via the logistics `node` field
+      // Derive the 20-byte address from the bytes32 node hash once, reused
+      // throughout this method. LogisticsOrderCreated emits `address node`
+      // (20-byte, 42 chars), but selectedNodeAddress is bytes32 (66 chars).
+      // Both formats must be checked wherever we compare against indexed data.
+      const nodeAddr20 =
+        hash.length === 66
+          ? ('0x' + hash.slice(-40)).toLowerCase()
+          : hash.toLowerCase();
+
+      // Find order IDs linked to this node via the logistics `node` field.
+      // Check both the bytes32 hash and the derived 20-byte address so new
+      // BridgeFacet orders (address node) match correctly.
       const nodeLinkedOrderIds = new Set(
         logisticsItems
-          .filter((l) => l.node?.toLowerCase() === hash)
+          .filter((l) => {
+            const n = l.node?.toLowerCase();
+            return n === hash || n === nodeAddr20;
+          })
           .map((l) => l.unified_order_id.toLowerCase()),
       );
 
@@ -756,15 +770,6 @@ export class DiamondNodeRepository implements NodeRepository {
           }
         }
       }
-
-      // Derive the 20-byte wallet address from the node hash.
-      // The node hash is bytes32(address) left-padded with zeros (66 chars),
-      // so the last 40 hex chars are the actual 20-byte address.
-      // If nodeHash is already a 20-byte address (42 chars), use it directly.
-      const nodeAddr20 =
-        hash.length === 66
-          ? ('0x' + hash.slice(-40)).toLowerCase()
-          : hash.toLowerCase();
 
       for (const order of p2pOrders) {
         const oid = order.id.toLowerCase();
