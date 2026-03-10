@@ -387,6 +387,28 @@ contract AuSysFacet is ReentrancyGuard {
     function acceptP2POffer(
         bytes32 orderId
     ) external nonReentrant whenNotPaused {
+        _acceptP2POffer(orderId, bytes32(0), false);
+    }
+
+    /**
+     * @notice Accept a buyer-initiated P2P offer with an explicit fulfillment node
+     * @dev Persists pickup metadata (start location/name) from the selected node.
+     * @param orderId The order/offer to accept
+     * @param pickupNodeRef Selected node hash owned by the accepting seller
+     */
+    function acceptP2POfferWithPickupNode(
+        bytes32 orderId,
+        bytes32 pickupNodeRef
+    ) external nonReentrant whenNotPaused {
+        if (pickupNodeRef == bytes32(0)) revert NodeRequired();
+        _acceptP2POffer(orderId, pickupNodeRef, true);
+    }
+
+    function _acceptP2POffer(
+        bytes32 orderId,
+        bytes32 pickupNodeRef,
+        bool enforcePickupNode
+    ) internal {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.AuSysOrder storage order = s.ausysOrders[orderId];
 
@@ -423,6 +445,8 @@ contract AuSysFacet is ReentrancyGuard {
             order.buyer = msg.sender;
         } else {
             // Buyer created offer — seller (msg.sender) accepts
+            if (!enforcePickupNode) revert NodeRequired();
+            _persistSelectedPickupNode(s, order, pickupNodeRef);
             order.seller = msg.sender;
         }
 
@@ -452,6 +476,25 @@ contract AuSysFacet is ReentrancyGuard {
 
         emit P2POfferAccepted(orderId, msg.sender, order.isSellerInitiated);
         emit AuSysOrderStatusUpdated(orderId, 1);
+    }
+
+    function _persistSelectedPickupNode(
+        DiamondStorage.AppStorage storage s,
+        DiamondStorage.AuSysOrder storage order,
+        bytes32 pickupNodeRef
+    ) internal {
+        DiamondStorage.Node storage pickupNode = s.nodes[pickupNodeRef];
+        if (pickupNode.owner != msg.sender) revert NotNodeOwner();
+        if (!pickupNode.active || !pickupNode.validNode) revert InvalidNode();
+        if (
+            bytes(pickupNode.addressName).length == 0 ||
+            bytes(pickupNode.lat).length == 0 ||
+            bytes(pickupNode.lng).length == 0
+        ) revert NodeRequired();
+
+        order.locationData.startLocation.lat = pickupNode.lat;
+        order.locationData.startLocation.lng = pickupNode.lng;
+        order.locationData.startName = pickupNode.addressName;
     }
 
     /**
