@@ -50,6 +50,7 @@ import type {
   AuSysOrderStatusUpdatesResponse,
   JourneysByOrderResponse,
   JourneyStatusUpdatesAllResponse,
+  UnifiedOrderEventsResponse,
 } from '@/infrastructure/shared/graph-queries';
 import {
   aggregateUnifiedOrders,
@@ -75,16 +76,8 @@ interface LogisticsEventsResponse {
   diamondLogisticsOrderCreatedEventss: GraphQLResponse<LogisticsOrderCreatedEvent>;
 }
 
-interface UnifiedOrderEventsResponse {
-  diamondUnifiedOrderCreatedEventss: GraphQLResponse<UnifiedOrderCreatedEvent>;
-}
-
 interface AssetEventsResponse {
   diamondSupportedAssetAddedEventss: GraphQLResponse<SupportedAssetAddedEvent>;
-}
-
-interface UnifiedOrderEventsResponse {
-  diamondUnifiedOrderCreatedEventss: GraphQLResponse<UnifiedOrderCreatedEvent>;
 }
 
 function aggregatedUnifiedOrderToDomain(
@@ -614,22 +607,16 @@ export class DiamondNodeRepository implements NodeRepository {
     const owner = ownerAddress?.toLowerCase();
 
     try {
-      // 1. Fetch CLOB orders + logistics data
-      const [orderResponse, logisticsResponse] = await Promise.all([
-        graphqlRequest<UnifiedOrderEventsResponse>(
-          this.graphQLEndpoint,
-          GET_ALL_UNIFIED_ORDER_EVENTS,
-          { limit: 500 },
-        ),
-        graphqlRequest<LogisticsEventsResponse>(
-          this.graphQLEndpoint,
-          GET_LOGISTICS_ORDER_CREATED_EVENTS,
-          { limit: 500 },
-        ),
-      ]);
+      // 1. Fetch CLOB orders + logistics data via the unified query.
+      //    GET_ALL_UNIFIED_ORDER_EVENTS uses GQL aliases: created / logistics /
+      //    journeyUpdates / settled — NOT diamondUnifiedOrderCreatedEventss.
+      const orderResponse = await graphqlRequest<UnifiedOrderEventsResponse>(
+        this.graphQLEndpoint,
+        GET_ALL_UNIFIED_ORDER_EVENTS,
+        { limit: 500 },
+      );
 
-      const logisticsItems =
-        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items || [];
+      const logisticsItems = orderResponse.logistics?.items || [];
 
       // Find order IDs linked to this node via the logistics `node` field
       const nodeLinkedOrderIds = new Set(
@@ -639,10 +626,10 @@ export class DiamondNodeRepository implements NodeRepository {
       );
 
       const allAggregated = aggregateUnifiedOrders({
-        created: orderResponse.diamondUnifiedOrderCreatedEventss?.items || [],
+        created: orderResponse.created?.items || [],
         logistics: logisticsItems,
-        journeyUpdates: [],
-        settled: [],
+        journeyUpdates: orderResponse.journeyUpdates?.items || [],
+        settled: orderResponse.settled?.items || [],
       });
 
       // Build logistics lookup for order → logistics data
