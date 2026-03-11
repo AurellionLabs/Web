@@ -396,6 +396,9 @@ export class DiamondP2PService implements IP2PService {
       isSellerInitiated: input.isSellOffer,
       targetCounterparty: input.targetCounterparty || ethers.ZeroAddress,
       expiresAt: input.expiresAt || 0,
+      // Fee snapshots (set by contract, pass 0)
+      snapshotTreasuryBps: 0,
+      snapshotNodeBps: 0,
     };
 
     try {

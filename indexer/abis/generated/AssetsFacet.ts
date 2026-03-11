@@ -1,10 +1,15 @@
 // Auto-generated from AssetsFacet.sol - DO NOT EDIT
-// Generated at: 2026-03-09T15:35:48.985Z
+// Generated at: 2026-03-10T19:30:30.102Z
 
 export const AssetsFacetABI = [
   {
     inputs: [],
     name: 'AssetAlreadyExists',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'CannotRedeemOwnCustody',
     type: 'error',
   },
   {
@@ -99,6 +104,11 @@ export const AssetsFacetABI = [
   {
     inputs: [],
     name: 'ExceedsCustodyAmount',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'ExceedsNodeSellableAmount',
     type: 'error',
   },
   {
@@ -660,6 +670,88 @@ export const AssetsFacetABI = [
     type: 'function',
   },
   {
+    inputs: [
+      {
+        internalType: 'uint256',
+        name: 'tokenId',
+        type: 'uint256',
+      },
+      {
+        internalType: 'bytes32',
+        name: 'nodeHash',
+        type: 'bytes32',
+      },
+    ],
+    name: 'getNodeCustodyInfo',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'owner',
+        type: 'address',
+      },
+      {
+        internalType: 'uint256',
+        name: 'tokenId',
+        type: 'uint256',
+      },
+      {
+        internalType: 'bytes32',
+        name: 'nodeHash',
+        type: 'bytes32',
+      },
+    ],
+    name: 'getNodeSellableAmount',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'owner',
+        type: 'address',
+      },
+      {
+        internalType: 'uint256',
+        name: 'tokenId',
+        type: 'uint256',
+      },
+    ],
+    name: 'getOwnerNodeSellableBalances',
+    outputs: [
+      {
+        internalType: 'bytes32[]',
+        name: 'nodeHashes',
+        type: 'bytes32[]',
+      },
+      {
+        internalType: 'uint256[]',
+        name: 'amounts',
+        type: 'uint256[]',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
     inputs: [],
     name: 'getSupportedAssets',
     outputs: [
@@ -850,6 +942,11 @@ export const AssetsFacetABI = [
         type: 'uint256[]',
       },
       {
+        internalType: 'bytes32',
+        name: 'nodeHash',
+        type: 'bytes32',
+      },
+      {
         internalType: 'bytes',
         name: 'data',
         type: 'bytes',
@@ -941,6 +1038,89 @@ export const AssetsFacetABI = [
   {
     inputs: [
       {
+        internalType: 'address',
+        name: 'account',
+        type: 'address',
+      },
+      {
+        components: [
+          {
+            internalType: 'string',
+            name: 'name',
+            type: 'string',
+          },
+          {
+            internalType: 'string',
+            name: 'assetClass',
+            type: 'string',
+          },
+          {
+            components: [
+              {
+                internalType: 'string',
+                name: 'name',
+                type: 'string',
+              },
+              {
+                internalType: 'string[]',
+                name: 'values',
+                type: 'string[]',
+              },
+              {
+                internalType: 'string',
+                name: 'description',
+                type: 'string',
+              },
+            ],
+            internalType: 'struct DiamondStorage.Attribute[]',
+            name: 'attributes',
+            type: 'tuple[]',
+          },
+        ],
+        internalType: 'struct DiamondStorage.AssetDefinition',
+        name: 'asset',
+        type: 'tuple',
+      },
+      {
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+      {
+        internalType: 'string',
+        name: 'className',
+        type: 'string',
+      },
+      {
+        internalType: 'bytes',
+        name: 'data',
+        type: 'bytes',
+      },
+      {
+        internalType: 'bytes32',
+        name: 'nodeHash',
+        type: 'bytes32',
+      },
+    ],
+    name: 'nodeMintForNode',
+    outputs: [
+      {
+        internalType: 'bytes32',
+        name: 'hash',
+        type: 'bytes32',
+      },
+      {
+        internalType: 'uint256',
+        name: 'tokenID',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
         internalType: 'uint256',
         name: 'tokenId',
         type: 'uint256',
@@ -957,6 +1137,34 @@ export const AssetsFacetABI = [
       },
     ],
     name: 'redeem',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'uint256',
+        name: 'tokenId',
+        type: 'uint256',
+      },
+      {
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+      {
+        internalType: 'address',
+        name: 'custodian',
+        type: 'address',
+      },
+      {
+        internalType: 'bytes32',
+        name: 'nodeHash',
+        type: 'bytes32',
+      },
+    ],
+    name: 'redeemFromNode',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',

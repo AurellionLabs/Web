@@ -1,5 +1,5 @@
 // Auto-generated from AuSysFacet.sol - DO NOT EDIT
-// Generated at: 2026-03-09T15:35:48.984Z
+// Generated at: 2026-03-10T19:30:30.101Z
 
 export const AuSysFacetABI = [
   {
@@ -9,7 +9,27 @@ export const AuSysFacetABI = [
   },
   {
     inputs: [],
+    name: 'ArrayLimitExceeded',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'CallerMustBeBuyer',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'CallerMustBeSeller',
+    type: 'error',
+  },
+  {
+    inputs: [],
     name: 'CannotAcceptOwnOffer',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'ContractPaused',
     type: 'error',
   },
   {
@@ -20,6 +40,21 @@ export const AuSysFacetABI = [
   {
     inputs: [],
     name: 'DriverNotSigned',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'DuplicateJourneyRoleAddress',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'ExceedsNodeSellableAmount',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'FeeBpsTooHigh',
     type: 'error',
   },
   {
@@ -44,12 +79,37 @@ export const AuSysFacetABI = [
   },
   {
     inputs: [],
+    name: 'InvalidJourneyRoute',
+    type: 'error',
+  },
+  {
+    inputs: [],
     name: 'InvalidNode',
     type: 'error',
   },
   {
     inputs: [],
+    name: 'InvalidOrderStatus',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'InvalidSignature',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'JourneyAlreadyAssigned',
+    type: 'error',
+  },
+  {
+    inputs: [],
     name: 'JourneyIncomplete',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'JourneyNotFound',
     type: 'error',
   },
   {
@@ -64,12 +124,37 @@ export const AuSysFacetABI = [
   },
   {
     inputs: [],
+    name: 'NoPendingDestination',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'NodeRequired',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'NonceAlreadyUsed',
+    type: 'error',
+  },
+  {
+    inputs: [],
     name: 'NotJourneyParticipant',
     type: 'error',
   },
   {
     inputs: [],
+    name: 'NotNodeOwner',
+    type: 'error',
+  },
+  {
+    inputs: [],
     name: 'NotTargetCounterparty',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'NothingToClaim',
     type: 'error',
   },
   {
@@ -94,6 +179,11 @@ export const AuSysFacetABI = [
   },
   {
     inputs: [],
+    name: 'OrderNotFound',
+    type: 'error',
+  },
+  {
+    inputs: [],
     name: 'PayTokenNotSet',
     type: 'error',
   },
@@ -105,6 +195,11 @@ export const AuSysFacetABI = [
   {
     inputs: [],
     name: 'ReceiverNotSigned',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'RecoveryTooEarly',
     type: 'error',
   },
   {
@@ -131,6 +226,16 @@ export const AuSysFacetABI = [
   {
     inputs: [],
     name: 'SenderNotSigned',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'SignatureExpired',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'TrustedSignerNotSet',
     type: 'error',
   },
   {
@@ -659,6 +764,25 @@ export const AuSysFacetABI = [
     anonymous: false,
     inputs: [
       {
+        indexed: false,
+        internalType: 'uint16',
+        name: 'oldBps',
+        type: 'uint16',
+      },
+      {
+        indexed: false,
+        internalType: 'uint16',
+        name: 'newBps',
+        type: 'uint16',
+      },
+    ],
+    name: 'NodeFeeBpsUpdated',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
         indexed: true,
         internalType: 'address',
         name: 'node',
@@ -824,6 +948,125 @@ export const AuSysFacetABI = [
     type: 'event',
   },
   {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'buyer',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'tokenId',
+        type: 'uint256',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'quantity',
+        type: 'uint256',
+      },
+    ],
+    name: 'TokenDestinationPending',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'destination',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'bytes32',
+        name: 'nodeId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'bool',
+        name: 'burned',
+        type: 'bool',
+      },
+    ],
+    name: 'TokenDestinationSelected',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+    ],
+    name: 'TreasuryFeeAccrued',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: false,
+        internalType: 'uint16',
+        name: 'oldBps',
+        type: 'uint16',
+      },
+      {
+        indexed: false,
+        internalType: 'uint16',
+        name: 'newBps',
+        type: 'uint16',
+      },
+    ],
+    name: 'TreasuryFeeBpsUpdated',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'to',
+        type: 'address',
+      },
+      {
+        indexed: false,
+        internalType: 'uint256',
+        name: 'amount',
+        type: 'uint256',
+      },
+    ],
+    name: 'TreasuryFeeClaimed',
+    type: 'event',
+  },
+  {
     inputs: [],
     name: 'ADMIN_ROLE',
     outputs: [
@@ -863,6 +1106,45 @@ export const AuSysFacetABI = [
     type: 'function',
   },
   {
+    inputs: [],
+    name: 'MAX_DRIVER_JOURNEYS',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'MAX_JOURNEYS_PER_ORDER',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'MAX_NODES_PER_ORDER',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
     inputs: [
       {
         internalType: 'bytes32',
@@ -883,12 +1165,12 @@ export const AuSysFacetABI = [
         type: 'bytes32',
       },
       {
-        internalType: 'uint256',
-        name: 'correctQuantity',
-        type: 'uint256',
+        internalType: 'bytes32',
+        name: 'pickupNodeRef',
+        type: 'bytes32',
       },
     ],
-    name: 'adminFixOrderTokenQuantity',
+    name: 'acceptP2POfferWithPickupNode',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
@@ -1053,6 +1335,16 @@ export const AuSysFacetABI = [
             internalType: 'uint256',
             name: 'expiresAt',
             type: 'uint256',
+          },
+          {
+            internalType: 'uint16',
+            name: 'snapshotTreasuryBps',
+            type: 'uint16',
+          },
+          {
+            internalType: 'uint16',
+            name: 'snapshotNodeBps',
+            type: 'uint16',
           },
         ],
         internalType: 'struct DiamondStorage.AuSysOrder',
@@ -1252,315 +1544,6 @@ export const AuSysFacetABI = [
         type: 'bytes32',
       },
     ],
-    name: 'getAuSysOrder',
-    outputs: [
-      {
-        components: [
-          {
-            internalType: 'bytes32',
-            name: 'id',
-            type: 'bytes32',
-          },
-          {
-            internalType: 'address',
-            name: 'token',
-            type: 'address',
-          },
-          {
-            internalType: 'uint256',
-            name: 'tokenId',
-            type: 'uint256',
-          },
-          {
-            internalType: 'uint256',
-            name: 'tokenQuantity',
-            type: 'uint256',
-          },
-          {
-            internalType: 'uint256',
-            name: 'price',
-            type: 'uint256',
-          },
-          {
-            internalType: 'uint256',
-            name: 'txFee',
-            type: 'uint256',
-          },
-          {
-            internalType: 'address',
-            name: 'buyer',
-            type: 'address',
-          },
-          {
-            internalType: 'address',
-            name: 'seller',
-            type: 'address',
-          },
-          {
-            internalType: 'bytes32[]',
-            name: 'journeyIds',
-            type: 'bytes32[]',
-          },
-          {
-            internalType: 'address[]',
-            name: 'nodes',
-            type: 'address[]',
-          },
-          {
-            components: [
-              {
-                components: [
-                  {
-                    internalType: 'string',
-                    name: 'lat',
-                    type: 'string',
-                  },
-                  {
-                    internalType: 'string',
-                    name: 'lng',
-                    type: 'string',
-                  },
-                ],
-                internalType: 'struct DiamondStorage.Location',
-                name: 'startLocation',
-                type: 'tuple',
-              },
-              {
-                components: [
-                  {
-                    internalType: 'string',
-                    name: 'lat',
-                    type: 'string',
-                  },
-                  {
-                    internalType: 'string',
-                    name: 'lng',
-                    type: 'string',
-                  },
-                ],
-                internalType: 'struct DiamondStorage.Location',
-                name: 'endLocation',
-                type: 'tuple',
-              },
-              {
-                internalType: 'string',
-                name: 'startName',
-                type: 'string',
-              },
-              {
-                internalType: 'string',
-                name: 'endName',
-                type: 'string',
-              },
-            ],
-            internalType: 'struct DiamondStorage.ParcelData',
-            name: 'locationData',
-            type: 'tuple',
-          },
-          {
-            internalType: 'uint8',
-            name: 'currentStatus',
-            type: 'uint8',
-          },
-          {
-            internalType: 'bytes32',
-            name: 'contractualAgreement',
-            type: 'bytes32',
-          },
-          {
-            internalType: 'bool',
-            name: 'isSellerInitiated',
-            type: 'bool',
-          },
-          {
-            internalType: 'address',
-            name: 'targetCounterparty',
-            type: 'address',
-          },
-          {
-            internalType: 'uint256',
-            name: 'expiresAt',
-            type: 'uint256',
-          },
-        ],
-        internalType: 'struct DiamondStorage.AuSysOrder',
-        name: '',
-        type: 'tuple',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'bytes32',
-        name: 'id',
-        type: 'bytes32',
-      },
-    ],
-    name: 'getJourney',
-    outputs: [
-      {
-        components: [
-          {
-            components: [
-              {
-                components: [
-                  {
-                    internalType: 'string',
-                    name: 'lat',
-                    type: 'string',
-                  },
-                  {
-                    internalType: 'string',
-                    name: 'lng',
-                    type: 'string',
-                  },
-                ],
-                internalType: 'struct DiamondStorage.Location',
-                name: 'startLocation',
-                type: 'tuple',
-              },
-              {
-                components: [
-                  {
-                    internalType: 'string',
-                    name: 'lat',
-                    type: 'string',
-                  },
-                  {
-                    internalType: 'string',
-                    name: 'lng',
-                    type: 'string',
-                  },
-                ],
-                internalType: 'struct DiamondStorage.Location',
-                name: 'endLocation',
-                type: 'tuple',
-              },
-              {
-                internalType: 'string',
-                name: 'startName',
-                type: 'string',
-              },
-              {
-                internalType: 'string',
-                name: 'endName',
-                type: 'string',
-              },
-            ],
-            internalType: 'struct DiamondStorage.ParcelData',
-            name: 'parcelData',
-            type: 'tuple',
-          },
-          {
-            internalType: 'bytes32',
-            name: 'journeyId',
-            type: 'bytes32',
-          },
-          {
-            internalType: 'uint8',
-            name: 'currentStatus',
-            type: 'uint8',
-          },
-          {
-            internalType: 'address',
-            name: 'sender',
-            type: 'address',
-          },
-          {
-            internalType: 'address',
-            name: 'receiver',
-            type: 'address',
-          },
-          {
-            internalType: 'address',
-            name: 'driver',
-            type: 'address',
-          },
-          {
-            internalType: 'uint256',
-            name: 'journeyStart',
-            type: 'uint256',
-          },
-          {
-            internalType: 'uint256',
-            name: 'journeyEnd',
-            type: 'uint256',
-          },
-          {
-            internalType: 'uint256',
-            name: 'bounty',
-            type: 'uint256',
-          },
-          {
-            internalType: 'uint256',
-            name: 'ETA',
-            type: 'uint256',
-          },
-        ],
-        internalType: 'struct DiamondStorage.AuSysJourney',
-        name: '',
-        type: 'tuple',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'getOpenP2POffers',
-    outputs: [
-      {
-        internalType: 'bytes32[]',
-        name: '',
-        type: 'bytes32[]',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [],
-    name: 'getPayToken',
-    outputs: [
-      {
-        internalType: 'address',
-        name: '',
-        type: 'address',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'user',
-        type: 'address',
-      },
-    ],
-    name: 'getUserP2POffers',
-    outputs: [
-      {
-        internalType: 'bytes32[]',
-        name: '',
-        type: 'bytes32[]',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'bytes32',
-        name: 'id',
-        type: 'bytes32',
-      },
-    ],
     name: 'handOff',
     outputs: [
       {
@@ -1595,108 +1578,6 @@ export const AuSysFacetABI = [
     inputs: [
       {
         internalType: 'bytes32',
-        name: 'role',
-        type: 'bytes32',
-      },
-      {
-        internalType: 'address',
-        name: 'account',
-        type: 'address',
-      },
-    ],
-    name: 'hasAuSysRole',
-    outputs: [
-      {
-        internalType: 'bool',
-        name: '',
-        type: 'bool',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: '',
-        type: 'address',
-      },
-      {
-        internalType: 'address',
-        name: '',
-        type: 'address',
-      },
-      {
-        internalType: 'uint256[]',
-        name: '',
-        type: 'uint256[]',
-      },
-      {
-        internalType: 'uint256[]',
-        name: '',
-        type: 'uint256[]',
-      },
-      {
-        internalType: 'bytes',
-        name: '',
-        type: 'bytes',
-      },
-    ],
-    name: 'onERC1155BatchReceived',
-    outputs: [
-      {
-        internalType: 'bytes4',
-        name: '',
-        type: 'bytes4',
-      },
-    ],
-    stateMutability: 'pure',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: '',
-        type: 'address',
-      },
-      {
-        internalType: 'address',
-        name: '',
-        type: 'address',
-      },
-      {
-        internalType: 'uint256',
-        name: '',
-        type: 'uint256',
-      },
-      {
-        internalType: 'uint256',
-        name: '',
-        type: 'uint256',
-      },
-      {
-        internalType: 'bytes',
-        name: '',
-        type: 'bytes',
-      },
-    ],
-    name: 'onERC1155Received',
-    outputs: [
-      {
-        internalType: 'bytes4',
-        name: '',
-        type: 'bytes4',
-      },
-    ],
-    stateMutability: 'pure',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'bytes32',
         name: 'id',
         type: 'bytes32',
       },
@@ -1709,12 +1590,12 @@ export const AuSysFacetABI = [
   {
     inputs: [
       {
-        internalType: 'address',
-        name: 'admin',
-        type: 'address',
+        internalType: 'uint256',
+        name: 'maxIterations',
+        type: 'uint256',
       },
     ],
-    name: 'revokeAuSysAdmin',
+    name: 'pruneExpiredOffers',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
@@ -1722,61 +1603,22 @@ export const AuSysFacetABI = [
   {
     inputs: [
       {
-        internalType: 'address',
-        name: 'admin',
-        type: 'address',
+        internalType: 'bytes32',
+        name: 'orderId',
+        type: 'bytes32',
       },
-    ],
-    name: 'setAuSysAdmin',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
       {
-        internalType: 'address',
-        name: 'dispatcher',
-        type: 'address',
+        internalType: 'bytes32',
+        name: 'nodeId',
+        type: 'bytes32',
       },
       {
         internalType: 'bool',
-        name: 'enable',
+        name: 'burn',
         type: 'bool',
       },
     ],
-    name: 'setDispatcher',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'driver',
-        type: 'address',
-      },
-      {
-        internalType: 'bool',
-        name: 'enable',
-        type: 'bool',
-      },
-    ],
-    name: 'setDriver',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: '_payToken',
-        type: 'address',
-      },
-    ],
-    name: 'setPayToken',
+    name: 'selectTokenDestination',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
@@ -1850,6 +1692,11 @@ export const AuSysFacetEvents = [
     signatureHash: '0x5508139b',
   },
   {
+    name: 'NodeFeeBpsUpdated',
+    signature: 'NodeFeeBpsUpdated(uint16,uint16)',
+    signatureHash: '0x3944e88e',
+  },
+  {
     name: 'NodeFeeDistributed',
     signature: 'NodeFeeDistributed(address,uint256)',
     signatureHash: '0x03dec068',
@@ -1879,5 +1726,30 @@ export const AuSysFacetEvents = [
     name: 'SellerPaid',
     signature: 'SellerPaid(address,uint256)',
     signatureHash: '0xcb4a9094',
+  },
+  {
+    name: 'TokenDestinationPending',
+    signature: 'TokenDestinationPending(bytes32,address,uint256,uint256)',
+    signatureHash: '0x390f5c7f',
+  },
+  {
+    name: 'TokenDestinationSelected',
+    signature: 'TokenDestinationSelected(bytes32,address,bytes32,bool)',
+    signatureHash: '0xd695fe01',
+  },
+  {
+    name: 'TreasuryFeeAccrued',
+    signature: 'TreasuryFeeAccrued(bytes32,uint256)',
+    signatureHash: '0x6c06b95c',
+  },
+  {
+    name: 'TreasuryFeeBpsUpdated',
+    signature: 'TreasuryFeeBpsUpdated(uint16,uint16)',
+    signatureHash: '0x78f1229d',
+  },
+  {
+    name: 'TreasuryFeeClaimed',
+    signature: 'TreasuryFeeClaimed(address,uint256)',
+    signatureHash: '0xda24974c',
   },
 ] as const;

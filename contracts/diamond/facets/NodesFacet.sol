@@ -5,7 +5,7 @@ import { DiamondStorage } from '../libraries/DiamondStorage.sol';
 import { LibDiamond } from '../libraries/LibDiamond.sol';
 import { Initializable } from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
-import { ReentrancyGuard } from '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
+import { DiamondReentrancyGuard } from '../libraries/DiamondReentrancyGuard.sol';
 
 /**
  * @dev Interface for OrderRouterFacet - SINGLE ENTRY POINT for all order operations
@@ -45,7 +45,7 @@ interface ICLOBFacet {
  * @notice Business logic facet for node registration, management, and node assets
  * @dev Combines AurumNodeManager + NodeAsset functionality
  */
-contract NodesFacet is Initializable, ReentrancyGuard {
+contract NodesFacet is Initializable, DiamondReentrancyGuard {
     bytes32 public constant NODE_REGISTRAR_ROLE = keccak256('NODE_REGISTRAR_ROLE');
 
     // Events matching original AurumNodeManager
@@ -165,7 +165,9 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         address indexed removedBy
     );
 
-    function initialize() public initializer {}
+    function initialize() public initializer {
+        LibDiamond.enforceIsContractOwner();
+    }
 
     // ======= ADMIN FUNCTIONS =======
 
@@ -211,6 +213,10 @@ contract NodesFacet is Initializable, ReentrancyGuard {
     ) external returns (bytes32 nodeHash) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         require(s.nodeRegistrars[msg.sender], 'Not allowed node registrar');
+        // L-03: Enforce node cap per registrar
+        if (s.maxNodesPerRegistrar > 0) {
+            require(s.ownerNodes[msg.sender].length < s.maxNodesPerRegistrar, 'Exceeds max nodes per registrar');
+        }
 
         nodeHash = keccak256(
             abi.encodePacked(msg.sender, block.timestamp, s.totalNodes)
@@ -571,8 +577,8 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         require(_amount > 0, 'Amount must be positive');
         require(s.nodeTokenBalances[_node][_tokenId] >= _amount, 'Insufficient node balance - deposit tokens first');
 
-        // Debit node's internal balance
-        s.nodeTokenBalances[_node][_tokenId] -= _amount;
+        // Debit node's internal balance (H-05: use internal helper)
+        _debitNodeTokensInternal(s, _node, _tokenId, _amount);
 
         // Route through OrderRouterFacet - SINGLE ENTRY POINT for all orders
         // This ensures consistent V2 storage usage and proper order matching
@@ -759,7 +765,8 @@ contract NodesFacet is Initializable, ReentrancyGuard {
 
     /**
      * @notice Debit tokens from a node (for sales/transfers out)
-     * @dev Called by node owner or internal Diamond facets when tokens are sold
+     * @dev H-05: Removed address(this) bypass — only node owner can call externally.
+     *      Internal callers use _debitNodeTokensInternal instead.
      * @param _node The node hash to debit
      * @param _tokenId The ERC1155 token ID
      * @param _amount The amount to debit
@@ -770,14 +777,19 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         uint256 _amount
     ) external {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        // Only node owner or Diamond itself (internal facet calls) can debit
-        require(
-            s.nodes[_node].owner == msg.sender || msg.sender == address(this),
-            'Not authorized'
-        );
+        require(s.nodes[_node].owner == msg.sender, 'Not authorized');
+        _debitNodeTokensInternal(s, _node, _tokenId, _amount);
+    }
+
+    /// @dev H-05: Internal helper for trusted callers — no access check.
+    function _debitNodeTokensInternal(
+        DiamondStorage.AppStorage storage s,
+        bytes32 _node,
+        uint256 _tokenId,
+        uint256 _amount
+    ) internal {
         require(_amount > 0, 'Amount must be positive');
         require(s.nodeTokenBalances[_node][_tokenId] >= _amount, 'Insufficient node balance');
-        
         s.nodeTokenBalances[_node][_tokenId] -= _amount;
     }
 
@@ -1022,6 +1034,12 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         _setNodeRegistrar(s, registrar, enable);
         emit NodeRegistrarUpdated(registrar, enable);
+    }
+
+    /// @notice L-03: Set maximum nodes a single registrar can create (0 = unlimited)
+    function setMaxNodesPerRegistrar(uint256 cap) external {
+        LibDiamond.enforceIsContractOwner();
+        DiamondStorage.appStorage().maxNodesPerRegistrar = cap;
     }
 
     /**

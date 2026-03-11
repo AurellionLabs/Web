@@ -103,7 +103,9 @@ contract AuSysLifecycleHandler is Test {
             contractualAgreement: bytes32(0),
             isSellerInitiated: true,
             targetCounterparty: address(0),
-            expiresAt: expiresAt
+            expiresAt: expiresAt,
+            snapshotTreasuryBps: 0,
+            snapshotNodeBps: 0
         });
 
         vm.prank(seller);
@@ -405,18 +407,9 @@ contract AuSysLifecycleInvariantTest is StdInvariant, DiamondTestBase {
         sels[2] = AuSysFacet.handOff.selector;
         sels[3] = AuSysFacet.selectTokenDestination.selector;
 
-        IDiamondCut.FacetCut[] memory cut = new IDiamondCut.FacetCut[](1);
-        cut[0] = IDiamondCut.FacetCut({
-            facetAddress: address(auSysFacet),
-            action: IDiamondCut.FacetCutAction.Add,
-            functionSelectors: sels
-        });
-
-        vm.prank(owner);
-        DiamondCutFacet(address(diamond)).scheduleDiamondCut(cut, address(0), '');
-        vm.warp(block.timestamp + DiamondCutFacet(address(diamond)).getDiamondCutTimelock());
-        vm.prank(owner);
-        IDiamondCut(address(diamond)).diamondCut(cut, address(0), '');
+        vm.startPrank(owner);
+        _upsertFacet(address(auSysFacet), sels);
+        vm.stopPrank();
     }
 }
 
@@ -579,7 +572,9 @@ contract AuSysLifecycleFuzzTest is DiamondTestBase {
             contractualAgreement: bytes32(0),
             isSellerInitiated: true,
             targetCounterparty: address(0),
-            expiresAt: expiresAt
+            expiresAt: expiresAt,
+            snapshotTreasuryBps: 0,
+            snapshotNodeBps: 0
         });
 
         vm.prank(seller);
@@ -612,7 +607,9 @@ contract AuSysLifecycleFuzzTest is DiamondTestBase {
             contractualAgreement: bytes32(0),
             isSellerInitiated: false,
             targetCounterparty: address(0),
-            expiresAt: 0
+            expiresAt: 0,
+            snapshotTreasuryBps: 0,
+            snapshotNodeBps: 0
         });
 
         vm.prank(buyer);
@@ -658,17 +655,8 @@ contract AuSysLifecycleFuzzTest is DiamondTestBase {
         sels[2] = AuSysFacet.handOff.selector;
         sels[3] = AuSysFacet.selectTokenDestination.selector;
 
-        IDiamondCut.FacetCut[] memory cut = new IDiamondCut.FacetCut[](1);
-        cut[0] = IDiamondCut.FacetCut({
-            facetAddress: address(auSysFacet),
-            action: IDiamondCut.FacetCutAction.Add,
-            functionSelectors: sels
-        });
-
-        vm.prank(owner);
-        DiamondCutFacet(address(diamond)).scheduleDiamondCut(cut, address(0), '');
-        vm.warp(block.timestamp + DiamondCutFacet(address(diamond)).getDiamondCutTimelock());
-        vm.prank(owner);
-        IDiamondCut(address(diamond)).diamondCut(cut, address(0), '');
+        vm.startPrank(owner);
+        _upsertFacet(address(auSysFacet), sels);
+        vm.stopPrank();
     }
 }

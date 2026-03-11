@@ -1,5 +1,5 @@
 // Auto-generated Ponder config - DO NOT EDIT
-// Generated at: 2026-03-09T15:35:48.997Z
+// Generated at: 2026-03-10T19:30:30.105Z
 
 import { createConfig } from 'ponder';
 

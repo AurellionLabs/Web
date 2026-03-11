@@ -221,12 +221,32 @@ abstract contract DiamondTestBase is Test {
     }
 
     function _initializeFacets() internal {
+        // M-05: Initialize reentrancy guard status
+        _initReentrancyGuard();
         AuSysAdminFacet(address(diamond)).setPayToken(address(payToken));
         BridgeFacet(address(diamond)).setQuoteTokenAddress(address(quoteToken));
         NodesFacet(address(diamond)).setNodeRegistrar(nodeOperator, true);
         NodesFacet(address(diamond)).setNodeRegistrar(user1, true);
         NodesFacet(address(diamond)).setNodeRegistrar(user2, true);
         testNodeHash = _registerTestNode(nodeOperator);
+    }
+
+    /// @dev Initialize the namespaced reentrancy guard status in AppStorage
+    function _initReentrancyGuard() internal {
+        // Use a small init contract to set reentrancyStatus = 1 via delegatecall
+        ReentrancyInit initContract = new ReentrancyInit();
+        IDiamondCut.FacetCut[] memory cut = new IDiamondCut.FacetCut[](0);
+        DiamondCutFacet(address(diamond)).scheduleDiamondCut(
+            cut,
+            address(initContract),
+            abi.encodeWithSelector(ReentrancyInit.init.selector)
+        );
+        vm.warp(block.timestamp + DiamondCutFacet(address(diamond)).getDiamondCutTimelock());
+        IDiamondCut(address(diamond)).diamondCut(
+            cut,
+            address(initContract),
+            abi.encodeWithSelector(ReentrancyInit.init.selector)
+        );
     }
 
     // ============================================================================
@@ -306,15 +326,17 @@ abstract contract DiamondTestBase is Test {
     }
 
     function _getOwnershipSelectors() internal pure returns (bytes4[] memory) {
-        bytes4[] memory selectors = new bytes4[](3);
+        bytes4[] memory selectors = new bytes4[](5);
         selectors[0] = bytes4(keccak256('owner()'));
         selectors[1] = bytes4(keccak256('transferOwnership(address)'));
         selectors[2] = bytes4(keccak256('acceptOwnership()'));
+        selectors[3] = bytes4(keccak256('renounceOwnership()'));
+        selectors[4] = bytes4(keccak256('cancelRenounceOwnership()'));
         return selectors;
     }
 
     function _getNodesSelectors() internal pure returns (bytes4[] memory) {
-        bytes4[] memory selectors = new bytes4[](17);
+        bytes4[] memory selectors = new bytes4[](19);
         selectors[0] = NodesFacet.registerNode.selector;
         selectors[1] = NodesFacet.updateNode.selector;
         selectors[2] = NodesFacet.deactivateNode.selector;
@@ -332,11 +354,13 @@ abstract contract DiamondTestBase is Test {
         selectors[14] = NodesFacet.getAllowedNodeRegistrars.selector;
         selectors[15] = NodesFacet.getNodeTokenBalance.selector;
         selectors[16] = NodesFacet.creditNodeTokens.selector;
+        selectors[17] = NodesFacet.debitNodeTokens.selector;
+        selectors[18] = NodesFacet.setMaxNodesPerRegistrar.selector;
         return selectors;
     }
 
     function _getAssetsSelectors() internal pure returns (bytes4[] memory) {
-        bytes4[] memory selectors = new bytes4[](23);
+        bytes4[] memory selectors = new bytes4[](27);
         // ERC1155 core
         selectors[0] = AssetsFacet.balanceOf.selector;
         selectors[1] = AssetsFacet.balanceOfBatch.selector;
@@ -363,22 +387,30 @@ abstract contract DiamondTestBase is Test {
         selectors[20] = AssetsFacet.getNodeCustodyInfo.selector;
         selectors[21] = AssetsFacet.getNodeSellableAmount.selector;
         selectors[22] = AssetsFacet.getOwnerNodeSellableBalances.selector;
+        selectors[23] = AssetsFacet.addSupportedAsset.selector;
+        selectors[24] = AssetsFacet.removeSupportedAsset.selector;
+        selectors[25] = AssetsFacet.getSupportedAssets.selector;
+        selectors[26] = AssetsFacet.getSupportedClasses.selector;
         return selectors;
     }
 
     function _getAuSysSelectors() internal pure returns (bytes4[] memory) {
-        bytes4[] memory selectors = new bytes4[](6);
+        bytes4[] memory selectors = new bytes4[](10);
         selectors[0] = AuSysFacet.createAuSysOrder.selector;
         selectors[1] = AuSysFacet.createJourney.selector;
         selectors[2] = AuSysFacet.createOrderJourney.selector;
         selectors[3] = AuSysFacet.assignDriverToJourney.selector;
         selectors[4] = AuSysFacet.packageSign.selector;
         selectors[5] = AuSysFacet.handOn.selector;
+        selectors[6] = AuSysFacet.pruneExpiredOffers.selector;
+        selectors[7] = AuSysFacet.acceptP2POffer.selector;
+        selectors[8] = AuSysFacet.acceptP2POfferWithPickupNode.selector;
+        selectors[9] = AuSysFacet.cancelP2POffer.selector;
         return selectors;
     }
 
     function _getAuSysAdminSelectors() internal pure returns (bytes4[] memory) {
-        bytes4[] memory selectors = new bytes4[](11);
+        bytes4[] memory selectors = new bytes4[](15);
         selectors[0] = AuSysAdminFacet.setPayToken.selector;
         selectors[1] = AuSysAdminFacet.setAuSysAdmin.selector;
         selectors[2] = AuSysAdminFacet.revokeAuSysAdmin.selector;
@@ -390,6 +422,10 @@ abstract contract DiamondTestBase is Test {
         selectors[8] = AuSysAdminFacet.setTreasuryFeeBps.selector;
         selectors[9] = AuSysAdminFacet.setNodeFeeBps.selector;
         selectors[10] = AuSysAdminFacet.claimTreasuryFees.selector;
+        selectors[11] = AuSysAdminFacet.emergencyCancelJourney.selector;
+        selectors[12] = AuSysAdminFacet.setERC1155WhitelistEnabled.selector;
+        selectors[13] = AuSysAdminFacet.setAcceptedTokenContract.selector;
+        selectors[14] = AuSysAdminFacet.initAuSysFees.selector;
         return selectors;
     }
 
@@ -495,5 +531,13 @@ abstract contract DiamondTestBase is Test {
         selectors[6] = OperatorFacet.getOperatorSuccessfulOps.selector;
         selectors[7] = OperatorFacet.getOperatorTotalValueProcessed.selector;
         return selectors;
+    }
+}
+
+/// @dev Init contract to set reentrancyStatus = 1 (_NOT_ENTERED) in AppStorage
+contract ReentrancyInit {
+    function init() external {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        s.reentrancyStatus = 1;
     }
 }

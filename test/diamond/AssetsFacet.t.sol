@@ -497,7 +497,7 @@ contract AssetsFacetTest is DiamondTestBase {
         amounts[1] = 75;
 
         vm.prank(owner);
-        assets.mintBatch(user1, ids, amounts, '');
+        assets.mintBatch(user1, ids, amounts, bytes32(0), '');
 
         assertEq(assets.balanceOf(user1, 100), 50);
         assertEq(assets.balanceOf(user1, 101), 75);
@@ -512,7 +512,7 @@ contract AssetsFacetTest is DiamondTestBase {
 
         vm.prank(user1);
         vm.expectRevert();
-        assets.mintBatch(user1, ids, amounts, '');
+        assets.mintBatch(user1, ids, amounts, bytes32(0), '');
     }
 
     // ============================================================================

@@ -1,5 +1,5 @@
 // Auto-generated handler for bridge domain
-// Generated at: 2026-03-09T15:35:48.993Z
+// Generated at: 2026-03-10T19:30:30.104Z
 //
 // Inline aggregate writes: raw event insert + aggregate table upsert in ONE ponder.on() handler.
 // This avoids the Ponder 0.16 restriction: only one ponder.on() per event name is allowed.
@@ -12,6 +12,9 @@ import {
   diamondBountyPaidEvents,
   diamondBridgeFeeRecipientUpdatedEvents,
   diamondBridgeOrderCancelledEvents,
+  diamondFundsEscrowedEvents,
+  diamondFundsRefundedEvents,
+  diamondJourneyDriverAssignedEvents,
   diamondJourneyStatusUpdatedEvents,
   diamondLogisticsOrderCreatedEvents,
   diamondOrderSettledEvents,
@@ -92,6 +95,67 @@ ponder.on('Diamond:BridgeOrderCancelled', async ({ event, context }) => {
     current_status: 5,
     updated_at: BigInt(event.block.timestamp),
     block_number: event.block.number,
+    transaction_hash: event.transaction.hash,
+  });
+});
+
+/**
+ * Handle FundsEscrowed event from BridgeFacet
+ * Signature: FundsEscrowed(address,uint256)
+ * Hash: 0x4fbba82c
+ */
+ponder.on('Diamond:FundsEscrowed', async ({ event, context }) => {
+  const { buyer, amount } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  // Raw event insert
+  await context.db.insert(diamondFundsEscrowedEvents).values({
+    id: id,
+    buyer: buyer,
+    amount: amount,
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+});
+
+/**
+ * Handle FundsRefunded event from BridgeFacet
+ * Signature: FundsRefunded(address,uint256)
+ * Hash: 0xbada1a1b
+ */
+ponder.on('Diamond:FundsRefunded', async ({ event, context }) => {
+  const { recipient, amount } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  // Raw event insert
+  await context.db.insert(diamondFundsRefundedEvents).values({
+    id: id,
+    recipient: recipient,
+    amount: amount,
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+});
+
+/**
+ * Handle JourneyDriverAssigned event from BridgeFacet
+ * Signature: JourneyDriverAssigned(bytes32,bytes32,address)
+ * Hash: 0xd5aac137
+ */
+ponder.on('Diamond:JourneyDriverAssigned', async ({ event, context }) => {
+  const { unifiedOrderId, journeyId, driver } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  // Raw event insert
+  await context.db.insert(diamondJourneyDriverAssignedEvents).values({
+    id: id,
+    unified_order_id: unifiedOrderId,
+    journey_id: journeyId,
+    driver: driver,
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,
   });
 });

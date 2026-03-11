@@ -7,14 +7,14 @@ import { OrderStatus } from '../libraries/OrderStatus.sol';
 import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
 import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import { SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import { ReentrancyGuard } from '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
+import { DiamondReentrancyGuard } from '../libraries/DiamondReentrancyGuard.sol';
 
 /**
  * @title AuSysFacet
  * @notice Logistics and delivery management system mirroring AuSys.sol
  * @dev Handles orders, journeys, driver management, and package signatures
  */
-contract AuSysFacet is ReentrancyGuard {
+contract AuSysFacet is DiamondReentrancyGuard {
     using SafeERC20 for IERC20;
 
     uint256 public constant MAX_JOURNEYS_PER_ORDER = 10;
@@ -292,7 +292,10 @@ contract AuSysFacet is ReentrancyGuard {
         newOrder.isSellerInitiated = order.isSellerInitiated;
         newOrder.targetCounterparty = order.targetCounterparty;
         newOrder.expiresAt = order.expiresAt;
-        
+        // H-04: Snapshot fee rates at creation time
+        newOrder.snapshotTreasuryBps = s.treasuryFeeBps;
+        newOrder.snapshotNodeBps = s.nodeFeeBps;
+
         if (order.nodes.length > MAX_NODES_PER_ORDER) revert ArrayLimitExceeded();
         uint256 nodeCount = order.nodes.length;
         for (uint256 i = 0; i < nodeCount; i++) {
@@ -440,6 +443,10 @@ contract AuSysFacet is ReentrancyGuard {
         // Remove from open offers list
         _removeFromOpenOffers(s, orderId);
 
+        // L-08: Remove from creator's userP2POffers
+        address offerCreator = order.isSellerInitiated ? order.seller : order.buyer;
+        _removeFromUserOffers(s, offerCreator, orderId);
+
         if (order.isSellerInitiated) {
             // Seller created offer — buyer (msg.sender) accepts
             order.buyer = msg.sender;
@@ -542,12 +549,43 @@ contract AuSysFacet is ReentrancyGuard {
 
         // Update status to Canceled
         order.currentStatus = OrderStatus.AUSYS_CANCELED;
-        
+
+        // M-01: Clear escrow flag
+        delete s.ausysOrderTokenEscrowed[orderId];
+
         // Remove from open offers list
         _removeFromOpenOffers(s, orderId);
 
+        // L-08: Remove from creator's userP2POffers
+        _removeFromUserOffers(s, creator, orderId);
+
         emit P2POfferCanceled(orderId, creator);
         emit AuSysOrderStatusUpdated(orderId, 3);
+    }
+
+    /**
+     * @notice M-02: Permissionless cleanup of expired offers from the open list
+     * @param maxIterations Maximum number of entries to scan (gas limit safety)
+     */
+    function pruneExpiredOffers(uint256 maxIterations) external {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        uint256 length = s.openP2POfferIds.length;
+        uint256 i = 0;
+        uint256 iterations = 0;
+        while (i < length && iterations < maxIterations) {
+            bytes32 id = s.openP2POfferIds[i];
+            DiamondStorage.AuSysOrder storage order = s.ausysOrders[id];
+            if (order.expiresAt != 0 && block.timestamp > order.expiresAt) {
+                order.currentStatus = OrderStatus.AUSYS_EXPIRED;
+                s.openP2POfferIds[i] = s.openP2POfferIds[length - 1];
+                s.openP2POfferIds.pop();
+                length--;
+                // don't increment i — swapped element needs checking
+            } else {
+                i++;
+            }
+            iterations++;
+        }
     }
 
     // ============================================================================
@@ -564,19 +602,30 @@ contract AuSysFacet is ReentrancyGuard {
      */
     /**
      * @dev Remove an order from the open P2P offers list
-     * @notice Optimized: cache storage array to memory to avoid repeated SLOADs
+     * @notice M-06: Read directly from storage — avoids copying full array to memory
      */
     function _removeFromOpenOffers(DiamondStorage.AppStorage storage s, bytes32 orderId) internal {
-        // Cache to memory to avoid repeated SLOADs in loop (gas optimization)
-        bytes32[] memory offerIds = s.openP2POfferIds;
-        uint256 length = offerIds.length;
-        
+        uint256 length = s.openP2POfferIds.length;
         for (uint256 i = 0; i < length; i++) {
-            if (offerIds[i] == orderId) {
-                // Swap with last element and pop (use cached memory value to avoid extra SLOAD)
-                s.openP2POfferIds[i] = offerIds[length - 1];
+            if (s.openP2POfferIds[i] == orderId) {
+                s.openP2POfferIds[i] = s.openP2POfferIds[length - 1];
                 s.openP2POfferIds.pop();
-                break;
+                return;
+            }
+        }
+    }
+
+    /**
+     * @dev L-08: Remove an order from a user's P2P offers list (swap-and-pop)
+     */
+    function _removeFromUserOffers(DiamondStorage.AppStorage storage s, address user, bytes32 orderId) internal {
+        bytes32[] storage offers = s.userP2POffers[user];
+        uint256 length = offers.length;
+        for (uint256 i = 0; i < length; i++) {
+            if (offers[i] == orderId) {
+                offers[i] = offers[length - 1];
+                offers.pop();
+                return;
             }
         }
     }
@@ -713,13 +762,6 @@ contract AuSysFacet is ReentrancyGuard {
         if (O.journeyIds.length >= MAX_JOURNEYS_PER_ORDER) revert ArrayLimitExceeded();
         O.journeyIds.push(journeyId);
         s.journeyToAusysOrderId[journeyId] = orderId;
-
-        // Set token quantity only if not already set (P2P orders set it at creation).
-        // For non-P2P orders the quantity is already set during createAuSysOrder,
-        // so we should never blindly accumulate here.
-        if (O.tokenQuantity == 0) {
-            O.tokenQuantity = tokenQuantity;
-        }
 
         emit JourneyCreated(
             journeyId,
@@ -949,11 +991,16 @@ contract AuSysFacet is ReentrancyGuard {
     // INTERNAL HELPERS
     // ============================================================================
 
+    /// @dev IDs are unique (counter + prevrandao + sender + timestamp) but NOT secret.
+    /// Validators have weak influence over prevrandao post-merge.
+    /// Do not use these IDs where unpredictability is required.
     function _getHashedJourneyId(DiamondStorage.AppStorage storage s) internal returns (bytes32) {
         return keccak256(abi.encodePacked(++s.ausysJourneyIdCounter, block.prevrandao, msg.sender, block.timestamp));
     }
 
-    /// @dev FIX 4: prevrandao + creator + timestamp added for order ID entropy
+    /// @dev IDs are unique (counter + prevrandao + creator + timestamp) but NOT secret.
+    /// Validators have weak influence over prevrandao post-merge.
+    /// Do not use these IDs where unpredictability is required.
     function _getHashedOrderId(DiamondStorage.AppStorage storage s, address creator) internal returns (bytes32) {
         return keccak256(abi.encodePacked(++s.ausysOrderIdCounter, block.prevrandao, creator, block.timestamp));
     }
@@ -998,8 +1045,9 @@ contract AuSysFacet is ReentrancyGuard {
         emit SellerPaid(O.seller, O.price);
 
         // ── FEE DISTRIBUTION ────────────────────────────────────────────────
-        // Treasury fee: always accrued (pull pattern — owner calls claimTreasuryFees)
-        uint256 treasuryPortion = (O.price * s.treasuryFeeBps) / 10000;
+        // H-04: Use snapshot fees from order creation (fallback to current for legacy orders)
+        uint16 tBps = O.snapshotTreasuryBps > 0 ? O.snapshotTreasuryBps : s.treasuryFeeBps;
+        uint256 treasuryPortion = (O.price * tBps) / 10000;
         if (treasuryPortion > 0) {
             s.treasuryAccrued += treasuryPortion;
             emit TreasuryFeeAccrued(orderId, treasuryPortion);

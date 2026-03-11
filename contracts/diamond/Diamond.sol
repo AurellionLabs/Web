@@ -45,6 +45,9 @@ contract Diamond {
             functionSelectors: selectors
         });
         
+        // NOTE: Constructor diamondCut intentionally bypasses the timelock.
+        // This is the correct bootstrap pattern — the timelock is not yet
+        // initialized and would reject legitimate deployment cuts.
         LibDiamond.diamondCut(cut, address(0), '');
     }
 

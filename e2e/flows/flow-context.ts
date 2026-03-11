@@ -259,6 +259,7 @@ export class FlowContext {
             user.address,
             tokenIds,
             amountsPerToken,
+            ethers.ZeroHash, // nodeHash (no node attribution)
             '0x',
           );
           await tx.wait();

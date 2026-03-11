@@ -88,8 +88,10 @@ library LibDiamond {
         uint16 nextSelectorPosition = uint16(
             ds.facetFunctionSelectors[_facetAddress].length
         );
-        // add the facet address to the facetAddresses array
-        ds.facetAddresses.push(_facetAddress);
+        // H-02: Only add facet address if not already tracked
+        if (ds.facetFunctionSelectors[_facetAddress].length == 0) {
+            ds.facetAddresses.push(_facetAddress);
+        }
         for (uint256 selectorIndex; selectorIndex < _functionSelectors.length; selectorIndex++) {
             bytes4 selector = _functionSelectors[selectorIndex];
             address oldFacetAddress = ds.selectorToFacetAndPosition[selector].facetAddr;
@@ -119,6 +121,10 @@ library LibDiamond {
             'LibDiamond: Replace facet address is zero'
         );
         DiamondStorage storage ds = diamondStorage();
+        // H-01: Track new facet in facetAddresses if first time
+        if (ds.facetFunctionSelectors[_facetAddress].length == 0) {
+            ds.facetAddresses.push(_facetAddress);
+        }
         for (uint256 selectorIndex; selectorIndex < _functionSelectors.length; selectorIndex++) {
             bytes4 selector = _functionSelectors[selectorIndex];
             address oldFacetAddress = ds.selectorToFacetAndPosition[selector].facetAddr;
@@ -138,6 +144,16 @@ library LibDiamond {
                     ];
                     oldFacetFunctionSelectors.pop();
                     break;
+                }
+            }
+            // H-01: Remove old facet from facetAddresses if no selectors remain
+            if (oldFacetFunctionSelectors.length == 0) {
+                for (uint256 j; j < ds.facetAddresses.length; j++) {
+                    if (ds.facetAddresses[j] == oldFacetAddress) {
+                        ds.facetAddresses[j] = ds.facetAddresses[ds.facetAddresses.length - 1];
+                        ds.facetAddresses.pop();
+                        break;
+                    }
                 }
             }
             // add the selector to the new facet

@@ -1,5 +1,5 @@
 // Auto-generated from CLOBFacetV2.sol - DO NOT EDIT
-// Generated at: 2026-03-09T15:35:48.981Z
+// Generated at: 2026-03-10T19:30:30.101Z
 
 export const CLOBFacetV2ABI = [
   {
@@ -10,6 +10,11 @@ export const CLOBFacetV2ABI = [
   {
     inputs: [],
     name: 'FOKNotFilled',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'FeeBpsTooHigh',
     type: 'error',
   },
   {
@@ -60,6 +65,17 @@ export const CLOBFacetV2ABI = [
   {
     inputs: [],
     name: 'ReentrancyGuardReentrantCall',
+    type: 'error',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'token',
+        type: 'address',
+      },
+    ],
+    name: 'SafeERC20FailedOperation',
     type: 'error',
   },
   {
@@ -690,6 +706,45 @@ export const CLOBFacetV2ABI = [
         type: 'bytes32',
       },
     ],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'uint16',
+        name: 'bps',
+        type: 'uint16',
+      },
+    ],
+    name: 'setCLOBLpFeeBps',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'uint16',
+        name: 'bps',
+        type: 'uint16',
+      },
+    ],
+    name: 'setCLOBMakerFeeBps',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'uint16',
+        name: 'bps',
+        type: 'uint16',
+      },
+    ],
+    name: 'setCLOBTakerFeeBps',
+    outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
   },

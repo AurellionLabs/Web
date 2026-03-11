@@ -4,9 +4,9 @@
  * DO NOT EDIT MANUALLY - This file is generated from Hardhat artifacts
  * Run: npm run contract:gen
  *
- * Generated: 2026-03-09T18:02:54.412Z
+ * Generated: 2026-03-10T19:30:29.232Z
  * Facets: NodesFacet, AuSysFacet, AuSysAdminFacet, AuSysViewFacet, OrderRouterFacet, CLOBFacetV2, CLOBMatchingFacet, DiamondLoupeFacet, OwnershipFacet, ERC1155ReceiverFacet, OperatorFacet, CLOBLogisticsFacet, AssetsFacet
- * Total items: 276
+ * Total items: 286
  */
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1748,6 +1748,19 @@ export const DIAMOND_ABI: any[] = [
   {
     inputs: [
       {
+        internalType: 'uint256',
+        name: 'cap',
+        type: 'uint256',
+      },
+    ],
+    name: 'setMaxNodesPerRegistrar',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
         internalType: 'address',
         name: '_admin',
         type: 'address',
@@ -3097,6 +3110,16 @@ export const DIAMOND_ABI: any[] = [
             name: 'expiresAt',
             type: 'uint256',
           },
+          {
+            internalType: 'uint16',
+            name: 'snapshotTreasuryBps',
+            type: 'uint16',
+          },
+          {
+            internalType: 'uint16',
+            name: 'snapshotNodeBps',
+            type: 'uint16',
+          },
         ],
         internalType: 'struct DiamondStorage.AuSysOrder',
         name: 'order',
@@ -3341,6 +3364,19 @@ export const DIAMOND_ABI: any[] = [
   {
     inputs: [
       {
+        internalType: 'uint256',
+        name: 'maxIterations',
+        type: 'uint256',
+      },
+    ],
+    name: 'pruneExpiredOffers',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
         internalType: 'bytes32',
         name: 'orderId',
         type: 'bytes32',
@@ -3360,6 +3396,25 @@ export const DIAMOND_ABI: any[] = [
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'journeyId',
+        type: 'bytes32',
+      },
+      {
+        indexed: false,
+        internalType: 'address',
+        name: 'canceledBy',
+        type: 'address',
+      },
+    ],
+    name: 'JourneyCanceled',
+    type: 'event',
   },
   {
     inputs: [
@@ -3411,6 +3466,19 @@ export const DIAMOND_ABI: any[] = [
     type: 'function',
   },
   {
+    inputs: [
+      {
+        internalType: 'bytes32',
+        name: 'journeyId',
+        type: 'bytes32',
+      },
+    ],
+    name: 'emergencyCancelJourney',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
     inputs: [],
     name: 'getTreasuryAccrued',
     outputs: [
@@ -3439,6 +3507,24 @@ export const DIAMOND_ABI: any[] = [
       },
     ],
     name: 'revokeAuSysAdmin',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'token',
+        type: 'address',
+      },
+      {
+        internalType: 'bool',
+        name: 'accepted',
+        type: 'bool',
+      },
+    ],
+    name: 'setAcceptedTokenContract',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
@@ -3488,6 +3574,19 @@ export const DIAMOND_ABI: any[] = [
       },
     ],
     name: 'setDriver',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'bool',
+        name: 'enabled',
+        type: 'bool',
+      },
+    ],
+    name: 'setERC1155WhitelistEnabled',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function',
@@ -3707,6 +3806,16 @@ export const DIAMOND_ABI: any[] = [
             internalType: 'uint256',
             name: 'expiresAt',
             type: 'uint256',
+          },
+          {
+            internalType: 'uint16',
+            name: 'snapshotTreasuryBps',
+            type: 'uint16',
+          },
+          {
+            internalType: 'uint16',
+            name: 'snapshotNodeBps',
+            type: 'uint16',
           },
         ],
         internalType: 'struct DiamondStorage.AuSysOrder',
@@ -5516,14 +5625,53 @@ export const DIAMOND_ABI: any[] = [
         type: 'address',
       },
     ],
+    name: 'OwnershipTransferStarted',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'previousOwner',
+        type: 'address',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'newOwner',
+        type: 'address',
+      },
+    ],
     name: 'OwnershipTransferred',
     type: 'event',
   },
   {
     inputs: [],
+    name: 'RENOUNCE_DELAY',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [],
     name: 'acceptOwnership',
     outputs: [],
-    stateMutability: 'pure',
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [],
+    name: 'cancelRenounceOwnership',
+    outputs: [],
+    stateMutability: 'nonpayable',
     type: 'function',
   },
   {
@@ -7635,6 +7783,11 @@ export const DIAMOND_ABI: any[] = [
         internalType: 'uint256[]',
         name: 'amounts',
         type: 'uint256[]',
+      },
+      {
+        internalType: 'bytes32',
+        name: 'nodeHash',
+        type: 'bytes32',
       },
       {
         internalType: 'bytes',

@@ -83,6 +83,8 @@ function makeSellOrder() {
       endName: '',
     },
     currentStatus: 0,
+    snapshotTreasuryBps: 0,
+    snapshotNodeBps: 0,
   };
 }
 
@@ -982,7 +984,9 @@ describe('P2P Logical Flow Tests', () => {
       );
 
       expect(acceptCtx._quoteToken.allowance).not.toHaveBeenCalled();
-      expect(acceptCtx._diamond.acceptP2POfferWithPickupNode).toHaveBeenCalled();
+      expect(
+        acceptCtx._diamond.acceptP2POfferWithPickupNode,
+      ).toHaveBeenCalled();
     });
   });
 });

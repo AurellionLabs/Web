@@ -1,5 +1,5 @@
 // Auto-generated from CLOBAdminFacet.sol - DO NOT EDIT
-// Generated at: 2026-03-09T15:35:48.983Z
+// Generated at: 2026-03-10T19:30:30.101Z
 
 export const CLOBAdminFacetABI = [
   {
@@ -55,6 +55,17 @@ export const CLOBAdminFacetABI = [
   {
     inputs: [],
     name: 'ReentrancyGuardReentrantCall',
+    type: 'error',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'token',
+        type: 'address',
+      },
+    ],
+    name: 'SafeERC20FailedOperation',
     type: 'error',
   },
   {

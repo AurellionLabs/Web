@@ -1752,6 +1752,19 @@
     {
       "inputs": [
         {
+          "internalType": "uint256",
+          "name": "cap",
+          "type": "uint256"
+        }
+      ],
+      "name": "setMaxNodesPerRegistrar",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "address",
           "name": "_admin",
           "type": "address"
@@ -3163,6 +3176,24 @@
     {
       "inputs": [
         {
+          "internalType": "bytes32",
+          "name": "orderId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "pickupNodeRef",
+          "type": "bytes32"
+        }
+      ],
+      "name": "acceptP2POfferWithPickupNode",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "address",
           "name": "driver",
           "type": "address"
@@ -3320,6 +3351,16 @@
               "internalType": "uint256",
               "name": "expiresAt",
               "type": "uint256"
+            },
+            {
+              "internalType": "uint16",
+              "name": "snapshotTreasuryBps",
+              "type": "uint16"
+            },
+            {
+              "internalType": "uint16",
+              "name": "snapshotNodeBps",
+              "type": "uint16"
             }
           ],
           "internalType": "struct DiamondStorage.AuSysOrder",
@@ -3565,6 +3606,19 @@
     {
       "inputs": [
         {
+          "internalType": "uint256",
+          "name": "maxIterations",
+          "type": "uint256"
+        }
+      ],
+      "name": "pruneExpiredOffers",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "bytes32",
           "name": "orderId",
           "type": "bytes32"
@@ -3605,6 +3659,16 @@
     {
       "inputs": [],
       "name": "InvalidCaller",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "JourneyAlreadyClosed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "JourneyNotFound",
       "type": "error"
     },
     {
@@ -3686,6 +3750,44 @@
         }
       ],
       "name": "AuSysOrderStatusUpdated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "FundsRefunded",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "journeyId",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "canceledBy",
+          "type": "address"
+        }
+      ],
+      "name": "JourneyCanceled",
       "type": "event"
     },
     {
@@ -3890,6 +3992,19 @@
       "type": "function"
     },
     {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "journeyId",
+          "type": "bytes32"
+        }
+      ],
+      "name": "emergencyCancelJourney",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
       "inputs": [],
       "name": "getTreasuryAccrued",
       "outputs": [
@@ -3918,6 +4033,24 @@
         }
       ],
       "name": "revokeAuSysAdmin",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "internalType": "bool",
+          "name": "accepted",
+          "type": "bool"
+        }
+      ],
+      "name": "setAcceptedTokenContract",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -3967,6 +4100,19 @@
         }
       ],
       "name": "setDriver",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bool",
+          "name": "enabled",
+          "type": "bool"
+        }
+      ],
+      "name": "setERC1155WhitelistEnabled",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -4188,6 +4334,16 @@
               "internalType": "uint256",
               "name": "expiresAt",
               "type": "uint256"
+            },
+            {
+              "internalType": "uint16",
+              "name": "snapshotTreasuryBps",
+              "type": "uint16"
+            },
+            {
+              "internalType": "uint16",
+              "name": "snapshotNodeBps",
+              "type": "uint16"
             }
           ],
           "internalType": "struct DiamondStorage.AuSysOrder",
@@ -8630,6 +8786,25 @@
           "type": "address"
         }
       ],
+      "name": "OwnershipTransferStarted",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previousOwner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
       "name": "OwnershipTransferred",
       "type": "event"
     },
@@ -8654,9 +8829,29 @@
     },
     {
       "inputs": [],
+      "name": "RENOUNCE_DELAY",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "acceptOwnership",
       "outputs": [],
-      "stateMutability": "pure",
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "cancelRenounceOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -8708,6 +8903,11 @@
   ],
   "ERC1155ReceiverFacet": [
     {
+      "inputs": [],
+      "name": "TokenNotWhitelisted",
+      "type": "error"
+    },
+    {
       "inputs": [
         {
           "internalType": "address",
@@ -8743,7 +8943,7 @@
           "type": "bytes4"
         }
       ],
-      "stateMutability": "pure",
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -8782,7 +8982,7 @@
           "type": "bytes4"
         }
       ],
-      "stateMutability": "pure",
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -12568,6 +12768,11 @@
           "internalType": "uint256[]",
           "name": "amounts",
           "type": "uint256[]"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "nodeHash",
+          "type": "bytes32"
         },
         {
           "internalType": "bytes",

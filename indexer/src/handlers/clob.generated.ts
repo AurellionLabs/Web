@@ -1,5 +1,5 @@
 // Auto-generated handler for clob domain
-// Generated at: 2026-03-09T15:35:48.992Z
+// Generated at: 2026-03-10T19:30:30.104Z
 //
 // Inline aggregate writes: raw event insert + aggregate table upsert in ONE ponder.on() handler.
 // This avoids the Ponder 0.16 restriction: only one ponder.on() per event name is allowed.

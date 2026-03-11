@@ -1,5 +1,5 @@
 // Auto-generated from OrderRouterFacet.sol - DO NOT EDIT
-// Generated at: 2026-03-09T15:35:48.982Z
+// Generated at: 2026-03-10T19:30:30.101Z
 
 export const OrderRouterFacetABI = [
   {
@@ -34,6 +34,11 @@ export const OrderRouterFacetABI = [
   },
   {
     inputs: [],
+    name: 'NotNodeOperator',
+    type: 'error',
+  },
+  {
+    inputs: [],
     name: 'NotNodeOwner',
     type: 'error',
   },
@@ -45,6 +50,17 @@ export const OrderRouterFacetABI = [
   {
     inputs: [],
     name: 'ReentrancyGuardReentrantCall',
+    type: 'error',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'token',
+        type: 'address',
+      },
+    ],
+    name: 'SafeERC20FailedOperation',
     type: 'error',
   },
   {

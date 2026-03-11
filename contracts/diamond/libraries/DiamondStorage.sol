@@ -280,8 +280,22 @@ library DiamondStorage {
         uint16 treasuryFeeBps; // default 10 = 0.1% — always charged
         uint16 nodeFeeBps;     // default 10 = 0.1% — only charged when intermediate nodes present
 
+        // ======= AUDIT 2026-03-10 ADDITIONS =======
+        // M-05: Namespaced reentrancy guard (replaces OZ slot-0 guard)
+        uint256 reentrancyStatus; // 1 = not entered, 2 = entered
+
+        // L-03: Node registrar cap
+        uint256 maxNodesPerRegistrar; // 0 = unlimited (default)
+
+        // L-01: Renounce ownership timelock
+        uint256 pendingRenounceTimestamp; // 0 = no pending renounce
+
+        // L-06: ERC1155 receiver token whitelist
+        mapping(address => bool) acceptedTokenContracts;
+        bool erc1155WhitelistEnabled;
+
         // ======= RESERVED =======
-        uint256[50] __reserved1;
+        uint256[46] __reserved1;
         mapping(bytes32 => uint256) __reserved2;
     }
     
@@ -481,6 +495,9 @@ library DiamondStorage {
         bool isSellerInitiated;      // true = seller created offer, false = buyer created
         address targetCounterparty;  // address(0) = open to all, else specific address only
         uint256 expiresAt;           // 0 = no expiry, else unix timestamp
+        // H-04: Fee rate snapshot at creation time
+        uint16 snapshotTreasuryBps;
+        uint16 snapshotNodeBps;
     }
 
     /// @notice AuSys Journey (from AuSys.sol)

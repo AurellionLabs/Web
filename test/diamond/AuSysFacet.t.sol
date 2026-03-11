@@ -119,18 +119,9 @@ contract AuSysFacetTest is DiamondTestBase {
         sels[1] = AuSysFacet.cancelP2POffer.selector;
         sels[2] = AuSysFacet.handOff.selector;
 
-        IDiamondCut.FacetCut[] memory cut = new IDiamondCut.FacetCut[](1);
-        cut[0] = IDiamondCut.FacetCut({
-            facetAddress: address(auSysFacet),
-            action: IDiamondCut.FacetCutAction.Add,
-            functionSelectors: sels
-        });
-
-        vm.prank(owner);
-        DiamondCutFacet(address(diamond)).scheduleDiamondCut(cut, address(0), '');
-        vm.warp(block.timestamp + DiamondCutFacet(address(diamond)).getDiamondCutTimelock());
-        vm.prank(owner);
-        IDiamondCut(address(diamond)).diamondCut(cut, address(0), '');
+        vm.startPrank(owner);
+        _upsertFacet(address(auSysFacet), sels);
+        vm.stopPrank();
     }
 
     // ============================================================================
@@ -731,7 +722,9 @@ contract AuSysFacetTest is DiamondTestBase {
             contractualAgreement: bytes32(0),
             isSellerInitiated: false,
             targetCounterparty: address(0),
-            expiresAt: 0
+            expiresAt: 0,
+            snapshotTreasuryBps: 0,
+            snapshotNodeBps: 0
         });
     }
 

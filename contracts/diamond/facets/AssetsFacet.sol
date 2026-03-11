@@ -557,14 +557,28 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
 
     /**
      * @notice Batch mint tokens (owner only)
+     * @dev C-02: Accepts optional nodeHash to attribute sellable amounts.
+     *      Pass bytes32(0) to mint without node attribution.
+     * @param to Recipient address
+     * @param ids Token IDs to mint
+     * @param amounts Amounts per token ID
+     * @param nodeHash Node to attribute sellable amounts to (bytes32(0) = none)
+     * @param data Additional data for receiver
      */
     function mintBatch(
         address to,
         uint256[] memory ids,
         uint256[] memory amounts,
+        bytes32 nodeHash,
         bytes memory data
     ) external onlyOwner {
         _mintBatch(to, ids, amounts, data);
+        if (nodeHash != bytes32(0)) {
+            DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+            for (uint256 i = 0; i < ids.length; i++) {
+                _creditOwnerNodeSellable(s, to, ids[i], nodeHash, amounts[i]);
+            }
+        }
     }
 
     // ============================================================================
@@ -586,14 +600,20 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
     }
 
     /**
-     * @notice Remove a supported asset (tombstone pattern from AuraAsset.removeSupportedAsset)
+     * @notice Remove a supported asset (L-05: swap-and-pop instead of tombstone)
      */
     function removeSupportedAsset(DiamondStorage.AssetDefinition memory asset) external onlyOwner {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
 
         uint256 i = s.nameToSupportedAssetIndex[asset.name];
         require(i < s.supportedAssetNames.length, "OOB");
-        delete s.supportedAssetNames[i]; // Tombstone - leaves empty string
+        uint256 lastIdx = s.supportedAssetNames.length - 1;
+        if (i != lastIdx) {
+            string memory lastAsset = s.supportedAssetNames[lastIdx];
+            s.supportedAssetNames[i] = lastAsset;
+            s.nameToSupportedAssetIndex[lastAsset] = i;
+        }
+        s.supportedAssetNames.pop();
         delete s.nameToSupportedAssets[asset.name];
         delete s.nameToSupportedAssetIndex[asset.name];
     }
@@ -620,14 +640,20 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
     }
 
     /**
-     * @notice Remove a supported class (tombstone pattern from AuraAsset.removeSupportedClass)
+     * @notice Remove a supported class (L-05: swap-and-pop instead of tombstone)
      */
     function removeSupportedClass(string memory className) external onlyOwner {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
 
         uint256 i = s.nameToSupportedClassIndex[className];
         require(i < s.supportedClassNames.length, "OOB");
-        delete s.supportedClassNames[i];
+        uint256 lastIdx = s.supportedClassNames.length - 1;
+        if (i != lastIdx) {
+            string memory lastClass = s.supportedClassNames[lastIdx];
+            s.supportedClassNames[i] = lastClass;
+            s.nameToSupportedClassIndex[lastClass] = i;
+        }
+        s.supportedClassNames.pop();
         delete s.nameToSupportedClass[className];
         delete s.nameToSupportedClassIndex[className];
         s.isClassActive[keccak256(abi.encode(className))] = false;
@@ -805,6 +831,9 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
         _doSafeBatchTransferAcceptanceCheck(msg.sender, from, to, ids, amounts, data);
     }
 
+    // NOTE: In Diamond delegatecall context, msg.sender is the EOA, not
+    // necessarily an EIP-1155 "approved operator". This is acceptable
+    // because all mint/burn paths are access-controlled upstream.
     function _mint(address to, uint256 id, uint256 amount, bytes memory data) internal {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
 
