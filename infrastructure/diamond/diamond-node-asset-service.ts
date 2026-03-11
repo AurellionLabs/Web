@@ -146,6 +146,62 @@ export class DiamondNodeAssetService implements INodeAssetService {
       );
       await mintTx.wait();
 
+      // Register (or update capacity for) the tokenId in the node's asset metadata
+      // registry so the node dashboard can display it. The nodeAssets mapping is
+      // populated by NodesFacet.addSupportedAsset; addNodeItem does not call it.
+      try {
+        const diamondAddress = await diamond.getAddress();
+        const existingAssets = await diamond.getNodeAssets(nodeHash);
+        const alreadyRegistered = existingAssets.some(
+          (a: any) => a.tokenId.toString() === tokenId.toString(),
+        );
+
+        if (!alreadyRegistered) {
+          // First mint of this tokenId for this node — register it
+          const registerTx = await diamond.addSupportedAsset(
+            nodeHash,
+            diamondAddress,
+            tokenId,
+            0n, // price = 0 initially; set separately via updateAssetPrice
+            BigInt(amount),
+          );
+          await registerTx.wait();
+        } else {
+          // TokenId already registered — increment the stored capacity
+          const updatedTokens: string[] = [];
+          const updatedTokenIds: bigint[] = [];
+          const updatedPrices: bigint[] = [];
+          const updatedCapacities: bigint[] = [];
+
+          for (const a of existingAssets) {
+            updatedTokens.push(a.token);
+            updatedTokenIds.push(BigInt(a.tokenId));
+            updatedPrices.push(BigInt(a.price));
+            updatedCapacities.push(
+              a.tokenId.toString() === tokenId.toString()
+                ? BigInt(a.capacity) + BigInt(amount)
+                : BigInt(a.capacity),
+            );
+          }
+
+          const updateTx = await diamond.updateSupportedAssets(
+            nodeHash,
+            updatedTokens,
+            updatedTokenIds,
+            updatedPrices,
+            updatedCapacities,
+          );
+          await updateTx.wait();
+        }
+      } catch (registryErr) {
+        // Non-fatal: tokens are minted and custody is correct.
+        // Dashboard may not reflect the new asset until manually registered.
+        console.warn(
+          '[DiamondNodeAssetService] Asset registry update failed (non-fatal):',
+          registryErr,
+        );
+      }
+
       // Upload metadata to IPFS/Pinata so node dashboard can resolve it.
       // Mirrors the old uploadMetadataToIPFS() from node-asset.service.ts
       if (this.pinata) {
