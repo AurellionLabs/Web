@@ -1,5 +1,5 @@
 // Auto-generated handler for bridge domain
-// Generated at: 2026-03-10T19:30:30.104Z
+// Generated at: 2026-03-11T00:43:03.886Z
 //
 // Inline aggregate writes: raw event insert + aggregate table upsert in ONE ponder.on() handler.
 // This avoids the Ponder 0.16 restriction: only one ponder.on() per event name is allowed.
@@ -14,7 +14,6 @@ import {
   diamondBridgeOrderCancelledEvents,
   diamondFundsEscrowedEvents,
   diamondFundsRefundedEvents,
-  diamondJourneyDriverAssignedEvents,
   diamondJourneyStatusUpdatedEvents,
   diamondLogisticsOrderCreatedEvents,
   diamondOrderSettledEvents,
@@ -133,27 +132,6 @@ ponder.on('Diamond:FundsRefunded', async ({ event, context }) => {
     id: id,
     recipient: recipient,
     amount: amount,
-    block_number: event.block.number,
-    block_timestamp: BigInt(event.block.timestamp),
-    transaction_hash: event.transaction.hash,
-  });
-});
-
-/**
- * Handle JourneyDriverAssigned event from BridgeFacet
- * Signature: JourneyDriverAssigned(bytes32,bytes32,address)
- * Hash: 0xd5aac137
- */
-ponder.on('Diamond:JourneyDriverAssigned', async ({ event, context }) => {
-  const { unifiedOrderId, journeyId, driver } = event.args;
-  const id = eventId(event.transaction.hash, event.log.logIndex);
-
-  // Raw event insert
-  await context.db.insert(diamondJourneyDriverAssignedEvents).values({
-    id: id,
-    unified_order_id: unifiedOrderId,
-    journey_id: journeyId,
-    driver: driver,
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,
