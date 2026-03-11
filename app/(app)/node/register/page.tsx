@@ -189,6 +189,18 @@ export default function NodeRegistrationPage() {
         return;
       }
 
+      // Ensure lat/lng were set by the Places autocomplete.
+      // They pass Zod's regex but may still be empty if the user typed
+      // a location without selecting from the dropdown.
+      if (!values.lat || !values.lng) {
+        form.setError('addressName', {
+          type: 'manual',
+          message:
+            'Please select a location from the dropdown to set coordinates.',
+        });
+        return;
+      }
+
       const walletAddress = await getCurrentWalletAddress();
       if (!walletAddress) {
         toast({
