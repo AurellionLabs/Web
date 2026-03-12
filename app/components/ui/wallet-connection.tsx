@@ -40,6 +40,12 @@ const usdcContractAddresses: Record<number, string | undefined> = {
 // ---------------------------------------------------------------------------
 function WalletConnectionE2E() {
   const { address, isReady } = useE2EAuth();
+  const { setIsWalletConnected } = useMainProvider();
+
+  useEffect(() => {
+    setIsWalletConnected(isReady && !!address);
+  }, [isReady, address, setIsWalletConnected]);
+
   if (!isReady || !address) return null;
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-white/5 border border-white/10 text-sm text-white/80 font-mono">

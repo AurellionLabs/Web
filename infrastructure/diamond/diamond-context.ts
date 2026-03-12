@@ -54,6 +54,30 @@ export class DiamondContext {
   }
 
   /**
+   * Initialize with a pre-built signer + JsonRpcProvider (e.g. E2E test wallet).
+   * Avoids requiring a BrowserProvider when one is not available.
+   */
+  async initializeWithSigner(
+    signer: ethers.Signer,
+    provider: ethers.JsonRpcProvider,
+  ): Promise<void> {
+    this.provider = provider;
+    this.signer = signer;
+
+    const network = await provider.getNetwork();
+    this.chainId = Number(network.chainId);
+
+    this.diamond = new ethers.Contract(
+      NEXT_PUBLIC_DIAMOND_ADDRESS,
+      DIAMOND_ABI,
+      this.signer,
+    );
+
+    this.initialized = true;
+    this.readOnly = false;
+  }
+
+  /**
    * Initialize the context in read-only mode using a public RPC provider
    * This allows reading data without a connected wallet
    */

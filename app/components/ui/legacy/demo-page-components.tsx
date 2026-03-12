@@ -200,10 +200,18 @@ function TrapButton({
   children,
   variant = 'gold',
   onClick,
+  type = 'button',
+  disabled = false,
+  className = '',
+  size,
 }: {
   children: React.ReactNode;
   variant?: 'gold' | 'crimson' | 'emerald';
   onClick?: () => void;
+  type?: 'button' | 'submit' | 'reset';
+  disabled?: boolean;
+  className?: string;
+  size?: string;
 }) {
   const colors = {
     gold: 'bg-gold/12 text-gold hover:bg-gold/20 border-gold/30',
@@ -213,8 +221,10 @@ function TrapButton({
   };
   return (
     <button
+      type={type}
       onClick={onClick}
-      className={`relative px-8 py-3 font-mono text-xs tracking-[0.15em] uppercase font-bold transition-all duration-300 border ${colors[variant]}`}
+      disabled={disabled}
+      className={`relative px-8 py-3 font-mono text-xs tracking-[0.15em] uppercase font-bold transition-all duration-300 border ${colors[variant]} disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
       style={{ clipPath: 'polygon(8% 0%, 100% 0%, 92% 100%, 0% 100%)' }}
     >
       {children}
