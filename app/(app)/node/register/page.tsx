@@ -180,12 +180,6 @@ export default function NodeRegistrationPage() {
   }, []);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log('[register] onSubmit fired', {
-      connected,
-      lat: values.lat,
-      lng: values.lng,
-      assets: values.supportedAssets,
-    });
     try {
       if (!connected) {
         toast({
