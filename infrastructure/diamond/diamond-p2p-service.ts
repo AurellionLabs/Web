@@ -399,6 +399,11 @@ export class DiamondP2PService implements IP2PService {
       // Fee snapshots (set by contract, pass 0)
       snapshotTreasuryBps: 0,
       snapshotNodeBps: 0,
+      // Source node: for sell offers, pin to the seller's chosen pickup node so
+      // escrow debit targets only that node. For buy offers, set at accept time.
+      sellerNode: input.isSellOffer
+        ? input.pickupNodeRef || ethers.ZeroHash
+        : ethers.ZeroHash,
     };
 
     try {

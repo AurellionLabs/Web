@@ -3120,6 +3120,11 @@ export const DIAMOND_ABI: any[] = [
             name: 'snapshotNodeBps',
             type: 'uint16',
           },
+          {
+            internalType: 'bytes32',
+            name: 'sellerNode',
+            type: 'bytes32',
+          },
         ],
         internalType: 'struct DiamondStorage.AuSysOrder',
         name: 'order',
@@ -3816,6 +3821,11 @@ export const DIAMOND_ABI: any[] = [
             internalType: 'uint16',
             name: 'snapshotNodeBps',
             type: 'uint16',
+          },
+          {
+            internalType: 'bytes32',
+            name: 'sellerNode',
+            type: 'bytes32',
           },
         ],
         internalType: 'struct DiamondStorage.AuSysOrder',
