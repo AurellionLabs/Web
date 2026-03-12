@@ -1034,6 +1034,14 @@ contract AuSysFacet is DiamondReentrancyGuard {
         O.currentStatus = OrderStatus.AUSYS_SETTLED;
         emit AuSysOrderStatusUpdated(orderId, OrderStatus.AUSYS_SETTLED);
 
+        // Release seller's node custody immediately at settlement — the physical asset
+        // has left the node regardless of what the buyer does with the token.
+        // decrementTotal=false: ERC1155 still exists (held in Diamond escrow), global total
+        // only decrements when the buyer explicitly burns the token.
+        if (O.token == address(this)) {
+            _releaseCustodyFromEscrowSnapshot(s, orderId, O.seller, O.tokenId, O.tokenQuantity, false);
+        }
+
         // Hold tokens in escrow — buyer chooses destination via selectTokenDestination
         s.pendingTokenDestination[orderId] = true;
         s.pendingTokenBuyer[orderId] = O.buyer;
@@ -1097,9 +1105,14 @@ contract AuSysFacet is DiamondReentrancyGuard {
 
         if (burn) {
             IERC1155(O.token).safeTransferFrom(address(this), address(0xdead), O.tokenId, O.tokenQuantity, '');
-            // Custody fully released — tokens destroyed.
+            // Seller custody was already released at settlement (_settleOrder).
+            // Only the global tokenCustodyAmount needs to drop now — token is destroyed.
             if (O.token == address(this)) {
-                _releaseCustodyFromEscrowSnapshot(s, orderId, O.seller, O.tokenId, O.tokenQuantity, true);
+                uint256 tId = O.tokenId;
+                uint256 qty = O.tokenQuantity;
+                s.tokenCustodyAmount[tId] = s.tokenCustodyAmount[tId] >= qty
+                    ? s.tokenCustodyAmount[tId] - qty
+                    : 0;
             }
             emit TokenDestinationSelected(orderId, address(0xdead), bytes32(0), true);
         } else {
@@ -1109,11 +1122,8 @@ contract AuSysFacet is DiamondReentrancyGuard {
             if (node.owner != msg.sender) revert NotNodeOwner();
             if (O.token == address(this)) {
                 _creditOwnerNodeSellable(s, node.owner, O.tokenId, nodeId, O.tokenQuantity);
-                // Transfer custody: release from seller's node(s), attribute to buyer's node.
-                // This keeps tokenNodeCustodyAmounts and tokenCustodianAmounts accurate so
-                // that getNodeCustodyInfo / getCustodyInfo reflect live obligations, not stale
-                // minted-amount-forever values.
-                _releaseCustodyFromEscrowSnapshot(s, orderId, O.seller, O.tokenId, O.tokenQuantity, false);
+                // Seller custody was already released at settlement (_settleOrder).
+                // Just attribute custody to the buyer's chosen node.
                 _attributeCustodyToNode(s, node.owner, O.tokenId, nodeId, O.tokenQuantity);
             }
             IERC1155(O.token).safeTransferFrom(address(this), node.owner, O.tokenId, O.tokenQuantity, '');
