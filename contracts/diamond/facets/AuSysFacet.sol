@@ -295,6 +295,8 @@ contract AuSysFacet is DiamondReentrancyGuard {
         // H-04: Snapshot fee rates at creation time
         newOrder.snapshotTreasuryBps = s.treasuryFeeBps;
         newOrder.snapshotNodeBps = s.nodeFeeBps;
+        // Source node — must be set by caller so debit targets the correct node
+        newOrder.sellerNode = order.sellerNode;
 
         if (order.nodes.length > MAX_NODES_PER_ORDER) revert ArrayLimitExceeded();
         uint256 nodeCount = order.nodes.length;
@@ -316,7 +318,8 @@ contract AuSysFacet is DiamondReentrancyGuard {
                     id,
                     msg.sender,
                     order.tokenId,
-                    order.tokenQuantity
+                    order.tokenQuantity,
+                    order.sellerNode  // pin to the seller's chosen node
                 );
             }
             IERC1155(order.token).safeTransferFrom(
@@ -455,6 +458,7 @@ contract AuSysFacet is DiamondReentrancyGuard {
             if (!enforcePickupNode) revert NodeRequired();
             _persistSelectedPickupNode(s, order, pickupNodeRef);
             order.seller = msg.sender;
+            order.sellerNode = pickupNodeRef;  // record which node the seller fulfils from
         }
 
         // ── INTERACTIONS ─────────────────────────────────────────────────────
@@ -476,7 +480,8 @@ contract AuSysFacet is DiamondReentrancyGuard {
                     orderId,
                     msg.sender,
                     order.tokenId,
-                    order.tokenQuantity
+                    order.tokenQuantity,
+                    pickupNodeRef  // pin debit to the seller's chosen node
                 );
             }
         }
@@ -912,7 +917,8 @@ contract AuSysFacet is DiamondReentrancyGuard {
                         orderId,
                         O.seller,
                         O.tokenId,
-                        O.tokenQuantity
+                        O.tokenQuantity,
+                        O.sellerNode  // pin to seller's recorded node
                     );
                 }
                 IERC1155(O.token).safeTransferFrom(
@@ -1213,32 +1219,48 @@ contract AuSysFacet is DiamondReentrancyGuard {
         bytes32 orderId,
         address owner,
         uint256 tokenId,
-        uint256 amount
+        uint256 amount,
+        bytes32 pinNode  // if non-zero, debit ONLY this node (no cross-node spill)
     ) internal {
-        bytes32[] storage trackedNodes = s.ownerTokenSellableNodes[owner][tokenId];
         uint256 remaining = amount;
 
-        for (uint256 i = 0; i < trackedNodes.length && remaining > 0; i++) {
-            bytes32 nodeHash = trackedNodes[i];
-            uint256 nodeAmount = s.ownerNodeSellableAmounts[owner][tokenId][nodeHash];
-            if (nodeAmount == 0) continue;
+        if (pinNode != bytes32(0)) {
+            // Pinned mode: debit exclusively from the seller's specified node.
+            // Prevents silently draining a different node when the operator has multiple.
+            uint256 nodeAmount = s.ownerNodeSellableAmounts[owner][tokenId][pinNode];
+            if (nodeAmount < amount) revert ExceedsNodeSellableAmount();
+            s.ownerNodeSellableAmounts[owner][tokenId][pinNode] -= amount;
+            remaining = 0;
 
-            uint256 debited = nodeAmount > remaining ? remaining : nodeAmount;
-            s.ownerNodeSellableAmounts[owner][tokenId][nodeHash] -= debited;
-            remaining -= debited;
-
-            if (!s.ausysOrderEscrowNodeSeen[orderId][nodeHash]) {
-                s.ausysOrderEscrowNodeSeen[orderId][nodeHash] = true;
-                s.ausysOrderEscrowNodes[orderId].push(nodeHash);
+            if (!s.ausysOrderEscrowNodeSeen[orderId][pinNode]) {
+                s.ausysOrderEscrowNodeSeen[orderId][pinNode] = true;
+                s.ausysOrderEscrowNodes[orderId].push(pinNode);
             }
-            s.ausysOrderEscrowNodeDebits[orderId][nodeHash] += debited;
+            s.ausysOrderEscrowNodeDebits[orderId][pinNode] += amount;
+        } else {
+            // Legacy/fallback: spread across tracked nodes in registration order.
+            // Only used for non-node (external token) orders or legacy callers.
+            bytes32[] storage trackedNodes = s.ownerTokenSellableNodes[owner][tokenId];
+            for (uint256 i = 0; i < trackedNodes.length && remaining > 0; i++) {
+                bytes32 nodeHash = trackedNodes[i];
+                uint256 nodeAmount = s.ownerNodeSellableAmounts[owner][tokenId][nodeHash];
+                if (nodeAmount == 0) continue;
+
+                uint256 debited = nodeAmount > remaining ? remaining : nodeAmount;
+                s.ownerNodeSellableAmounts[owner][tokenId][nodeHash] -= debited;
+                remaining -= debited;
+
+                if (!s.ausysOrderEscrowNodeSeen[orderId][nodeHash]) {
+                    s.ausysOrderEscrowNodeSeen[orderId][nodeHash] = true;
+                    s.ausysOrderEscrowNodes[orderId].push(nodeHash);
+                }
+                s.ausysOrderEscrowNodeDebits[orderId][nodeHash] += debited;
+            }
+            if (remaining > 0) revert ExceedsNodeSellableAmount();
         }
 
-        if (remaining > 0) revert ExceedsNodeSellableAmount();
-
         // Node custody drops at escrow creation — the physical asset is now committed
-        // to a buyer and is no longer freely available on the node. Decrement
-        // tokenNodeCustodyAmounts and tokenCustodianAmounts immediately.
+        // to a buyer and is no longer freely available on the node.
         // decrementTotal=false: ERC1155 still exists (locked in Diamond), global
         // tokenCustodyAmount only drops if/when the buyer burns the token later.
         _releaseCustodyFromEscrowSnapshot(s, orderId, owner, tokenId, amount, false);

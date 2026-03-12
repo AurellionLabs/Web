@@ -105,7 +105,8 @@ contract AuSysLifecycleHandler is Test {
             targetCounterparty: address(0),
             expiresAt: expiresAt,
             snapshotTreasuryBps: 0,
-            snapshotNodeBps: 0
+            snapshotNodeBps: 0,
+            sellerNode: bytes32(0)
         });
 
         vm.prank(seller);
@@ -574,7 +575,8 @@ contract AuSysLifecycleFuzzTest is DiamondTestBase {
             targetCounterparty: address(0),
             expiresAt: expiresAt,
             snapshotTreasuryBps: 0,
-            snapshotNodeBps: 0
+            snapshotNodeBps: 0,
+            sellerNode: bytes32(0)
         });
 
         vm.prank(seller);
@@ -609,7 +611,8 @@ contract AuSysLifecycleFuzzTest is DiamondTestBase {
             targetCounterparty: address(0),
             expiresAt: 0,
             snapshotTreasuryBps: 0,
-            snapshotNodeBps: 0
+            snapshotNodeBps: 0,
+            sellerNode: bytes32(0)
         });
 
         vm.prank(buyer);

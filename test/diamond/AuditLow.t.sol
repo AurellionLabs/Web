@@ -267,7 +267,8 @@ contract AuditLowTest is DiamondTestBase {
             targetCounterparty: address(0),
             expiresAt: 0,
             snapshotTreasuryBps: 0,
-            snapshotNodeBps: 0
+            snapshotNodeBps: 0,
+            sellerNode: bytes32(0)
         });
 
         vm.prank(seller);

@@ -114,7 +114,8 @@ contract AuSysTokenDestinationTest is DiamondTestBase {
             targetCounterparty: address(0),
             expiresAt: 0,
             snapshotTreasuryBps: 0,
-            snapshotNodeBps: 0
+            snapshotNodeBps: 0,
+            sellerNode: bytes32(0)
         });
 
         // Buyer creates order — escrows payToken (price + txFee)
@@ -374,7 +375,8 @@ contract AuSysTokenDestinationTest is DiamondTestBase {
             targetCounterparty: address(0),
             expiresAt: 0,
             snapshotTreasuryBps: 0,
-            snapshotNodeBps: 0
+            snapshotNodeBps: 0,
+            sellerNode: bytes32(0)
         });
 
         vm.startPrank(buyer);
@@ -451,7 +453,8 @@ contract AuSysTokenDestinationTest is DiamondTestBase {
             targetCounterparty: address(0),
             expiresAt: 0,
             snapshotTreasuryBps: 0,
-            snapshotNodeBps: 0
+            snapshotNodeBps: 0,
+            sellerNode: bytes32(0)
         });
 
         vm.startPrank(buyer);
@@ -528,7 +531,8 @@ contract AuSysTokenDestinationTest is DiamondTestBase {
             targetCounterparty: address(0),
             expiresAt: 0,
             snapshotTreasuryBps: 0,
-            snapshotNodeBps: 0
+            snapshotNodeBps: 0,
+            sellerNode: bytes32(0)
         });
 
         vm.prank(seller);
@@ -578,7 +582,8 @@ contract AuSysTokenDestinationTest is DiamondTestBase {
             targetCounterparty: address(0),
             expiresAt: 0,
             snapshotTreasuryBps: 0,
-            snapshotNodeBps: 0
+            snapshotNodeBps: 0,
+            sellerNode: bytes32(0)
         });
 
         vm.prank(seller);
@@ -632,7 +637,8 @@ contract AuSysTokenDestinationTest is DiamondTestBase {
             targetCounterparty: address(0),
             expiresAt: 0,
             snapshotTreasuryBps: 0,
-            snapshotNodeBps: 0
+            snapshotNodeBps: 0,
+            sellerNode: bytes32(0)
         });
 
         vm.startPrank(buyer);

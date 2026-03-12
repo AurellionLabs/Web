@@ -498,6 +498,9 @@ library DiamondStorage {
         // H-04: Fee rate snapshot at creation time
         uint16 snapshotTreasuryBps;
         uint16 snapshotNodeBps;
+        // Source node: the specific node the seller is fulfilling this order from.
+        // Used by _debitOwnerSellableForEscrow to debit the correct node only.
+        bytes32 sellerNode;
     }
 
     /// @notice AuSys Journey (from AuSys.sol)
