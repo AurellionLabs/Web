@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { useWallet } from '@/hooks/useWallet';
 import { useMainProvider } from './main.provider';
+import { useE2EAuth } from './e2e-auth.provider';
 import {
   DiamondContext,
   getDiamondContext,
@@ -165,6 +166,9 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
   const { connectedWallet, address, isConnected } = useWallet();
   const { connected: mainConnected } = useMainProvider();
   const IS_E2E = process.env.NEXT_PUBLIC_E2E_TEST_MODE === 'true';
+  // E2E signer comes directly from E2EAuthProvider — do NOT go through
+  // RepositoryContext.getSigner() which requires full initialization first.
+  const { signer: e2eSigner, provider: e2eProvider } = useE2EAuth();
 
   // Track if we're in read-only mode
   const [isReadOnly, setIsReadOnly] = useState(false);
@@ -200,21 +204,13 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
         const context = getDiamondContext();
 
         if (IS_E2E) {
-          // E2E mode: use the server-side test signer from RepositoryContext.
-          // RepositoryContext is seeded by RepositoryProviderE2E once E2E auth is
-          // ready — mainConnected is our signal that it's safe to read the signer.
-          if (!mainConnected) {
+          // E2E mode: signer comes directly from E2EAuthProvider (no RepositoryContext needed).
+          // mainConnected is set by WalletConnectionE2E once E2EAuthProvider is ready.
+          if (!mainConnected || !e2eSigner || !e2eProvider) {
             setLoading(false);
-            return; // Wait for WalletConnectionE2E to set connected=true
+            return; // Wait for E2EAuthProvider to finish initializing
           }
-          const repoCtx = (
-            await import('@/infrastructure/contexts/repository-context')
-          ).RepositoryContext.getInstance();
-          const e2eSigner = repoCtx.getSigner();
-          const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL_84532 || '';
-          const { ethers: e } = await import('ethers');
-          const jsonProvider = new e.JsonRpcProvider(rpcUrl);
-          await context.initializeWithSigner(e2eSigner, jsonProvider);
+          await context.initializeWithSigner(e2eSigner, e2eProvider);
           setIsReadOnly(false);
         } else if (isConnected && connectedWallet && address) {
           // Full initialization with wallet signer
@@ -275,6 +271,8 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     diamondContext,
     isReadOnly,
     mainConnected, // re-run when E2E wallet signals ready
+    e2eSigner, // re-run when E2E signer becomes available
+    e2eProvider, // re-run when E2E provider becomes available
   ]);
 
   // Node operations

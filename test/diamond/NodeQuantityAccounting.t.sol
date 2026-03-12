@@ -254,6 +254,66 @@ contract NodeQuantityAccountingTest is DiamondTestBase {
     // SECTION 7 — Multi-node (same asset class): balances don't bleed between nodes
     // =========================================================================
 
+    // -------------------------------------------------------------------------
+    // KEY SCENARIO: One operator, two nodes, same tokenId
+    //   nodeOwnerA owns BOTH nodeA and nodeA2.
+    //   Verifies that:
+    //     (a) per-node custody is independently tracked
+    //     (b) wallet-level custody aggregates correctly
+    //     (c) redemption from nodeA doesn't affect nodeA2 custody
+    //     (d) after full redemption from both nodes, all custody ledgers hit zero
+    // -------------------------------------------------------------------------
+    function test_MultiNode_SameOperator_PerNodeIsolation() public {
+        uint256 amountA  = 1000;
+        uint256 amountA2 = 500;
+
+        // Same operator (nodeOwnerA) mints the same asset at two different nodes
+        _nodeMintForNode(nodeOwnerA, buyer, amountA,  nodeA);
+        _nodeMintForNode(nodeOwnerA, buyer, amountA2, nodeA2);
+
+        // ── Per-node custody is isolated ──────────────────────────────────────
+        assertEq(AssetsFacet(address(diamond)).getNodeCustodyInfo(tokenId, nodeA),  amountA,
+            "nodeA custody contaminated by nodeA2 mint");
+        assertEq(AssetsFacet(address(diamond)).getNodeCustodyInfo(tokenId, nodeA2), amountA2,
+            "nodeA2 custody contaminated by nodeA mint");
+
+        // ── Wallet-level custody is the SUM across both nodes ─────────────────
+        assertEq(
+            AssetsFacet(address(diamond)).getCustodyInfo(tokenId, nodeOwnerA),
+            amountA + amountA2,
+            "wallet custody should be sum of both nodes"
+        );
+
+        // ── ERC1155 and supply checks ─────────────────────────────────────────
+        assertEq(AssetsFacet(address(diamond)).totalSupply(tokenId), amountA + amountA2);
+        assertEq(AssetsFacet(address(diamond)).balanceOf(buyer, tokenId), amountA + amountA2);
+
+        // ── Redeem from nodeA only — nodeA2 must be untouched ─────────────────
+        vm.prank(buyer);
+        AssetsFacet(address(diamond)).redeemFromNode(tokenId, amountA, nodeOwnerA, nodeA);
+
+        assertEq(AssetsFacet(address(diamond)).getNodeCustodyInfo(tokenId, nodeA), 0,
+            "nodeA custody should be 0 after full redemption");
+        assertEq(AssetsFacet(address(diamond)).getNodeCustodyInfo(tokenId, nodeA2), amountA2,
+            "nodeA2 custody must NOT change when nodeA is redeemed");
+        assertEq(
+            AssetsFacet(address(diamond)).getCustodyInfo(tokenId, nodeOwnerA),
+            amountA2,
+            "wallet custody should drop by amountA only"
+        );
+
+        // ── Redeem from nodeA2 — everything hits zero ─────────────────────────
+        vm.prank(buyer);
+        AssetsFacet(address(diamond)).redeemFromNode(tokenId, amountA2, nodeOwnerA, nodeA2);
+
+        assertEq(AssetsFacet(address(diamond)).getNodeCustodyInfo(tokenId, nodeA2), 0,
+            "nodeA2 custody should be 0 after full redemption");
+        assertEq(AssetsFacet(address(diamond)).getCustodyInfo(tokenId, nodeOwnerA), 0,
+            "wallet custody should be 0 after both redemptions");
+        assertEq(AssetsFacet(address(diamond)).totalSupply(tokenId), 0,
+            "total supply should be 0 - all tokens burned");
+    }
+
     function test_MultiNode_SameAsset_IndependentBalances() public {
         uint256 amountA  = 1000;
         uint256 amountA2 = 500;
