@@ -387,21 +387,24 @@ export class DiamondNodeRepository implements NodeRepository {
         return null;
       }
 
-      // Keep node-level capacity consistent with the dashboard asset read model:
-      // display at least live custody even if registered capacity is lower.
+      // Use live on-chain tokenNodeCustodyAmounts as capacity source of truth.
+      // nodeAssets.capacity is set at mint time and never decrements on sales or
+      // redemptions — using it as a floor permanently overstates capacity after any
+      // settled order. Live custody is authoritative.
       const nodeAssets = await diamond.getNodeAssets(nodeHash);
       const assets: NodeAsset[] = await Promise.all(
         nodeAssets.map(async (asset: any) => {
           const tokenId = BigInt(asset.tokenId.toString());
-          const registeredCapacity = BigInt(asset.capacity.toString());
           const custodyAmount = await diamond.getNodeCustodyInfo(
             tokenId,
             nodeHash,
           );
+          // Live custody IS the capacity — don't use registeredCapacity as floor.
+          // If custody somehow reads 0 for a newly-minted token (race before first
+          // settlement), fall back to registeredCapacity only in that case.
+          const registeredCapacity = BigInt(asset.capacity.toString());
           const effectiveCapacity =
-            custodyAmount > registeredCapacity
-              ? custodyAmount
-              : registeredCapacity;
+            custodyAmount > 0n ? custodyAmount : registeredCapacity;
 
           return {
             token: asset.token,
@@ -515,11 +518,10 @@ export class DiamondNodeRepository implements NodeRepository {
             nodeHash,
           );
 
+          // Live custody is source of truth — registeredCapacity never decrements
           const registeredCapacity = BigInt(nodeAsset.capacity.toString());
           const effectiveCapacity =
-            custodyAmount > registeredCapacity
-              ? custodyAmount
-              : registeredCapacity;
+            custodyAmount > 0n ? custodyAmount : registeredCapacity;
 
           return {
             id: tokenId,

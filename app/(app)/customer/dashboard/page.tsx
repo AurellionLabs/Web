@@ -76,7 +76,7 @@ import { formatTokenAmount } from '@/lib/formatters';
 import { getJourneyRoleConflictMessage } from '@/utils/journey-role-conflicts';
 
 type SortConfig = {
-  key: 'tokenQuantity' | 'price' | null;
+  key: 'tokenQuantity' | 'price' | 'createdAt' | null;
   direction: 'asc' | 'desc';
 };
 
@@ -204,10 +204,10 @@ export default function CustomerDashboard() {
     status: 'all',
   });
 
-  // Sort state
+  // Sort state — default newest first
   const [sortConfig, setSortConfig] = useState<SortConfig>({
-    key: null,
-    direction: 'asc',
+    key: 'createdAt',
+    direction: 'desc',
   });
 
   // Pagination state
@@ -275,19 +275,25 @@ export default function CustomerDashboard() {
   const sortedOrders = [...filteredOrders].sort((a, b) => {
     if (sortConfig.key === null) return 0;
 
-    const aValue =
-      sortConfig.key === 'price'
-        ? parseFloat(a[sortConfig.key])
-        : a[sortConfig.key];
-    const bValue =
-      sortConfig.key === 'price'
-        ? parseFloat(b[sortConfig.key])
-        : b[sortConfig.key];
+    // Coerce to a comparable number/string based on sort key
+    let aVal: number | string;
+    let bVal: number | string;
+
+    if (sortConfig.key === 'price') {
+      aVal = parseFloat((a.price ?? '0') as string);
+      bVal = parseFloat((b.price ?? '0') as string);
+    } else if (sortConfig.key === 'createdAt') {
+      aVal = Number(a.createdAt ?? 0);
+      bVal = Number(b.createdAt ?? 0);
+    } else {
+      aVal = ((a as Record<string, unknown>)[sortConfig.key] as string) ?? '';
+      bVal = ((b as Record<string, unknown>)[sortConfig.key] as string) ?? '';
+    }
 
     if (sortConfig.direction === 'asc') {
-      return aValue > bValue ? 1 : -1;
+      return aVal > bVal ? 1 : -1;
     } else {
-      return aValue < bValue ? 1 : -1;
+      return aVal < bVal ? 1 : -1;
     }
   });
 
