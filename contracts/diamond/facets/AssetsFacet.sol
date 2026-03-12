@@ -346,8 +346,9 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
         // Mint tokens
         _mint(account, tokenID, amount, data);
 
-        // Establish custody - track per-custodian (wallet) amounts
-        s.tokenCustodianAmounts[tokenID][account] += amount;
+        // Establish custody - track per-custodian (wallet) amounts.
+        // msg.sender is the node owner (custodian) — account is the recipient/buyer.
+        s.tokenCustodianAmounts[tokenID][msg.sender] += amount;
         s.tokenCustodyAmount[tokenID] += amount;
 
         // Track per-node custody for multi-node wallets

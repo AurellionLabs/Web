@@ -225,6 +225,8 @@ abstract contract DiamondTestBase is Test {
         _initReentrancyGuard();
         AuSysAdminFacet(address(diamond)).setPayToken(address(payToken));
         BridgeFacet(address(diamond)).setQuoteTokenAddress(address(quoteToken));
+        // The Diamond itself IS the ERC1155 (AssetsFacet) — point auraAssetAddress at itself.
+        NodesFacet(address(diamond)).setAuraAssetAddress(address(diamond));
         NodesFacet(address(diamond)).setNodeRegistrar(nodeOperator, true);
         NodesFacet(address(diamond)).setNodeRegistrar(user1, true);
         NodesFacet(address(diamond)).setNodeRegistrar(user2, true);
@@ -336,7 +338,7 @@ abstract contract DiamondTestBase is Test {
     }
 
     function _getNodesSelectors() internal pure returns (bytes4[] memory) {
-        bytes4[] memory selectors = new bytes4[](19);
+        bytes4[] memory selectors = new bytes4[](23);
         selectors[0] = NodesFacet.registerNode.selector;
         selectors[1] = NodesFacet.updateNode.selector;
         selectors[2] = NodesFacet.deactivateNode.selector;
@@ -356,6 +358,10 @@ abstract contract DiamondTestBase is Test {
         selectors[16] = NodesFacet.creditNodeTokens.selector;
         selectors[17] = NodesFacet.debitNodeTokens.selector;
         selectors[18] = NodesFacet.setMaxNodesPerRegistrar.selector;
+        selectors[19] = NodesFacet.transferTokensBetweenNodes.selector;
+        selectors[20] = NodesFacet.getNodeInventory.selector;
+        selectors[21] = NodesFacet.verifyTokenAccounting.selector;
+        selectors[22] = NodesFacet.setAuraAssetAddress.selector;
         return selectors;
     }
 
