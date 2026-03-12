@@ -401,7 +401,7 @@ abstract contract DiamondTestBase is Test {
     }
 
     function _getAuSysSelectors() internal pure returns (bytes4[] memory) {
-        bytes4[] memory selectors = new bytes4[](10);
+        bytes4[] memory selectors = new bytes4[](12);
         selectors[0] = AuSysFacet.createAuSysOrder.selector;
         selectors[1] = AuSysFacet.createJourney.selector;
         selectors[2] = AuSysFacet.createOrderJourney.selector;
@@ -412,6 +412,8 @@ abstract contract DiamondTestBase is Test {
         selectors[7] = AuSysFacet.acceptP2POffer.selector;
         selectors[8] = AuSysFacet.acceptP2POfferWithPickupNode.selector;
         selectors[9] = AuSysFacet.cancelP2POffer.selector;
+        selectors[10] = AuSysFacet.selectTokenDestination.selector;
+        selectors[11] = AuSysFacet.handOff.selector;
         return selectors;
     }
 

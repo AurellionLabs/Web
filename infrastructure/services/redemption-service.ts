@@ -36,7 +36,9 @@ export interface RedemptionResult {
 // Diamond AssetsFacet ABI subset for redemption (burns tokens and releases custody)
 const DIAMOND_ASSET_ABI = [
   'function redeem(uint256 tokenId, uint256 amount, address custodian) external',
+  'function redeemFromNode(uint256 tokenId, uint256 amount, address custodian, bytes32 nodeHash) external',
   'function getCustodyInfo(uint256 tokenId, address custodian) external view returns (uint256 amount)',
+  'function getNodeCustodyInfo(uint256 tokenId, bytes32 nodeHash) external view returns (uint256 amount)',
   'function getTotalCustodyAmount(uint256 tokenId) external view returns (uint256 amount)',
   'function isInCustody(uint256 tokenId) external view returns (bool)',
   'function balanceOf(address account, uint256 id) external view returns (uint256)',
@@ -110,14 +112,23 @@ export class RedemptionService {
         throw new Error('No origin custody node provided for redemption');
       }
 
-      // Validate on-chain custody for the provided origin node.
-      const custodyAmount = await diamondAssetContract.getCustodyInfo(
-        tokenId,
-        custodianAddress,
-      );
-      if (BigInt(custodyAmount) < quantity) {
+      // originNodeHash is required for redeemFromNode — it must be a bytes32 node hash,
+      // not a wallet address. The node hash is what originNodeHash carries.
+      if (!originNodeHash) {
         throw new Error(
-          'Insufficient custody at the selected origin node for this redemption',
+          'originNodeHash is required for redemption — specify the exact node the asset is custodied at.',
+        );
+      }
+
+      // Validate on-chain custody at the specific node (more precise than wallet-level check).
+      const nodeCustodyAmount = await diamondAssetContract.getNodeCustodyInfo(
+        tokenId,
+        originNodeHash,
+      );
+      if (BigInt(nodeCustodyAmount) < quantity) {
+        throw new Error(
+          `Insufficient custody at node ${originNodeHash} for this redemption. ` +
+            `Node has ${nodeCustodyAmount.toString()} in custody, need ${quantity.toString()}.`,
         );
       }
 
@@ -145,15 +156,17 @@ export class RedemptionService {
         confirmationLevel,
       );
 
-      // Step 3: Redeem the tokens (burns tokens and releases custody)
-      // This calls the redeem() function which:
-      // - Burns the caller's tokens
-      // - Releases custody from the specified custodian (origin node)
-      // - Emits CustodyReleased event (used to trigger physical delivery)
-      const redeemTx = await diamondAssetContract.redeem(
+      // Step 3: Redeem the tokens — burns tokens and releases custody at node level.
+      // redeemFromNode() is preferred over redeem() because it correctly decrements
+      // tokenNodeCustodyAmounts[nodeHash] in addition to the wallet-level
+      // tokenCustodianAmounts[custodian]. Using plain redeem() left tokenNodeCustodyAmounts
+      // stale (always showing original minted amount) causing the node dashboard to
+      // display inflated capacity figures after redemptions.
+      const redeemTx = await diamondAssetContract.redeemFromNode(
         tokenId,
         quantity,
         custodianAddress,
+        originNodeHash,
       );
       const redeemReceipt = await redeemTx.wait();
 

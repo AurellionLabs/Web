@@ -1097,6 +1097,10 @@ contract AuSysFacet is DiamondReentrancyGuard {
 
         if (burn) {
             IERC1155(O.token).safeTransferFrom(address(this), address(0xdead), O.tokenId, O.tokenQuantity, '');
+            // Custody fully released — tokens destroyed.
+            if (O.token == address(this)) {
+                _releaseCustodyFromEscrowSnapshot(s, orderId, O.seller, O.tokenId, O.tokenQuantity, true);
+            }
             emit TokenDestinationSelected(orderId, address(0xdead), bytes32(0), true);
         } else {
             if (nodeId == bytes32(0)) revert NodeRequired();
@@ -1105,10 +1109,82 @@ contract AuSysFacet is DiamondReentrancyGuard {
             if (node.owner != msg.sender) revert NotNodeOwner();
             if (O.token == address(this)) {
                 _creditOwnerNodeSellable(s, node.owner, O.tokenId, nodeId, O.tokenQuantity);
+                // Transfer custody: release from seller's node(s), attribute to buyer's node.
+                // This keeps tokenNodeCustodyAmounts and tokenCustodianAmounts accurate so
+                // that getNodeCustodyInfo / getCustodyInfo reflect live obligations, not stale
+                // minted-amount-forever values.
+                _releaseCustodyFromEscrowSnapshot(s, orderId, O.seller, O.tokenId, O.tokenQuantity, false);
+                _attributeCustodyToNode(s, node.owner, O.tokenId, nodeId, O.tokenQuantity);
             }
             IERC1155(O.token).safeTransferFrom(address(this), node.owner, O.tokenId, O.tokenQuantity, '');
             emit TokenDestinationSelected(orderId, node.owner, nodeId, false);
         }
+    }
+
+    /**
+     * @notice Release custody attributed to the seller's nodes using the per-order escrow snapshot.
+     * @dev    Called from selectTokenDestination. The escrow snapshot records exactly which nodes
+     *         contributed to the escrow and how much, so we can precisely decrement
+     *         tokenNodeCustodyAmounts per node without guessing.
+     * @param  decrementTotal  If true (burn path) also decrement the global tokenCustodyAmount.
+     *                         If false (send-to-node path) custody is transferred, not released,
+     *                         so the global total is unchanged.
+     */
+    function _releaseCustodyFromEscrowSnapshot(
+        DiamondStorage.AppStorage storage s,
+        bytes32 orderId,
+        address seller,
+        uint256 tokenId,
+        uint256 quantity,
+        bool decrementTotal
+    ) internal {
+        // Seller wallet-level custody
+        if (s.tokenCustodianAmounts[tokenId][seller] >= quantity) {
+            s.tokenCustodianAmounts[tokenId][seller] -= quantity;
+        } else {
+            s.tokenCustodianAmounts[tokenId][seller] = 0;
+        }
+
+        // Per-node custody using the escrow snapshot (populated by _debitOwnerSellableForEscrow)
+        bytes32[] storage escrowNodes = s.ausysOrderEscrowNodes[orderId];
+        uint256 nodeCount = escrowNodes.length;
+        for (uint256 i = 0; i < nodeCount; i++) {
+            bytes32 nodeHash = escrowNodes[i];
+            uint256 debit = s.ausysOrderEscrowNodeDebits[orderId][nodeHash];
+            if (debit == 0) continue;
+            if (s.tokenNodeCustodyAmounts[tokenId][nodeHash] >= debit) {
+                s.tokenNodeCustodyAmounts[tokenId][nodeHash] -= debit;
+            } else {
+                s.tokenNodeCustodyAmounts[tokenId][nodeHash] = 0;
+            }
+        }
+
+        // Global total — only decrement on burn (custody destroyed, not transferred)
+        if (decrementTotal) {
+            if (s.tokenCustodyAmount[tokenId] >= quantity) {
+                s.tokenCustodyAmount[tokenId] -= quantity;
+            } else {
+                s.tokenCustodyAmount[tokenId] = 0;
+            }
+        }
+    }
+
+    /**
+     * @notice Attribute custody to a buyer's node after P2P settlement.
+     * @dev    Mirrors what _nodeMintInternal does at mint time: credits both the wallet-level
+     *         custodian map and the per-node custody map. This keeps the custody ledger accurate
+     *         for secondary holders who want to redeem from their own node later.
+     */
+    function _attributeCustodyToNode(
+        DiamondStorage.AppStorage storage s,
+        address nodeOwner,
+        uint256 tokenId,
+        bytes32 nodeHash,
+        uint256 quantity
+    ) internal {
+        s.tokenCustodianAmounts[tokenId][nodeOwner] += quantity;
+        s.tokenNodeCustodyAmounts[tokenId][nodeHash] += quantity;
+        // tokenCustodyAmount (global total) is unchanged: custody transferred, not created.
     }
 
     function _creditOwnerNodeSellable(
