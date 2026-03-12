@@ -1034,15 +1034,9 @@ contract AuSysFacet is DiamondReentrancyGuard {
         O.currentStatus = OrderStatus.AUSYS_SETTLED;
         emit AuSysOrderStatusUpdated(orderId, OrderStatus.AUSYS_SETTLED);
 
-        // Release seller's node custody immediately at settlement — the physical asset
-        // has left the node regardless of what the buyer does with the token.
-        // decrementTotal=false: ERC1155 still exists (held in Diamond escrow), global total
-        // only decrements when the buyer explicitly burns the token.
-        if (O.token == address(this)) {
-            _releaseCustodyFromEscrowSnapshot(s, orderId, O.seller, O.tokenId, O.tokenQuantity, false);
-        }
-
         // Hold tokens in escrow — buyer chooses destination via selectTokenDestination
+        // NOTE: seller's node custody was already released at escrow creation
+        // (_debitOwnerSellableForEscrow) — no custody change needed here.
         s.pendingTokenDestination[orderId] = true;
         s.pendingTokenBuyer[orderId] = O.buyer;
         s.ausysOrderSettledAt[orderId] = block.timestamp;
@@ -1241,6 +1235,13 @@ contract AuSysFacet is DiamondReentrancyGuard {
         }
 
         if (remaining > 0) revert ExceedsNodeSellableAmount();
+
+        // Node custody drops at escrow creation — the physical asset is now committed
+        // to a buyer and is no longer freely available on the node. Decrement
+        // tokenNodeCustodyAmounts and tokenCustodianAmounts immediately.
+        // decrementTotal=false: ERC1155 still exists (locked in Diamond), global
+        // tokenCustodyAmount only drops if/when the buyer burns the token later.
+        _releaseCustodyFromEscrowSnapshot(s, orderId, owner, tokenId, amount, false);
     }
 
     function _restoreEscrowedOwnerSellable(
@@ -1256,7 +1257,10 @@ contract AuSysFacet is DiamondReentrancyGuard {
             bytes32 nodeHash = escrowNodes[i];
             uint256 amount = s.ausysOrderEscrowNodeDebits[orderId][nodeHash];
             if (amount == 0) continue;
+            // Restore sellable balance
             _creditOwnerNodeSellable(s, owner, tokenId, nodeHash, amount);
+            // Restore node custody — was decremented at escrow creation, must unwind on cancel
+            _attributeCustodyToNode(s, owner, tokenId, nodeHash, amount);
             s.ausysOrderEscrowNodeDebits[orderId][nodeHash] = 0;
         }
     }
