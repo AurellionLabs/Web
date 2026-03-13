@@ -869,6 +869,23 @@ export default function P2PMarketOffersPage() {
     const isMine = isMyOffer(offer);
     const isProcessing = processingOfferId === offer.id;
     const assetMeta = assetMetadataMap.get(offer.tokenId);
+    const metadataClass = assetMeta?.assetClass?.trim();
+    const metadataClassKnown =
+      Boolean(metadataClass) && metadataClass?.toLowerCase() !== 'unknown';
+    const normalizedTokenId = (() => {
+      try {
+        return BigInt(offer.tokenId).toString(10);
+      } catch {
+        return offer.tokenId;
+      }
+    })();
+    const tokenClassFromMap =
+      tokenIdToClass.get(offer.tokenId) ||
+      tokenIdToClass.get(normalizedTokenId);
+    const displayAssetClass =
+      (metadataClassKnown ? metadataClass : undefined) ||
+      offer.assetClass ||
+      tokenClassFromMap;
 
     return (
       <EvaPanel
@@ -891,8 +908,8 @@ export default function P2PMarketOffersPage() {
             ) : (
               <ShoppingCart className="w-4 h-4 text-blue-400" />
             )}
-            {assetMeta?.assetClass && (
-              <EvaStatusBadge status="pending" label={assetMeta.assetClass} />
+            {displayAssetClass && (
+              <EvaStatusBadge status="pending" label={displayAssetClass} />
             )}
           </div>
           <EvaStatusBadge
