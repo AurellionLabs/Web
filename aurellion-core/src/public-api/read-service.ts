@@ -1,14 +1,12 @@
 import type { Journey } from '@/domain/shared';
-import { NETWORK_CONFIGS } from '@/config/network';
-import {
-  NEXT_PUBLIC_AUSYS_ADDRESS,
-  NEXT_PUBLIC_DEFAULT_CHAIN_ID,
-} from '@/chain-constants';
-import { DiamondContext } from '@/infrastructure/diamond/diamond-context';
-import { DiamondNodeRepository } from '@/infrastructure/diamond/diamond-node-repository';
-import { RpcProviderFactory } from '@/infrastructure/providers/rpc-provider-factory';
-import { OrderRepository } from '@/infrastructure/repositories/orders-repository';
-import { Ausys__factory, type Ausys } from '@/lib/contracts';
+import * as NetworkModule from '@/config/network';
+import * as ChainConstantsModule from '@/chain-constants';
+import * as DiamondContextModule from '@/infrastructure/diamond/diamond-context';
+import * as DiamondNodeRepositoryModule from '@/infrastructure/diamond/diamond-node-repository';
+import * as RpcProviderFactoryModule from '@/infrastructure/providers/rpc-provider-factory';
+import * as OrderRepositoryModule from '@/infrastructure/repositories/orders-repository';
+import * as ContractsModule from '@/lib/contracts/index';
+import type { Ausys } from '@/lib/contracts/index';
 import { ethers } from 'ethers';
 
 import type {
@@ -18,17 +16,131 @@ import type {
   PublicOrderDto,
 } from './types.js';
 
-let diamondContextPromise: Promise<DiamondContext> | null = null;
-let nodeRepositoryPromise: Promise<DiamondNodeRepository> | null = null;
-let orderRepositoryPromise: Promise<OrderRepository> | null = null;
+let diamondContextPromise: Promise<DiamondContextInstance> | null = null;
+let nodeRepositoryPromise: Promise<DiamondNodeRepositoryInstance> | null = null;
+let orderRepositoryPromise: Promise<OrderRepositoryInstance> | null = null;
+
+const NETWORK_CONFIGS =
+  (NetworkModule as { NETWORK_CONFIGS?: Record<number, { rpcUrl: string }> })
+    .NETWORK_CONFIGS ??
+  (
+    NetworkModule as {
+      default?: { NETWORK_CONFIGS?: Record<number, { rpcUrl: string }> };
+    }
+  ).default?.NETWORK_CONFIGS ??
+  {};
+
+const NEXT_PUBLIC_AUSYS_ADDRESS =
+  (ChainConstantsModule as { NEXT_PUBLIC_AUSYS_ADDRESS?: string })
+    .NEXT_PUBLIC_AUSYS_ADDRESS ??
+  (
+    ChainConstantsModule as {
+      default?: { NEXT_PUBLIC_AUSYS_ADDRESS?: string };
+    }
+  ).default?.NEXT_PUBLIC_AUSYS_ADDRESS ??
+  '';
+
+const NEXT_PUBLIC_DEFAULT_CHAIN_ID =
+  (ChainConstantsModule as { NEXT_PUBLIC_DEFAULT_CHAIN_ID?: number })
+    .NEXT_PUBLIC_DEFAULT_CHAIN_ID ??
+  (
+    ChainConstantsModule as {
+      default?: { NEXT_PUBLIC_DEFAULT_CHAIN_ID?: number };
+    }
+  ).default?.NEXT_PUBLIC_DEFAULT_CHAIN_ID ??
+  84532;
+
+const DiamondContext =
+  (DiamondContextModule as {
+    DiamondContext?: new () => DiamondContextInstance;
+  }).DiamondContext ??
+  (
+    DiamondContextModule as {
+      default?: { DiamondContext?: new () => DiamondContextInstance };
+    }
+  ).default?.DiamondContext;
+
+const DiamondNodeRepository =
+  (DiamondNodeRepositoryModule as {
+    DiamondNodeRepository?: new (
+      context: DiamondContextInstance,
+    ) => DiamondNodeRepositoryInstance;
+  }).DiamondNodeRepository ??
+  (
+    DiamondNodeRepositoryModule as {
+      default?: {
+        DiamondNodeRepository?: new (
+          context: DiamondContextInstance,
+        ) => DiamondNodeRepositoryInstance;
+      };
+    }
+  ).default?.DiamondNodeRepository;
+
+const RpcProviderFactory =
+  (RpcProviderFactoryModule as {
+    RpcProviderFactory?: {
+      getReadOnlyProvider: (chainId: number) => ethers.Provider;
+    };
+  }).RpcProviderFactory ??
+  (
+    RpcProviderFactoryModule as {
+      default?: {
+        RpcProviderFactory?: {
+          getReadOnlyProvider: (chainId: number) => ethers.Provider;
+        };
+      };
+    }
+  ).default?.RpcProviderFactory;
+
+const OrderRepository =
+  (OrderRepositoryModule as {
+    OrderRepository?: new (
+      contract: Ausys,
+      provider: unknown,
+      signer: ethers.VoidSigner,
+    ) => OrderRepositoryInstance;
+  }).OrderRepository ??
+  (
+    OrderRepositoryModule as {
+      default?: {
+        OrderRepository?: new (
+          contract: Ausys,
+          provider: unknown,
+          signer: ethers.VoidSigner,
+        ) => OrderRepositoryInstance;
+      };
+    }
+  ).default?.OrderRepository;
+
+const Ausys__factory =
+  (ContractsModule as { Ausys__factory?: { connect: Function } }).Ausys__factory ??
+  (
+    ContractsModule as {
+      default?: { Ausys__factory?: { connect: Function } };
+    }
+  ).default?.Ausys__factory;
+
+type DiamondContextInstance = InstanceType<
+  NonNullable<typeof DiamondContext>
+>;
+type DiamondNodeRepositoryInstance = InstanceType<
+  NonNullable<typeof DiamondNodeRepository>
+>;
+type OrderRepositoryInstance = InstanceType<NonNullable<typeof OrderRepository>>;
 
 function getRpcUrl(): string {
   return NETWORK_CONFIGS[NEXT_PUBLIC_DEFAULT_CHAIN_ID]?.rpcUrl || '';
 }
 
-async function getDiamondContext(): Promise<DiamondContext> {
+async function getDiamondContext(): Promise<DiamondContextInstance> {
   if (!diamondContextPromise) {
     diamondContextPromise = (async () => {
+      if (!DiamondContext) {
+        throw new Error(
+          'DiamondContext export is unavailable from shared module',
+        );
+      }
+
       const context = new DiamondContext();
       await context.initializeReadOnly(getRpcUrl());
       return context;
@@ -38,9 +150,15 @@ async function getDiamondContext(): Promise<DiamondContext> {
   return diamondContextPromise;
 }
 
-async function getNodeRepository(): Promise<DiamondNodeRepository> {
+async function getNodeRepository(): Promise<DiamondNodeRepositoryInstance> {
   if (!nodeRepositoryPromise) {
     nodeRepositoryPromise = (async () => {
+      if (!DiamondNodeRepository) {
+        throw new Error(
+          'DiamondNodeRepository export is unavailable from shared module',
+        );
+      }
+
       const context = await getDiamondContext();
       return new DiamondNodeRepository(context);
     })();
@@ -49,9 +167,25 @@ async function getNodeRepository(): Promise<DiamondNodeRepository> {
   return nodeRepositoryPromise;
 }
 
-async function getOrderRepository(): Promise<OrderRepository> {
+async function getOrderRepository(): Promise<OrderRepositoryInstance> {
   if (!orderRepositoryPromise) {
     orderRepositoryPromise = (async () => {
+      if (!Ausys__factory) {
+        throw new Error(
+          'Ausys__factory export is unavailable from @/lib/contracts/index',
+        );
+      }
+      if (!RpcProviderFactory) {
+        throw new Error(
+          'RpcProviderFactory export is unavailable from shared module',
+        );
+      }
+      if (!OrderRepository) {
+        throw new Error(
+          'OrderRepository export is unavailable from shared module',
+        );
+      }
+
       const provider = RpcProviderFactory.getReadOnlyProvider(
         NEXT_PUBLIC_DEFAULT_CHAIN_ID,
       );
@@ -101,7 +235,7 @@ function mapJourneyToDto(journey: Journey): PublicJourneyDto {
 }
 
 async function getSellableQuantity(
-  context: DiamondContext,
+  context: DiamondContextInstance,
   owner: string,
   tokenId: bigint,
   nodeId: string,
@@ -181,8 +315,17 @@ export async function getPublicOrderById(
   const orderRepository = await getOrderRepository();
 
   let order;
+  let orderSource: PublicOrderDto['orderSource'] | null = null;
   try {
-    order = await orderRepository.getOrderById(orderId);
+    order = await orderRepository.getP2POrderById(orderId);
+    if (order) {
+      orderSource = 'p2p';
+    } else {
+      order = await orderRepository.getUnifiedOrderById(orderId);
+      if (order) {
+        orderSource = 'unified';
+      }
+    }
   } catch (error) {
     if (isNotFoundError(error)) {
       return null;
@@ -190,7 +333,7 @@ export async function getPublicOrderById(
     throw error;
   }
 
-  if (!order || isZeroBytes32(order.id)) {
+  if (!order || !orderSource || isZeroBytes32(order.id)) {
     return null;
   }
 
@@ -217,6 +360,7 @@ export async function getPublicOrderById(
 
   return {
     orderId: order.id,
+    orderSource,
     token: order.token,
     tokenId: order.tokenId,
     tokenQuantity: order.tokenQuantity,
@@ -226,7 +370,7 @@ export async function getPublicOrderById(
     seller: order.seller,
     status: order.currentStatus,
     contractualAgreement: order.contractualAgreement,
-    isP2P: order.isP2P ?? false,
+    isP2P: orderSource === 'p2p',
     createdAt: order.createdAt,
     journeyIds: order.journeyIds,
     nodes: order.nodes,

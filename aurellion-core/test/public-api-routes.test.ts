@@ -28,6 +28,7 @@ describe('public api routes', () => {
     vi.mocked(handlers.getPublicOrderById).mockResolvedValue({
       orderId:
         '0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd',
+      orderSource: 'unified',
       token: '0x1111111111111111111111111111111111111111',
       tokenId: '123',
       tokenQuantity: '5',
