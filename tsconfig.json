@@ -33,6 +33,7 @@
     "__tests__",
     "dapp-connectors",
     "typechain-types",
+    "aurellion-core",
     "ralph",
     "ralphy",
     "aurellion-rwa-tokenization",
