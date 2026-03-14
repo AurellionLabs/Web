@@ -120,6 +120,7 @@ describe('public-api-smoke checks', () => {
         {
           data: {
             orderId: '0x1',
+            orderSource: 'unified',
             journeys: [],
           },
         },

@@ -186,6 +186,28 @@ query LatestOrders($limit: Int = 5) {
 }
 `;
 
+const LATEST_P2P_ORDERS_QUERY = `
+query LatestP2POrders($limit: Int = 5) {
+  diamondP2POfferCreatedEventss(
+    limit: $limit
+    orderBy: "block_timestamp"
+    orderDirection: "desc"
+  ) {
+    items {
+      order_id
+      creator
+      target_counterparty
+      token
+      token_id
+      token_quantity
+      price
+      block_timestamp
+      transaction_hash
+    }
+  }
+}
+`;
+
 const ORDERS_BY_BUYER_QUERY = `
 query OrdersByBuyer($buyer: String!, $limit: Int = 5) {
   diamondUnifiedOrderCreatedEventss(
@@ -411,15 +433,36 @@ async function defaultDiscoverOrders(
           { seller: seller.toLowerCase(), limit },
           timeoutSeconds,
         )
-      : await graphqlRequest(
-          defaultHttpJsonRequest,
-          indexerUrl,
-          LATEST_ORDERS_QUERY,
-          { limit },
-          timeoutSeconds,
-        );
+      : null;
 
-  return asItems(data.diamondUnifiedOrderCreatedEventss);
+  if (data) {
+    return asItems(data.diamondUnifiedOrderCreatedEventss);
+  }
+
+  const p2pData = await graphqlRequest(
+    defaultHttpJsonRequest,
+    indexerUrl,
+    LATEST_P2P_ORDERS_QUERY,
+    { limit },
+    timeoutSeconds,
+  );
+  const p2pOrders = asItems(
+    (p2pData as Record<string, { items?: Record<string, Json>[] }>)
+      .diamondP2POfferCreatedEventss,
+  );
+  if (p2pOrders.length > 0) {
+    return p2pOrders;
+  }
+
+  const unifiedData = await graphqlRequest(
+    defaultHttpJsonRequest,
+    indexerUrl,
+    LATEST_ORDERS_QUERY,
+    { limit },
+    timeoutSeconds,
+  );
+
+  return asItems(unifiedData.diamondUnifiedOrderCreatedEventss);
 }
 
 export function createDefaultDependencies(): SmokeDependencies {
@@ -447,6 +490,25 @@ function getErrorCode(response: ApiResponse): string | undefined {
   }
   const code = (error as Record<string, Json>).code;
   return typeof code === 'string' ? code : undefined;
+}
+
+function getDiscoveredOrderId(
+  order: Record<string, Json> | undefined,
+): string | undefined {
+  if (!order) return undefined;
+  if (typeof order.order_id === 'string') return order.order_id;
+  if (typeof order.unified_order_id === 'string') return order.unified_order_id;
+  return undefined;
+}
+
+function describeDiscoveredOrder(order: Record<string, Json>): string {
+  const orderId = getDiscoveredOrderId(order) || 'unknown';
+
+  if (typeof order.order_id === 'string') {
+    return `orderId=${orderId} source=p2p creator=${order.creator ?? 'unknown'} tx=${order.transaction_hash ?? 'unknown'}`;
+  }
+
+  return `orderId=${orderId} source=unified buyer=${order.buyer ?? 'unknown'} seller=${order.seller ?? 'unknown'} tx=${order.transaction_hash ?? 'unknown'}`;
 }
 
 export function checkSharedHeaders(response: ApiResponse): string[] {
@@ -558,6 +620,11 @@ export function checkOrderSuccess(
     issues.push(
       `orderId mismatch: ${(data as Record<string, Json>).orderId} != ${orderId}`,
     );
+  }
+
+  const orderSource = (data as Record<string, Json>).orderSource;
+  if (orderSource !== 'p2p' && orderSource !== 'unified') {
+    issues.push('orderSource is missing or invalid');
   }
 
   const journeys = (data as Record<string, Json>).journeys;
@@ -738,10 +805,7 @@ async function resolveSmokeIds(
       undefined,
       args.timeout,
     );
-    orderId =
-      typeof orders[0]?.unified_order_id === 'string'
-        ? orders[0].unified_order_id
-        : undefined;
+    orderId = getDiscoveredOrderId(orders[0]);
     discoveryFailed ||= !orderId;
   }
 
@@ -816,7 +880,7 @@ async function runDiscover(
         recordCheck(summary, deps, {
           name: `discover orders #${index + 1}`,
           ok: true,
-          details: `orderId=${order.unified_order_id} buyer=${order.buyer} seller=${order.seller} tx=${order.transaction_hash}`,
+          details: describeDiscoveredOrder(order),
         }, args.json);
       });
     }
@@ -976,8 +1040,9 @@ async function runAuth(
         undefined,
         args.timeout,
       );
-      if (typeof orders[0]?.unified_order_id === 'string') {
-        resourceId = orders[0].unified_order_id;
+      const discoveredOrderId = getDiscoveredOrderId(orders[0]);
+      if (typeof discoveredOrderId === 'string') {
+        resourceId = discoveredOrderId;
         discovered = true;
       }
     }
