@@ -6,6 +6,9 @@ import * as DiamondNodeRepositoryModule from '@/infrastructure/diamond/diamond-n
 import * as RpcProviderFactoryModule from '@/infrastructure/providers/rpc-provider-factory';
 import * as OrderRepositoryModule from '@/infrastructure/repositories/orders-repository';
 import * as ContractsModule from '@/lib/contracts/index';
+import type { DiamondContext as DiamondContextType } from '@/infrastructure/diamond/diamond-context';
+import type { DiamondNodeRepository as DiamondNodeRepositoryType } from '@/infrastructure/diamond/diamond-node-repository';
+import type { OrderRepository as OrderRepositoryType } from '@/infrastructure/repositories/orders-repository';
 import type { Ausys } from '@/lib/contracts/index';
 import { ethers } from 'ethers';
 
@@ -16,132 +19,93 @@ import type {
   PublicOrderDto,
 } from './types.js';
 
-let diamondContextPromise: Promise<DiamondContextInstance> | null = null;
-let nodeRepositoryPromise: Promise<DiamondNodeRepositoryInstance> | null = null;
-let orderRepositoryPromise: Promise<OrderRepositoryInstance> | null = null;
+type AusysFactory = {
+  connect: (address: string, signerOrProvider: ethers.Provider) => Ausys;
+};
 
-const NETWORK_CONFIGS =
-  (NetworkModule as { NETWORK_CONFIGS?: Record<number, { rpcUrl: string }> })
-    .NETWORK_CONFIGS ??
-  (
-    NetworkModule as {
-      default?: { NETWORK_CONFIGS?: Record<number, { rpcUrl: string }> };
-    }
-  ).default?.NETWORK_CONFIGS ??
-  {};
+type DiamondContextCtor = new () => DiamondContextType;
+type DiamondNodeRepositoryCtor = new (
+  context: DiamondContextType,
+) => DiamondNodeRepositoryType;
+type RpcProviderFactoryLike = {
+  getReadOnlyProvider: (chainId: number) => ethers.Provider;
+};
+type OrderRepositoryCtor = new (
+  contract: Ausys,
+  provider: unknown,
+  signer: ethers.VoidSigner,
+) => OrderRepositoryType;
 
-const NEXT_PUBLIC_AUSYS_ADDRESS =
-  (ChainConstantsModule as { NEXT_PUBLIC_AUSYS_ADDRESS?: string })
-    .NEXT_PUBLIC_AUSYS_ADDRESS ??
-  (
-    ChainConstantsModule as {
-      default?: { NEXT_PUBLIC_AUSYS_ADDRESS?: string };
-    }
-  ).default?.NEXT_PUBLIC_AUSYS_ADDRESS ??
-  '';
+function resolveNamedExport<T>(
+  module: unknown,
+  exportName: string,
+  moduleName: string,
+): T {
+  const moduleObject = module as {
+    [key: string]: unknown;
+    default?: { [key: string]: unknown };
+  };
+  const resolved =
+    moduleObject[exportName] ?? moduleObject.default?.[exportName];
+  if (resolved === undefined) {
+    throw new Error(`${exportName} export is unavailable from ${moduleName}`);
+  }
+  return resolved as T;
+}
 
-const NEXT_PUBLIC_DEFAULT_CHAIN_ID =
-  (ChainConstantsModule as { NEXT_PUBLIC_DEFAULT_CHAIN_ID?: number })
-    .NEXT_PUBLIC_DEFAULT_CHAIN_ID ??
-  (
-    ChainConstantsModule as {
-      default?: { NEXT_PUBLIC_DEFAULT_CHAIN_ID?: number };
-    }
-  ).default?.NEXT_PUBLIC_DEFAULT_CHAIN_ID ??
-  84532;
+const NETWORK_CONFIGS = resolveNamedExport<Record<number, { rpcUrl: string }>>(
+  NetworkModule,
+  'NETWORK_CONFIGS',
+  '@/config/network',
+);
+const NEXT_PUBLIC_AUSYS_ADDRESS = resolveNamedExport<string>(
+  ChainConstantsModule,
+  'NEXT_PUBLIC_AUSYS_ADDRESS',
+  '@/chain-constants',
+);
+const NEXT_PUBLIC_DEFAULT_CHAIN_ID = resolveNamedExport<number>(
+  ChainConstantsModule,
+  'NEXT_PUBLIC_DEFAULT_CHAIN_ID',
+  '@/chain-constants',
+);
+const DiamondContextCtor = resolveNamedExport<DiamondContextCtor>(
+  DiamondContextModule,
+  'DiamondContext',
+  '@/infrastructure/diamond/diamond-context',
+);
+const DiamondNodeRepositoryCtor = resolveNamedExport<DiamondNodeRepositoryCtor>(
+  DiamondNodeRepositoryModule,
+  'DiamondNodeRepository',
+  '@/infrastructure/diamond/diamond-node-repository',
+);
+const RpcProviderFactory = resolveNamedExport<RpcProviderFactoryLike>(
+  RpcProviderFactoryModule,
+  'RpcProviderFactory',
+  '@/infrastructure/providers/rpc-provider-factory',
+);
+const OrderRepositoryCtor = resolveNamedExport<OrderRepositoryCtor>(
+  OrderRepositoryModule,
+  'OrderRepository',
+  '@/infrastructure/repositories/orders-repository',
+);
+const AusysFactory = resolveNamedExport<AusysFactory>(
+  ContractsModule,
+  'Ausys__factory',
+  '@/lib/contracts/index',
+);
 
-const DiamondContext =
-  (DiamondContextModule as {
-    DiamondContext?: new () => DiamondContextInstance;
-  }).DiamondContext ??
-  (
-    DiamondContextModule as {
-      default?: { DiamondContext?: new () => DiamondContextInstance };
-    }
-  ).default?.DiamondContext;
-
-const DiamondNodeRepository =
-  (DiamondNodeRepositoryModule as {
-    DiamondNodeRepository?: new (
-      context: DiamondContextInstance,
-    ) => DiamondNodeRepositoryInstance;
-  }).DiamondNodeRepository ??
-  (
-    DiamondNodeRepositoryModule as {
-      default?: {
-        DiamondNodeRepository?: new (
-          context: DiamondContextInstance,
-        ) => DiamondNodeRepositoryInstance;
-      };
-    }
-  ).default?.DiamondNodeRepository;
-
-const RpcProviderFactory =
-  (RpcProviderFactoryModule as {
-    RpcProviderFactory?: {
-      getReadOnlyProvider: (chainId: number) => ethers.Provider;
-    };
-  }).RpcProviderFactory ??
-  (
-    RpcProviderFactoryModule as {
-      default?: {
-        RpcProviderFactory?: {
-          getReadOnlyProvider: (chainId: number) => ethers.Provider;
-        };
-      };
-    }
-  ).default?.RpcProviderFactory;
-
-const OrderRepository =
-  (OrderRepositoryModule as {
-    OrderRepository?: new (
-      contract: Ausys,
-      provider: unknown,
-      signer: ethers.VoidSigner,
-    ) => OrderRepositoryInstance;
-  }).OrderRepository ??
-  (
-    OrderRepositoryModule as {
-      default?: {
-        OrderRepository?: new (
-          contract: Ausys,
-          provider: unknown,
-          signer: ethers.VoidSigner,
-        ) => OrderRepositoryInstance;
-      };
-    }
-  ).default?.OrderRepository;
-
-const Ausys__factory =
-  (ContractsModule as { Ausys__factory?: { connect: Function } }).Ausys__factory ??
-  (
-    ContractsModule as {
-      default?: { Ausys__factory?: { connect: Function } };
-    }
-  ).default?.Ausys__factory;
-
-type DiamondContextInstance = InstanceType<
-  NonNullable<typeof DiamondContext>
->;
-type DiamondNodeRepositoryInstance = InstanceType<
-  NonNullable<typeof DiamondNodeRepository>
->;
-type OrderRepositoryInstance = InstanceType<NonNullable<typeof OrderRepository>>;
+let diamondContextPromise: Promise<DiamondContextType> | null = null;
+let nodeRepositoryPromise: Promise<DiamondNodeRepositoryType> | null = null;
+let orderRepositoryPromise: Promise<OrderRepositoryType> | null = null;
 
 function getRpcUrl(): string {
   return NETWORK_CONFIGS[NEXT_PUBLIC_DEFAULT_CHAIN_ID]?.rpcUrl || '';
 }
 
-async function getDiamondContext(): Promise<DiamondContextInstance> {
+async function getDiamondContext(): Promise<DiamondContextType> {
   if (!diamondContextPromise) {
     diamondContextPromise = (async () => {
-      if (!DiamondContext) {
-        throw new Error(
-          'DiamondContext export is unavailable from shared module',
-        );
-      }
-
-      const context = new DiamondContext();
+      const context = new DiamondContextCtor();
       await context.initializeReadOnly(getRpcUrl());
       return context;
     })();
@@ -150,52 +114,30 @@ async function getDiamondContext(): Promise<DiamondContextInstance> {
   return diamondContextPromise;
 }
 
-async function getNodeRepository(): Promise<DiamondNodeRepositoryInstance> {
+async function getNodeRepository(): Promise<DiamondNodeRepositoryType> {
   if (!nodeRepositoryPromise) {
     nodeRepositoryPromise = (async () => {
-      if (!DiamondNodeRepository) {
-        throw new Error(
-          'DiamondNodeRepository export is unavailable from shared module',
-        );
-      }
-
       const context = await getDiamondContext();
-      return new DiamondNodeRepository(context);
+      return new DiamondNodeRepositoryCtor(context);
     })();
   }
 
   return nodeRepositoryPromise;
 }
 
-async function getOrderRepository(): Promise<OrderRepositoryInstance> {
+async function getOrderRepository(): Promise<OrderRepositoryType> {
   if (!orderRepositoryPromise) {
     orderRepositoryPromise = (async () => {
-      if (!Ausys__factory) {
-        throw new Error(
-          'Ausys__factory export is unavailable from @/lib/contracts/index',
-        );
-      }
-      if (!RpcProviderFactory) {
-        throw new Error(
-          'RpcProviderFactory export is unavailable from shared module',
-        );
-      }
-      if (!OrderRepository) {
-        throw new Error(
-          'OrderRepository export is unavailable from shared module',
-        );
-      }
-
       const provider = RpcProviderFactory.getReadOnlyProvider(
         NEXT_PUBLIC_DEFAULT_CHAIN_ID,
       );
-      const contract = Ausys__factory.connect(
+      const contract = AusysFactory.connect(
         NEXT_PUBLIC_AUSYS_ADDRESS,
         provider,
       ) as Ausys;
       const signer = new ethers.VoidSigner(ethers.ZeroAddress, provider);
 
-      return new OrderRepository(
+      return new OrderRepositoryCtor(
         contract,
         provider as unknown as any,
         signer,
@@ -235,7 +177,7 @@ function mapJourneyToDto(journey: Journey): PublicJourneyDto {
 }
 
 async function getSellableQuantity(
-  context: DiamondContextInstance,
+  context: DiamondContextType,
   owner: string,
   tokenId: bigint,
   nodeId: string,
