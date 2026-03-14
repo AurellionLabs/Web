@@ -40,6 +40,7 @@ export interface PublicJourneyDto {
 
 export interface PublicOrderDto {
   orderId: string;
+  orderSource: 'p2p' | 'unified';
   token: string;
   tokenId: string;
   tokenQuantity: string;
