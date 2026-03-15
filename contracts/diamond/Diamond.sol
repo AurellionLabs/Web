@@ -15,7 +15,7 @@ import { LibDiamond } from './libraries/LibDiamond.sol';
  * @dev The Diamond is a proxy contract that delegates calls to facets.
  */
 contract Diamond {
-    uint256 internal constant DEFAULT_DIAMOND_CUT_TIMELOCK = 2 days;
+    uint256 internal constant DEFAULT_DIAMOND_CUT_TIMELOCK = 0;
 
     /**
      * @notice Diamond constructor
