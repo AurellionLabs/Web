@@ -44,7 +44,7 @@
  *   - Removed functions leave orphaned selectors
  */
 
-import { ethers, network } from 'hardhat';
+import { artifacts, ethers, network } from 'hardhat';
 import * as fs from 'fs';
 import * as path from 'path';
 import {
@@ -53,6 +53,14 @@ import {
   DEPRECATED_SELECTORS,
   ContractConfig,
 } from './deploy.config';
+import {
+  renderIndexerDiamondConstants,
+  replaceChainConstant,
+} from './lib/deploy-config';
+import {
+  getSupportedAssetClasses,
+  loadSupportedAssetCatalog,
+} from './lib/supported-assets';
 
 // =============================================================================
 // FACET SELECTORS - Loaded from generated JSON (single source of truth)
@@ -70,6 +78,9 @@ interface FacetSelectorsData {
 const FACET_SELECTORS_PATH = path.join(
   __dirname,
   '../infrastructure/contracts/facet-selectors.generated.json',
+);
+const DEFAULT_SUPPORTED_ASSET_CLASSES = getSupportedAssetClasses(
+  loadSupportedAssetCatalog(),
 );
 
 function loadFacetSelectors(): Record<string, string[]> {
@@ -288,26 +299,28 @@ function updateChainConstants(
 
   // Update or create each constant
   for (const [key, value] of Object.entries(allAddresses)) {
-    const regex = new RegExp(
-      `export const ${key}\\s*=\\s*['"][^'"]*['"];?`,
-      'm',
-    );
-    const newLine = `export const ${key} =\n  '${value}';`;
+    const updatedContent = replaceChainConstant(content, key, value);
 
-    if (regex.test(content)) {
-      content = content.replace(regex, newLine);
+    if (updatedContent !== content) {
+      content = updatedContent;
     } else {
-      // Find the right section to insert
-      const sectionMarker = key.includes('DIAMOND')
-        ? '// =============================================================================\n// EIP-2535 DIAMOND CONTRACTS'
-        : key.includes('RWY')
-          ? '// RWY Vault'
-          : '// =============================================================================\n// CONTRACT ADDRESSES';
+      // Guard: only insert if the key truly doesn't exist yet.
+      // replaceChainConstant returns unchanged content when the regex didn't
+      // match — but the constant may already be present in a different format.
+      // Appending without this check causes duplicate export declarations.
+      const existsCheck = new RegExp(`export const ${key}\\s*=`, 'm');
+      if (!existsCheck.test(content)) {
+        const sectionMarker = key.includes('DIAMOND')
+          ? '// =============================================================================\n// EIP-2535 DIAMOND CONTRACTS'
+          : key.includes('RWY')
+            ? '// RWY Vault'
+            : '// =============================================================================\n// CONTRACT ADDRESSES';
+        const newLine = `export const ${key} =\n  '${value}';`;
 
-      const insertIndex = content.indexOf(sectionMarker);
-      if (insertIndex === -1) {
-        // Append to end of contract addresses section
-        content += `\n${newLine}\n`;
+        const insertIndex = content.indexOf(sectionMarker);
+        if (insertIndex === -1) {
+          content += `\n${newLine}\n`;
+        }
       }
     }
   }
@@ -365,15 +378,11 @@ function updateIndexerConfig(deployment: DeploymentResult) {
   const diamondConstantsPath = path.resolve('./indexer/diamond-constants.ts');
 
   if (deployment.contracts.Diamond) {
-    const content = `// Diamond contract constants for the Ponder indexer
-// Auto-updated by unified-deploy.ts script
-// Last updated: ${deployment.timestamp}
-
-export const DIAMOND_ADDRESS: \`0x\${string}\` =
-  '${deployment.contracts.Diamond.address}';
-
-export const DIAMOND_DEPLOY_BLOCK = ${deployment.contracts.Diamond.blockNumber};
-`;
+    const content = renderIndexerDiamondConstants({
+      address: deployment.contracts.Diamond.address,
+      blockNumber: deployment.contracts.Diamond.blockNumber,
+      timestamp: deployment.timestamp,
+    });
     fs.writeFileSync(diamondConstantsPath, content);
     console.log('✅ Updated indexer/diamond-constants.ts');
   }
@@ -444,6 +453,8 @@ function regenerateFrontendABI() {
       'OrderRouterFacet',
       'AssetsFacet',
       'AuSysFacet',
+      'AuSysAdminFacet',
+      'AuSysViewFacet',
       'BridgeFacet',
       'RWYStakingFacet',
       'CLOBLogisticsFacet',
@@ -455,8 +466,14 @@ function regenerateFrontendABI() {
     const includedFunctions = new Set<string>();
 
     for (const facetName of FRONTEND_FACETS) {
-      const facetABI = FACET_ABI[facetName];
-      if (!facetABI) continue;
+      let facetABI = FACET_ABI[facetName];
+      if (!facetABI) {
+        try {
+          facetABI = artifacts.readArtifactSync(facetName).abi;
+        } catch {
+          continue;
+        }
+      }
 
       for (const fragment of facetABI) {
         const key =
@@ -498,10 +515,17 @@ import { ABIFragment } from '@/scripts/deploy.config';
 export const DIAMOND_ABI: ABIFragment[] = ${JSON.stringify(combinedABI, null, 2)} as const;
 
 // Export individual facet ABIs for selective imports
-${FRONTEND_FACETS.map(
-  (facet) =>
-    `export const ${facet.toUpperCase()}_ABI = ${JSON.stringify(FACET_ABI[facet] || [], null, 2)} as const;`,
-).join('\n\n')}
+${FRONTEND_FACETS.map((facet) => {
+  let facetAbi = FACET_ABI[facet];
+  if (!facetAbi) {
+    try {
+      facetAbi = artifacts.readArtifactSync(facet).abi;
+    } catch {
+      facetAbi = [];
+    }
+  }
+  return `export const ${facet.toUpperCase()}_ABI = ${JSON.stringify(facetAbi || [], null, 2)} as const;`;
+}).join('\n\n')}
 
 // Helper to get ABI as ethers-compatible format
 export function getEthersABI(): any[] {
@@ -861,10 +885,9 @@ async function postDeploymentConfig(
       resolvedAddresses.Diamond,
     );
 
-    const defaultClasses = ['GOAT', 'SHEEP', 'COW', 'CHICKEN', 'DUCK'];
     let addedCount = 0;
 
-    for (const className of defaultClasses) {
+    for (const className of DEFAULT_SUPPORTED_ASSET_CLASSES) {
       try {
         const tx = await assetsFacet.addSupportedClass(className);
         await tx.wait();
@@ -894,13 +917,17 @@ async function postDeploymentConfig(
   if (resolvedAddresses.Diamond && resolvedAddresses.Aura) {
     console.log('   Configuring AuSys pay token on Diamond...');
     try {
-      const auSysFacet = await ethers.getContractAt(
-        'AuSysFacet',
+      const auSysAdminFacet = await ethers.getContractAt(
+        'AuSysAdminFacet',
         resolvedAddresses.Diamond,
       );
-      const currentPayToken = await auSysFacet.getPayToken();
+      const auSysViewFacet = await ethers.getContractAt(
+        'AuSysViewFacet',
+        resolvedAddresses.Diamond,
+      );
+      const currentPayToken = await auSysViewFacet.getPayToken();
       if (currentPayToken === ethers.ZeroAddress) {
-        const tx = await auSysFacet.setPayToken(resolvedAddresses.Aura);
+        const tx = await auSysAdminFacet.setPayToken(resolvedAddresses.Aura);
         await tx.wait();
         console.log(`   ✓ AuSys pay token set to ${resolvedAddresses.Aura}`);
       } else if (
@@ -1094,11 +1121,14 @@ function loadExistingAddresses(): Record<string, string> {
   if (!fs.existsSync(constantsPath)) return addresses;
 
   const content = fs.readFileSync(constantsPath, 'utf-8');
-  const regex = /export const (NEXT_PUBLIC_\w+)\s*=\s*['"]([^'"]+)['"]/g;
+  // Match both direct assignments: export const X = '0x...'
+  // and env fallbacks: export const X = process.env.X || '0x...'
+  const regex =
+    /export const (NEXT_PUBLIC_\w+)\s*=\s*(?:['"]([^'"]+)['"]|[^;]*\|\|\s*['"]([^'"]+)['"])/g;
 
   let match;
   while ((match = regex.exec(content)) !== null) {
-    addresses[match[1]] = match[2];
+    addresses[match[1]] = match[2] || match[3]; // match[2] for direct, match[3] for env fallback
   }
 
   return addresses;
@@ -1345,20 +1375,19 @@ async function updateFacet(
     }
   }
 
-  // Get selectors - try FACET_SELECTORS first, then auto-extract from contract
-  let selectors = FACET_SELECTORS[facetName];
-  if (!selectors || selectors.length === 0) {
-    console.log(
-      `📋 No FACET_ABI defined for ${facetName}, auto-extracting from contract...`,
-    );
-    selectors = await extractSelectorsFromContract(config.contractName);
-    if (selectors.length === 0) {
-      throw new Error(`Could not extract selectors for ${facetName}`);
-    }
-    console.log(
-      `   ✓ Extracted ${selectors.length} selectors from ${config.contractName}\n`,
-    );
+  // Always extract selectors from the compiled artifact for facet upgrades.
+  // This avoids drift when functions are split across facets but deploy.config.ts
+  // has not been manually reshaped yet.
+  let selectors = await extractSelectorsFromContract(config.contractName);
+  if (selectors.length === 0) {
+    selectors = FACET_SELECTORS[facetName];
   }
+  if (!selectors || selectors.length === 0) {
+    throw new Error(`Could not extract selectors for ${facetName}`);
+  }
+  console.log(
+    `   ✓ Using ${selectors.length} selectors from ${config.contractName}\n`,
+  );
 
   let facetAddress = ethers.ZeroAddress;
   let blockNumber = 0;

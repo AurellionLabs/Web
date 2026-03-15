@@ -12,6 +12,7 @@ import { DiamondP2PRepository } from '@/infrastructure/diamond/diamond-p2p-servi
 
 // Mock chain-constants (needed transitively)
 vi.mock('@/chain-constants', () => ({
+  getIndexerUrl: () => 'http://localhost:42069',
   NEXT_PUBLIC_INDEXER_URL: 'https://mock-indexer.test/graphql',
   NEXT_PUBLIC_AURA_ASSET_ADDRESS: '0x1234567890abcdef1234567890abcdef12345678',
 }));

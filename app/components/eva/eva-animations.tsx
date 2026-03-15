@@ -953,32 +953,43 @@ export function ChevronDataStream({
           'polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px))',
       }}
     >
-      {/* Scrolling chevrons */}
+      {/* Scrolling chevrons — two identical strips for seamless infinite loop */}
       <div
-        className="absolute inset-0 flex items-center"
-        style={{ animation: `ticker ${speed} linear infinite` }}
+        className="absolute inset-y-0 left-0 flex items-center"
+        style={{
+          animation: `chevronScroll ${speed} linear infinite`,
+          width: 'max-content',
+        }}
       >
-        {Array.from({ length: 40 }).map((_, i) => (
-          <div key={i} className="flex-shrink-0 mx-1">
-            <svg width="24" height="40" viewBox="0 0 24 40">
-              <polygon
-                points="0,0 20,0 24,20 20,40 0,40 4,20"
-                fill={
-                  i % 3 === 0
-                    ? 'hsl(0 70% 38% / 0.2)'
-                    : 'hsl(43 65% 62% / 0.12)'
-                }
-                stroke={
-                  i % 3 === 0
-                    ? 'hsl(0 70% 38% / 0.3)'
-                    : 'hsl(43 65% 62% / 0.15)'
-                }
-                strokeWidth="0.5"
-              />
-            </svg>
-          </div>
-        ))}
+        {[0, 1].map((set) =>
+          Array.from({ length: 40 }).map((_, i) => (
+            <div key={`${set}-${i}`} className="flex-shrink-0 mx-1">
+              <svg width="24" height="40" viewBox="0 0 24 40">
+                <polygon
+                  points="0,0 20,0 24,20 20,40 0,40 4,20"
+                  fill={
+                    i % 3 === 0
+                      ? 'hsl(0 70% 38% / 0.2)'
+                      : 'hsl(43 65% 62% / 0.12)'
+                  }
+                  stroke={
+                    i % 3 === 0
+                      ? 'hsl(0 70% 38% / 0.3)'
+                      : 'hsl(43 65% 62% / 0.15)'
+                  }
+                  strokeWidth="0.5"
+                />
+              </svg>
+            </div>
+          )),
+        )}
       </div>
+      <style>{`
+        @keyframes chevronScroll {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+      `}</style>
       {/* Overlay text */}
       <div className="absolute inset-0 flex items-center justify-center bg-background/30">
         <span className="font-mono text-sm text-foreground/50 tracking-[0.4em] uppercase font-bold">
@@ -992,22 +1003,95 @@ export function ChevronDataStream({
 // ─────────────────────────────────────────
 // 9. PULSING HEX NETWORK — Topology
 // ─────────────────────────────────────────
+
+export interface TopologyNode {
+  cx: number;
+  cy: number;
+  label?: string;
+  status?: 'Active' | 'Inactive';
+  address?: string;
+  locationName?: string;
+  isSelected?: boolean;
+}
+
+/**
+ * Projects an array of {lat, lng} positions into {cx, cy} coordinates
+ * within the 800x256 SVG viewBox, preserving relative geographic spread.
+ */
+export function projectNodesToSVG(
+  items: {
+    lat: string | number;
+    lng: string | number;
+    label?: string;
+    status?: 'Active' | 'Inactive';
+    address?: string;
+    locationName?: string;
+    isSelected?: boolean;
+  }[],
+): TopologyNode[] {
+  if (items.length === 0) return [];
+
+  const PAD_X = 80;
+  const PAD_Y = 40;
+  const W = 800 - PAD_X * 2;
+  const H = 256 - PAD_Y * 2;
+
+  const lats = items.map((n) => Number(n.lat));
+  const lngs = items.map((n) => Number(n.lng));
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs);
+  const maxLng = Math.max(...lngs);
+  const latSpan = maxLat - minLat || 1;
+  const lngSpan = maxLng - minLng || 1;
+
+  return items.map((n) => {
+    const normX = (Number(n.lng) - minLng) / lngSpan;
+    const normY = 1 - (Number(n.lat) - minLat) / latSpan;
+
+    return {
+      cx: items.length === 1 ? 400 : PAD_X + normX * W,
+      cy: items.length === 1 ? 128 : PAD_Y + normY * H,
+      label: n.label,
+      status: n.status,
+      address: n.address,
+      locationName: n.locationName,
+      isSelected: n.isSelected,
+    };
+  });
+}
+
 export function PulsingHexNetwork({
   nodes,
+  onNodeClick,
+  onAddNode,
+  selectedAddress,
   className = '',
 }: {
-  nodes?: { cx: number; cy: number; label?: string }[];
+  nodes?: TopologyNode[];
+  onNodeClick?: (address: string) => void;
+  onAddNode?: () => void;
+  selectedAddress?: string;
   className?: string;
 }) {
-  const defaultNodes = nodes || [
-    { cx: 120, cy: 80, label: 'NODE-01' },
-    { cx: 300, cy: 140, label: 'NODE-02' },
-    { cx: 450, cy: 60, label: 'NODE-03' },
-    { cx: 550, cy: 180, label: 'NODE-04' },
-    { cx: 680, cy: 100, label: 'NODE-05' },
-    { cx: 200, cy: 200, label: 'NODE-06' },
-    { cx: 400, cy: 130, label: 'NODE-07' },
-  ];
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [addHovered, setAddHovered] = useState(false);
+
+  const displayNodes: TopologyNode[] = nodes ?? [];
+
+  const addNodePos = (() => {
+    if (!onAddNode) return null;
+    if (displayNodes.length === 0) return { cx: 400, cy: 128 };
+    const last = displayNodes[displayNodes.length - 1];
+    const cx = Math.min(last.cx + 80, 760);
+    const cy = Math.max(40, Math.min(last.cy, 216));
+    return { cx, cy };
+  })();
+
+  const isOffline = (n: TopologyNode) => n.status === 'Inactive';
+  const isSelected = (n: TopologyNode) =>
+    selectedAddress &&
+    n.address?.toLowerCase() === selectedAddress.toLowerCase();
 
   return (
     <div
@@ -1045,82 +1129,228 @@ export function PulsingHexNetwork({
             strokeWidth="0.5"
           />
         ))}
+        {/* Connection lines */}
+        {displayNodes.map((node, i) =>
+          i > 0 ? (
+            <line
+              key={`conn${i}`}
+              x1={displayNodes[i - 1].cx}
+              y1={displayNodes[i - 1].cy}
+              x2={node.cx}
+              y2={node.cy}
+              stroke="hsl(43 65% 62% / 0.1)"
+              strokeWidth="0.5"
+              strokeDasharray="4 4"
+            />
+          ) : null,
+        )}
         {/* Node hexagons with animated pulse */}
-        {defaultNodes.map((node, i) => (
-          <g key={i}>
-            {/* Connection lines */}
-            {i > 0 && (
-              <line
-                x1={defaultNodes[i - 1].cx}
-                y1={defaultNodes[i - 1].cy}
-                x2={node.cx}
-                y2={node.cy}
-                stroke="hsl(43 65% 62% / 0.1)"
+        {displayNodes.map((node, i) => {
+          const offline = isOffline(node);
+          const selected = isSelected(node);
+          const hovered = hoveredIdx === i;
+          const clickable = !!onNodeClick && !!node.address;
+
+          const fillActive = selected
+            ? 'hsl(43 65% 62% / 0.45)'
+            : 'hsl(43 65% 62% / 0.2)';
+          const strokeActive = selected
+            ? 'hsl(43 65% 62% / 0.9)'
+            : 'hsl(43 65% 62% / 0.4)';
+          const dotActive = selected ? 'hsl(43 65% 72%)' : 'hsl(43 65% 62%)';
+
+          const fill = offline ? 'hsl(0 70% 38% / 0.3)' : fillActive;
+          const stroke = offline ? 'hsl(0 70% 38% / 0.6)' : strokeActive;
+          const dot = offline ? 'hsl(0 70% 38%)' : dotActive;
+          const pulseStroke = offline
+            ? 'hsl(0 70% 38% / 0.15)'
+            : 'hsl(43 65% 62% / 0.15)';
+
+          return (
+            <g
+              key={node.address || i}
+              style={{ cursor: clickable ? 'pointer' : 'default' }}
+              onClick={() => {
+                if (clickable) onNodeClick!(node.address!);
+              }}
+              onMouseEnter={() => setHoveredIdx(i)}
+              onMouseLeave={() => setHoveredIdx(null)}
+            >
+              {/* Pulse ring */}
+              <circle
+                cx={node.cx}
+                cy={node.cy}
+                r="20"
+                fill="none"
+                stroke={pulseStroke}
                 strokeWidth="0.5"
-                strokeDasharray="4 4"
+              >
+                <animate
+                  attributeName="r"
+                  values={selected ? '15;35;15' : '15;30;15'}
+                  dur={`${3 + i * 0.5}s`}
+                  repeatCount="indefinite"
+                />
+                <animate
+                  attributeName="opacity"
+                  values="0.3;0;0.3"
+                  dur={`${3 + i * 0.5}s`}
+                  repeatCount="indefinite"
+                />
+              </circle>
+              {/* Selected outer ring */}
+              {selected && (
+                <circle
+                  cx={node.cx}
+                  cy={node.cy}
+                  r="16"
+                  fill="none"
+                  stroke="hsl(43 65% 62% / 0.5)"
+                  strokeWidth="1"
+                  strokeDasharray="3 2"
+                />
+              )}
+              {/* Hex node */}
+              <polygon
+                points={`${node.cx},${node.cy - 10} ${node.cx + 9},${node.cy - 5} ${node.cx + 9},${node.cy + 5} ${node.cx},${node.cy + 10} ${node.cx - 9},${node.cy + 5} ${node.cx - 9},${node.cy - 5}`}
+                fill={fill}
+                stroke={stroke}
+                strokeWidth={selected ? '1.5' : '1'}
+                style={{
+                  transition: 'fill 0.2s, stroke 0.2s',
+                  filter: hovered ? 'brightness(1.4)' : undefined,
+                }}
+              />
+              {/* Center dot */}
+              <circle cx={node.cx} cy={node.cy} r="2" fill={dot}>
+                <animate
+                  attributeName="opacity"
+                  values="1;0.3;1"
+                  dur="2s"
+                  repeatCount="indefinite"
+                  begin={`${i * 0.3}s`}
+                />
+              </circle>
+              {/* Label */}
+              <text
+                x={node.cx}
+                y={node.cy + 22}
+                textAnchor="middle"
+                fill="hsl(43 65% 62% / 0.3)"
+                fontSize="7"
+                fontFamily="monospace"
+                letterSpacing="2"
+              >
+                {node.label || `NODE-${String(i + 1).padStart(2, '0')}`}
+              </text>
+            </g>
+          );
+        })}
+        {/* Add-node "+" hex */}
+        {addNodePos && (
+          <g
+            style={{ cursor: 'pointer' }}
+            onClick={onAddNode}
+            onMouseEnter={() => setAddHovered(true)}
+            onMouseLeave={() => setAddHovered(false)}
+          >
+            {displayNodes.length > 0 && (
+              <line
+                x1={displayNodes[displayNodes.length - 1].cx}
+                y1={displayNodes[displayNodes.length - 1].cy}
+                x2={addNodePos.cx}
+                y2={addNodePos.cy}
+                stroke="hsl(142 70% 45% / 0.15)"
+                strokeWidth="0.5"
+                strokeDasharray="3 3"
               />
             )}
-            {/* Pulse ring */}
             <circle
-              cx={node.cx}
-              cy={node.cy}
-              r="20"
+              cx={addNodePos.cx}
+              cy={addNodePos.cy}
+              r="18"
               fill="none"
-              stroke="hsl(43 65% 62% / 0.15)"
+              stroke="hsl(142 70% 45% / 0.12)"
               strokeWidth="0.5"
             >
               <animate
                 attributeName="r"
-                values="15;30;15"
-                dur={`${3 + i * 0.5}s`}
+                values="14;22;14"
+                dur="4s"
                 repeatCount="indefinite"
               />
               <animate
                 attributeName="opacity"
-                values="0.3;0;0.3"
-                dur={`${3 + i * 0.5}s`}
+                values="0.25;0;0.25"
+                dur="4s"
                 repeatCount="indefinite"
               />
             </circle>
-            {/* Hex node */}
             <polygon
-              points={`${node.cx},${node.cy - 10} ${node.cx + 9},${node.cy - 5} ${node.cx + 9},${node.cy + 5} ${node.cx},${node.cy + 10} ${node.cx - 9},${node.cy + 5} ${node.cx - 9},${node.cy - 5}`}
-              fill={i === 3 ? 'hsl(0 70% 38% / 0.3)' : 'hsl(43 65% 62% / 0.2)'}
+              points={`${addNodePos.cx},${addNodePos.cy - 10} ${addNodePos.cx + 9},${addNodePos.cy - 5} ${addNodePos.cx + 9},${addNodePos.cy + 5} ${addNodePos.cx},${addNodePos.cy + 10} ${addNodePos.cx - 9},${addNodePos.cy + 5} ${addNodePos.cx - 9},${addNodePos.cy - 5}`}
+              fill={
+                addHovered
+                  ? 'hsl(142 70% 45% / 0.25)'
+                  : 'hsl(142 70% 45% / 0.1)'
+              }
               stroke={
-                i === 3 ? 'hsl(0 70% 38% / 0.6)' : 'hsl(43 65% 62% / 0.4)'
+                addHovered
+                  ? 'hsl(142 70% 45% / 0.7)'
+                  : 'hsl(142 70% 45% / 0.35)'
               }
               strokeWidth="1"
+              strokeDasharray="3 2"
+              style={{ transition: 'fill 0.2s, stroke 0.2s' }}
             />
-            {/* Center dot */}
-            <circle
-              cx={node.cx}
-              cy={node.cy}
-              r="2"
-              fill={i === 3 ? 'hsl(0 70% 38%)' : 'hsl(43 65% 62%)'}
-            >
-              <animate
-                attributeName="opacity"
-                values="1;0.3;1"
-                dur="2s"
-                repeatCount="indefinite"
-                begin={`${i * 0.3}s`}
-              />
-            </circle>
-            {/* Label */}
             <text
-              x={node.cx}
-              y={node.cy + 22}
+              x={addNodePos.cx}
+              y={addNodePos.cy + 5}
               textAnchor="middle"
-              fill="hsl(43 65% 62% / 0.3)"
+              fill={addHovered ? 'hsl(142 70% 55%)' : 'hsl(142 70% 45% / 0.6)'}
+              fontSize="14"
+              fontFamily="monospace"
+              fontWeight="bold"
+              style={{ transition: 'fill 0.2s' }}
+            >
+              +
+            </text>
+            <text
+              x={addNodePos.cx}
+              y={addNodePos.cy + 22}
+              textAnchor="middle"
+              fill="hsl(142 70% 45% / 0.3)"
               fontSize="7"
               fontFamily="monospace"
-              letterSpacing="2"
+              letterSpacing="1"
             >
-              {node.label || `NODE-${String(i + 1).padStart(2, '0')}`}
+              ADD NODE
             </text>
           </g>
-        ))}
+        )}
       </svg>
+      {/* Hover tooltip */}
+      {hoveredIdx !== null && displayNodes[hoveredIdx] && (
+        <div
+          className="absolute pointer-events-none z-10 bg-card/90 border border-border/30 px-2.5 py-1.5 font-mono"
+          style={{
+            left: `${(displayNodes[hoveredIdx].cx / 800) * 100}%`,
+            top: `${Math.max(0, (displayNodes[hoveredIdx].cy / 256) * 100 - 18)}%`,
+            transform: 'translateX(-50%)',
+          }}
+        >
+          {displayNodes[hoveredIdx].locationName && (
+            <div className="text-[9px] text-foreground/60 tracking-wider truncate max-w-[160px]">
+              {displayNodes[hoveredIdx].locationName}
+            </div>
+          )}
+          {displayNodes[hoveredIdx].address && (
+            <div className="text-[8px] text-foreground/35 tracking-wider">
+              {displayNodes[hoveredIdx].address!.slice(0, 6)}...
+              {displayNodes[hoveredIdx].address!.slice(-4)}
+            </div>
+          )}
+        </div>
+      )}
       {/* Legend */}
       <div className="absolute bottom-3 right-4 flex items-center gap-4">
         <div className="flex items-center gap-1.5">
@@ -1144,7 +1374,7 @@ export function PulsingHexNetwork({
             }}
           />
           <span className="font-mono text-[9px] text-foreground/25 tracking-wider">
-            SYNCING
+            OFFLINE
           </span>
         </div>
       </div>
@@ -1371,6 +1601,54 @@ export function TerminalOutput({
       </div>
       {/* Scanline overlay */}
       <div className="absolute inset-0 eva-scanlines pointer-events-none" />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────
+// FADE-IN SECTION — Intersection Observer
+// ─────────────────────────────────────────
+export function FadeInSection({
+  children,
+  className = '',
+  delay = 0,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  delay?: number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.unobserve(el);
+        }
+      },
+      { threshold: 0.1, rootMargin: '0px 0px -40px 0px' },
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      className={className}
+      style={{
+        opacity: isVisible ? 1 : 0,
+        transform: isVisible ? 'translateY(0)' : 'translateY(24px)',
+        transition: `opacity 0.7s ease-out ${delay}ms, transform 0.7s ease-out ${delay}ms`,
+      }}
+    >
+      {children}
     </div>
   );
 }

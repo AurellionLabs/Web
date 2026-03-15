@@ -18,14 +18,33 @@ import {
 import {
   NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
   NEXT_PUBLIC_DIAMOND_ADDRESS,
-  NEXT_PUBLIC_INDEXER_URL,
 } from '@/chain-constants';
+import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
+import { detectJourneyRoleConflict } from '@/utils/journey-role-conflicts';
+import {
+  extractOrderBigInt,
+  extractOrderIsSellerInitiated,
+  extractOrderParticipants,
+  extractOrderPickupMetadata,
+  isZeroAddress,
+  normalizeAddress,
+  normalizeText,
+} from '@/utils/p2p-order-resolution';
 
 interface ContextWithOptionalContracts {
   getQuoteTokenContract(): ethers.Contract;
   getERC1155Contract(address: string): ethers.Contract;
 }
+
+type DiamondNodeMetadataContract = ethers.Contract & {
+  getOwnerNodes(owner: string): Promise<string[]>;
+  getNode(nodeAddress: string): Promise<{
+    lat?: string;
+    lng?: string;
+    addressName?: string;
+  }>;
+};
 
 import {
   GET_P2P_OFFERS_BY_CREATOR,
@@ -59,6 +78,10 @@ const P2P_ERROR_MAP: Record<string, string> = {
   '0x6035cb58': 'Only the offer creator can cancel this offer.',
   '0xe6c4247b': 'Invalid address in the offer.',
   '0x2c5211c6': 'Invalid amount – price or quantity cannot be zero.',
+  '0xcadf2a7c':
+    'A selected fulfillment node is required for this buy offer. Select a node and try again.',
+  '0xd08a05d5':
+    'The selected pickup node is not owned by your wallet. Select one of your own nodes.',
   '0xb7f05f41': 'Payment token has not been configured on the contract.',
   '0xe237d922':
     'The Diamond contract needs approval to transfer your tokens. This should be requested automatically.',
@@ -66,6 +89,14 @@ const P2P_ERROR_MAP: Record<string, string> = {
     'Insufficient token balance. You do not have enough of this asset to create the offer.',
   '0x48f5c3ed':
     'You are not authorized to create the delivery journey. Only the buyer, seller, or admin can do this.',
+  '0x4a2ff497':
+    'Only the buyer can create the delivery journey for this order.',
+  '0x8ed39dde':
+    'Only the seller can create the delivery journey for this order.',
+  '0x89e4b4ad':
+    'Sender, driver, and customer must use different wallet addresses.',
+  '0x30812d42':
+    'The journey participants are not recognized on-chain yet. Please retry in a few seconds.',
 };
 
 /**
@@ -118,6 +149,170 @@ export class DiamondP2PService implements IP2PService {
     this.context = context;
   }
 
+  private async waitForApprovalState<T>(options: {
+    read: () => Promise<T>;
+    isSatisfied: (value: T) => boolean;
+    label: string;
+    maxAttempts?: number;
+  }): Promise<T> {
+    const maxAttempts = options.maxAttempts ?? 5;
+    let lastValue: T | undefined;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (attempt > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
+      }
+
+      lastValue = await options.read();
+      if (options.isSatisfied(lastValue)) {
+        return lastValue;
+      }
+    }
+
+    throw new Error(
+      `${options.label} did not become visible after the approval transaction confirmed`,
+    );
+  }
+
+  private getDiamondAddress(): string {
+    const diamondAddressFromContext = (
+      this.context as DiamondContext & {
+        getDiamondAddress?: () => string;
+      }
+    ).getDiamondAddress?.();
+
+    if (diamondAddressFromContext) {
+      return diamondAddressFromContext;
+    }
+
+    const diamond = this.context.getDiamond() as ethers.Contract & {
+      target?: string;
+      address?: string;
+    };
+
+    return (
+      String(diamond.target || diamond.address || '').trim() ||
+      NEXT_PUBLIC_DIAMOND_ADDRESS
+    );
+  }
+
+  private normalize(value: unknown): string {
+    return String(value || '').trim();
+  }
+
+  private async sleep(ms: number): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private getErrorSelector(error: unknown): string | null {
+    if (!error || typeof error !== 'object') return null;
+    const err = error as Record<string, unknown>;
+
+    if (typeof err.data === 'string' && err.data.length >= 10) {
+      return err.data.slice(0, 10).toLowerCase();
+    }
+
+    if (err.error && typeof err.error === 'object') {
+      const inner = err.error as Record<string, unknown>;
+      if (typeof inner.data === 'string' && inner.data.length >= 10) {
+        return inner.data.slice(0, 10).toLowerCase();
+      }
+    }
+
+    if (typeof err.message === 'string') {
+      const match = err.message.match(/data="(0x[a-fA-F0-9]{8,})"/);
+      if (match) {
+        return match[1].slice(0, 10).toLowerCase();
+      }
+    }
+
+    return null;
+  }
+
+  private isInvalidNodeError(error: unknown): boolean {
+    return this.getErrorSelector(error) === '0x30812d42';
+  }
+
+  private isNodeRef(value: string): boolean {
+    return ethers.isHexString(value, 32);
+  }
+
+  private findOwnedNodeRef(
+    candidate: string,
+    ownerNodes: string[],
+  ): string | undefined {
+    const normalizedCandidate = this.normalize(candidate).toLowerCase();
+    if (!normalizedCandidate) return undefined;
+    return ownerNodes.find(
+      (ownerNodeRef) =>
+        this.normalize(ownerNodeRef).toLowerCase() === normalizedCandidate,
+    );
+  }
+
+  private async resolveSelectedPickupNode(
+    nodeMetadataFacet: DiamondNodeMetadataContract,
+    signerAddress: string,
+    pickupNodeRef: string,
+    contextLabel: string,
+  ): Promise<{
+    pickupNodeRef: string;
+    startName: string;
+    startLat: string;
+    startLng: string;
+  }> {
+    const selectedPickupNodeRef = this.normalize(pickupNodeRef);
+    if (!selectedPickupNodeRef) {
+      throw new Error(
+        `${contextLabel} requires a selected pickup node reference (pickupNodeRef).`,
+      );
+    }
+    if (!this.isNodeRef(selectedPickupNodeRef)) {
+      throw new Error(
+        `Invalid pickupNodeRef for ${contextLabel}: ${selectedPickupNodeRef}`,
+      );
+    }
+
+    const ownerNodes = await nodeMetadataFacet.getOwnerNodes(signerAddress);
+    const selectedOwnedNode = this.findOwnedNodeRef(
+      selectedPickupNodeRef,
+      ownerNodes,
+    );
+    if (!selectedOwnedNode) {
+      throw new Error(
+        `Selected pickup node is not owned by signer. selected=${selectedPickupNodeRef}, signer=${signerAddress}`,
+      );
+    }
+
+    const node = (await nodeMetadataFacet.getNode(selectedOwnedNode)) as
+      | {
+          lat?: string;
+          lng?: string;
+          addressName?: string;
+          [index: number]: unknown;
+        }
+      | undefined;
+
+    // Some ABI/typechain combinations expose tuple values only by index.
+    const startName = this.normalize(
+      node?.addressName ?? (node?.[7] as string | undefined),
+    );
+    const startLat = this.normalize(node?.lat ?? (node?.[8] as string));
+    const startLng = this.normalize(node?.lng ?? (node?.[9] as string));
+
+    if (!startName || !startLat || !startLng) {
+      throw new Error(
+        `Selected pickup node is missing location metadata. nodeRef=${selectedOwnedNode}`,
+      );
+    }
+
+    return {
+      pickupNodeRef: selectedOwnedNode,
+      startName,
+      startLat,
+      startLng,
+    };
+  }
+
   /**
    * Create a new P2P offer
    * @param input The offer details
@@ -130,6 +325,40 @@ export class DiamondP2PService implements IP2PService {
     // Build the AuSysOrder struct for createAuSysOrder
     // For P2P: one party is the creator, the other is address(0) or targetCounterparty
     const buyDestination = input.deliveryDestination;
+    let sellStartLat = '';
+    let sellStartLng = '';
+    let sellStartName = '';
+
+    if (input.isSellOffer) {
+      const nodeMetadataFacet = diamond as DiamondNodeMetadataContract;
+      if (
+        typeof nodeMetadataFacet.getOwnerNodes !== 'function' ||
+        typeof nodeMetadataFacet.getNode !== 'function'
+      ) {
+        throw new Error(
+          'Sell offer pickup metadata resolution is unavailable on this contract instance',
+        );
+      }
+
+      try {
+        const resolved = await this.resolveSelectedPickupNode(
+          nodeMetadataFacet,
+          signerAddress,
+          input.pickupNodeRef || '',
+          'sell offer creation',
+        );
+        sellStartName = resolved.startName;
+        sellStartLat = resolved.startLat;
+        sellStartLng = resolved.startLng;
+      } catch (resolveErr) {
+        const message =
+          resolveErr instanceof Error ? resolveErr.message : String(resolveErr);
+        throw new Error(
+          `Unable to resolve sell offer pickup metadata: ${message}`,
+        );
+      }
+    }
+
     const order = {
       id: ethers.ZeroHash, // Will be generated by contract
       token: input.token,
@@ -146,7 +375,10 @@ export class DiamondP2PService implements IP2PService {
       journeyIds: [],
       nodes: input.nodes || [],
       locationData: {
-        startLocation: { lat: '', lng: '' },
+        startLocation: {
+          lat: input.isSellOffer ? sellStartLat : '',
+          lng: input.isSellOffer ? sellStartLng : '',
+        },
         endLocation:
           !input.isSellOffer && buyDestination
             ? {
@@ -154,7 +386,7 @@ export class DiamondP2PService implements IP2PService {
                 lng: buyDestination.lng,
               }
             : { lat: '', lng: '' },
-        startName: '',
+        startName: input.isSellOffer ? sellStartName : '',
         endName:
           !input.isSellOffer && buyDestination ? buyDestination.address : '',
       },
@@ -164,6 +396,14 @@ export class DiamondP2PService implements IP2PService {
       isSellerInitiated: input.isSellOffer,
       targetCounterparty: input.targetCounterparty || ethers.ZeroAddress,
       expiresAt: input.expiresAt || 0,
+      // Fee snapshots (set by contract, pass 0)
+      snapshotTreasuryBps: 0,
+      snapshotNodeBps: 0,
+      // Source node: for sell offers, pin to the seller's chosen pickup node so
+      // escrow debit targets only that node. For buy offers, set at accept time.
+      sellerNode: input.isSellOffer
+        ? input.pickupNodeRef || ethers.ZeroHash
+        : ethers.ZeroHash,
     };
 
     try {
@@ -242,8 +482,9 @@ export class DiamondP2PService implements IP2PService {
           BigInt(order.price.toString()) + BigInt(order.txFee.toString());
         await this.ensureQuoteTokenApproval(totalCost, payTokenAddress);
       } else {
-        // Buy offer: acceptor is SELLER → needs ERC1155 approval to escrow tokens
-        await this.ensureERC1155Approval(order.token);
+        throw new Error(
+          'Buy offer acceptance requires a selected fulfillment node. Use acceptOfferWithPickupNode.',
+        );
       }
 
       const tx = await diamond.acceptP2POffer(offerId);
@@ -252,6 +493,62 @@ export class DiamondP2PService implements IP2PService {
     } catch (error) {
       console.error('[DiamondP2PService] Error accepting offer:', error);
       // Re-throw with decoded message for the UI
+      const decoded = decodeP2PError(error);
+      const wrapped = new Error(decoded);
+      (wrapped as any).originalError = error;
+      throw wrapped;
+    }
+  }
+
+  async acceptOfferWithPickupNode(
+    offerId: string,
+    pickupNodeRef: string,
+  ): Promise<void> {
+    const diamond = this.context.getDiamond();
+    const signerAddress = await this.context.getSignerAddress();
+
+    try {
+      const order = await diamond.getAuSysOrder(offerId);
+      if (order.isSellerInitiated) {
+        throw new Error(
+          'This accept path is only for buyer-initiated offers. Use acceptOfferWithDelivery for sell offers.',
+        );
+      }
+
+      const nodeMetadataFacet = diamond as DiamondNodeMetadataContract;
+      if (
+        typeof nodeMetadataFacet.getOwnerNodes !== 'function' ||
+        typeof nodeMetadataFacet.getNode !== 'function'
+      ) {
+        throw new Error(
+          'Buy-offer pickup node resolution is unavailable on this contract instance.',
+        );
+      }
+
+      const selected = await this.resolveSelectedPickupNode(
+        nodeMetadataFacet,
+        signerAddress,
+        pickupNodeRef,
+        'buy-offer acceptance',
+      );
+
+      // Buyer-created offer accepted by seller escrows ERC1155.
+      await this.ensureERC1155Approval(order.token);
+
+      const tx = await (
+        diamond as ethers.Contract & {
+          acceptP2POfferWithPickupNode: (
+            offerId: string,
+            pickupNodeRef: string,
+          ) => Promise<{ wait: () => Promise<unknown> }>;
+        }
+      ).acceptP2POfferWithPickupNode(offerId, selected.pickupNodeRef);
+      await tx.wait();
+    } catch (error) {
+      console.error(
+        '[DiamondP2PService] Error accepting offer with pickup node:',
+        error,
+      );
       const decoded = decodeP2PError(error);
       const wrapped = new Error(decoded);
       (wrapped as any).originalError = error;
@@ -278,26 +575,161 @@ export class DiamondP2PService implements IP2PService {
     delivery: P2PDeliveryDetails,
   ): Promise<void> {
     const diamond = this.context.getDiamond();
-    const isZeroAddress = (addr?: string | null) =>
-      !addr || addr.toLowerCase() === ethers.ZeroAddress.toLowerCase();
 
     try {
+      const signerAddress = normalizeAddress(
+        await this.context.getSignerAddress(),
+      );
+      const signerAddressLc = signerAddress.toLowerCase();
+      const providedSender = normalizeAddress(delivery.senderNodeAddress);
+      const providedReceiver = normalizeAddress(delivery.receiverAddress);
+
+      // Read the accepted order from-chain with a short retry window.
+      // Immediately after accept, participant fields can lag on some RPCs.
+      const readOrderWithParticipantRetry = async () => {
+        let snapshot = await diamond.getAuSysOrder(offerId);
+        let participants = extractOrderParticipants(snapshot);
+        if (
+          isZeroAddress(participants.seller) ||
+          isZeroAddress(participants.buyer)
+        ) {
+          await this.sleep(900);
+          snapshot = await diamond.getAuSysOrder(offerId);
+          participants = extractOrderParticipants(snapshot);
+        }
+        return { snapshot, participants };
+      };
+
+      // Canonicalize sender/receiver from on-chain order state and only use
+      // UI-provided values as guarded fallbacks while participants propagate.
+      const buildJourneyInput = (snapshot: unknown) => {
+        const participants = extractOrderParticipants(snapshot);
+        const canonicalSeller = participants.seller;
+        const canonicalBuyer = participants.buyer;
+
+        let senderAddress = canonicalSeller;
+        if (isZeroAddress(senderAddress) && !isZeroAddress(providedSender)) {
+          senderAddress = providedSender;
+          console.warn(
+            `[DiamondP2PService] Falling back to provided senderNodeAddress because canonical seller is unresolved. fallback=${providedSender}`,
+          );
+        } else if (
+          !isZeroAddress(canonicalSeller) &&
+          !isZeroAddress(providedSender) &&
+          providedSender.toLowerCase() !== canonicalSeller.toLowerCase()
+        ) {
+          console.warn(
+            `[DiamondP2PService] Ignoring mismatched senderNodeAddress from UI. provided=${providedSender}, seller=${canonicalSeller}`,
+          );
+        }
+
+        let receiverAddress = canonicalBuyer;
+        if (
+          !isZeroAddress(canonicalBuyer) &&
+          canonicalBuyer.toLowerCase() !== signerAddressLc
+        ) {
+          console.warn(
+            `[DiamondP2PService] Canonical buyer does not match signer after accept. buyer=${canonicalBuyer}, signer=${signerAddress}. Falling back to signer.`,
+          );
+          receiverAddress = signerAddress;
+        } else if (isZeroAddress(canonicalBuyer)) {
+          const receiverFallback = !isZeroAddress(providedReceiver)
+            ? providedReceiver
+            : signerAddress;
+          if (receiverFallback.toLowerCase() !== signerAddressLc) {
+            throw new Error(
+              'Cannot create journey: receiver fallback must match the connected buyer wallet.',
+            );
+          }
+          receiverAddress = receiverFallback;
+          console.warn(
+            `[DiamondP2PService] Falling back to provided receiver because canonical buyer is unresolved. fallback=${receiverFallback}`,
+          );
+        } else if (
+          !isZeroAddress(providedReceiver) &&
+          providedReceiver.toLowerCase() !== canonicalBuyer.toLowerCase()
+        ) {
+          console.warn(
+            `[DiamondP2PService] Ignoring mismatched receiverAddress from UI. provided=${providedReceiver}, buyer=${canonicalBuyer}`,
+          );
+        }
+
+        if (isZeroAddress(senderAddress)) {
+          throw new Error(
+            'Cannot create journey: seller/node sender is unresolved after offer acceptance.',
+          );
+        }
+        if (isZeroAddress(receiverAddress)) {
+          throw new Error(
+            'Cannot create journey: receiver address is unresolved after offer acceptance.',
+          );
+        }
+
+        const roleConflict = detectJourneyRoleConflict(
+          senderAddress,
+          receiverAddress,
+        );
+        if (roleConflict.hasConflict) {
+          throw new Error(
+            roleConflict.message ||
+              'Sender, driver, and customer must use different wallet addresses.',
+          );
+        }
+
+        const { startLat, startLng, startName } =
+          extractOrderPickupMetadata(snapshot);
+        const parcelData = {
+          ...delivery.parcelData,
+          startLocation: {
+            lat:
+              normalizeText(delivery.parcelData?.startLocation?.lat) ||
+              startLat,
+            lng:
+              normalizeText(delivery.parcelData?.startLocation?.lng) ||
+              startLng,
+          },
+          endLocation: {
+            lat: normalizeText(delivery.parcelData?.endLocation?.lat),
+            lng: normalizeText(delivery.parcelData?.endLocation?.lng),
+          },
+          startName: normalizeText(delivery.parcelData?.startName) || startName,
+          endName: normalizeText(delivery.parcelData?.endName),
+        };
+
+        if (!parcelData.startLocation.lat || !parcelData.startLocation.lng) {
+          throw new Error(
+            'Cannot schedule delivery without a pickup location. Ask the seller/node to provide pickup coordinates.',
+          );
+        }
+        if (!parcelData.startName) {
+          throw new Error(
+            'Cannot schedule delivery without a pickup address label.',
+          );
+        }
+
+        return {
+          senderAddress,
+          receiverAddress,
+          parcelData,
+        };
+      };
+
       // 1. Fetch offer to determine approval needs
       const order = await diamond.getAuSysOrder(offerId);
+      if (!extractOrderIsSellerInitiated(order)) {
+        throw new Error(
+          'Buy offers must be accepted with a selected fulfillment node first. Then the buyer can schedule delivery from dashboard.',
+        );
+      }
 
       // 2. Handle approvals based on offer type
-      if (order.isSellerInitiated) {
-        // Sell offer: acceptor is BUYER → ERC20 approval for price + txFee + bounty
-        const payTokenAddress = await this.getConfiguredPayTokenAddress();
-        const totalCost =
-          BigInt(order.price.toString()) +
-          BigInt(order.txFee.toString()) +
-          delivery.bountyWei;
-        await this.ensureQuoteTokenApproval(totalCost, payTokenAddress);
-      } else {
-        // Buy offer: acceptor is SELLER → ERC1155 approval to escrow tokens
-        await this.ensureERC1155Approval(order.token);
-      }
+      // Sell offer: acceptor is BUYER → ERC20 approval for price + txFee + bounty
+      const payTokenAddress = await this.getConfiguredPayTokenAddress();
+      const totalCost =
+        extractOrderBigInt(order, 'price') +
+        extractOrderBigInt(order, 'txFee') +
+        delivery.bountyWei;
+      await this.ensureQuoteTokenApproval(totalCost, payTokenAddress);
 
       // 3. Accept the offer
       const acceptTx = await diamond.acceptP2POffer(offerId);
@@ -307,80 +739,16 @@ export class DiamondP2PService implements IP2PService {
         throw new Error('acceptP2POffer transaction failed on-chain');
       }
 
-      // Poll for order state update (more efficient than fixed wait)
-      const maxAttempts = 4;
-      const intervalMs = 500;
-      let acceptedOrder = await diamond.getAuSysOrder(offerId);
-
-      for (
-        let attempt = 1;
-        attempt <= maxAttempts && acceptedOrder.currentStatus === 0n;
-        attempt++
-      ) {
-        await new Promise((resolve) => setTimeout(resolve, intervalMs));
-        acceptedOrder = await diamond.getAuSysOrder(offerId);
-      }
-
-      // Validate order was accepted - fallback to accepting wallet when RPC returns stale state
-      const signerAddress = await this.context.getSignerAddress();
-      const orderBuyer = acceptedOrder.buyer;
-      const orderSeller = acceptedOrder.seller;
-      const isBuyerSet = orderBuyer && orderBuyer !== ethers.ZeroAddress;
-      const isSellerSet = orderSeller && orderSeller !== ethers.ZeroAddress;
-
-      let buyerAddress: string;
-      if (!isBuyerSet || acceptedOrder.currentStatus === 0n) {
-        // Sell offer: acceptor = buyer
-        if (acceptedOrder.isSellerInitiated) {
-          console.warn(
-            '[DiamondP2PService] Order state not updated after acceptance - using accepting wallet as buyer',
-          );
-          buyerAddress = signerAddress;
-        } else {
-          buyerAddress = orderBuyer || signerAddress;
-        }
-      } else {
-        buyerAddress = orderBuyer;
-      }
-
-      // Resolve sender (seller) / receiver (buyer) from the accepted on-chain order.
-      // For buy offers: acceptor = seller; for sell offers: seller set at creation.
-      let senderAddress: string;
-      if (!isSellerSet || acceptedOrder.currentStatus === 0n) {
-        if (!acceptedOrder.isSellerInitiated) {
-          // Buy offer: acceptor is seller
-          console.warn(
-            '[DiamondP2PService] Order state not updated after acceptance - using accepting wallet as seller',
-          );
-          senderAddress = signerAddress;
-        } else {
-          senderAddress = String(orderSeller || '');
-        }
-      } else {
-        senderAddress = String(orderSeller);
-      }
-      const receiverAddress = isZeroAddress(delivery.receiverAddress)
-        ? buyerAddress
-        : delivery.receiverAddress;
-
-      if (isZeroAddress(senderAddress)) {
-        throw new Error(
-          'Cannot create journey: seller/node sender is unresolved after offer acceptance.',
-        );
-      }
-      if (isZeroAddress(receiverAddress)) {
-        throw new Error(
-          'Cannot create journey: receiver address is unresolved after offer acceptance.',
-        );
-      }
+      let postAccept = await readOrderWithParticipantRetry();
+      let journeyInput = buildJourneyInput(postAccept.snapshot);
 
       // 4. Create the delivery journey
       try {
         const journeyTx = await diamond.createOrderJourney(
           offerId,
-          delivery.senderNodeAddress,
-          receiverAddress,
-          delivery.parcelData,
+          journeyInput.senderAddress,
+          journeyInput.receiverAddress,
+          journeyInput.parcelData,
           delivery.bountyWei,
           delivery.etaTimestamp,
           delivery.tokenQuantity,
@@ -388,6 +756,25 @@ export class DiamondP2PService implements IP2PService {
         );
         await journeyTx.wait();
       } catch (journeyError) {
+        // Retry once for InvalidNode-like races after accept settles.
+        if (this.isInvalidNodeError(journeyError)) {
+          await this.sleep(1000);
+          postAccept = await readOrderWithParticipantRetry();
+          journeyInput = buildJourneyInput(postAccept.snapshot);
+          const retryJourneyTx = await diamond.createOrderJourney(
+            offerId,
+            journeyInput.senderAddress,
+            journeyInput.receiverAddress,
+            journeyInput.parcelData,
+            delivery.bountyWei,
+            delivery.etaTimestamp,
+            delivery.tokenQuantity,
+            delivery.assetId,
+          );
+          await retryJourneyTx.wait();
+          return;
+        }
+
         // Offer was accepted but journey creation failed. The order is now
         // in PROCESSING state without a journey. The UI shows a "Schedule
         // Delivery" fallback button for this case.
@@ -436,20 +823,30 @@ export class DiamondP2PService implements IP2PService {
       quoteTokenAddress.toLowerCase() ===
         NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS.toLowerCase();
     const quoteToken = shouldUseContextHelper
-      ? (this.context as unknown as ContextWithOptionalContracts).getQuoteTokenContract()
+      ? (
+          this.context as unknown as ContextWithOptionalContracts
+        ).getQuoteTokenContract()
       : new ethers.Contract(quoteTokenAddress, ERC20_ABI, signer);
+    const diamondAddress = this.getDiamondAddress();
 
     const currentAllowance = await quoteToken.allowance(
       signerAddress,
-      NEXT_PUBLIC_DIAMOND_ADDRESS,
+      diamondAddress,
     );
 
     if (BigInt(currentAllowance.toString()) < amount) {
-      const tx = await quoteToken.approve(
-        NEXT_PUBLIC_DIAMOND_ADDRESS,
-        ethers.MaxUint256,
-      );
+      const tx = await quoteToken.approve(diamondAddress, ethers.MaxUint256);
       await tx.wait();
+      await this.waitForApprovalState({
+        label: `ERC20 allowance for token ${quoteTokenAddress}`,
+        read: async () =>
+          BigInt(
+            (
+              await quoteToken.allowance(signerAddress, diamondAddress)
+            ).toString(),
+          ),
+        isSatisfied: (allowance) => allowance >= amount,
+      });
     } else {
     }
   }
@@ -492,7 +889,7 @@ export class DiamondP2PService implements IP2PService {
   private async ensureERC1155Approval(tokenAddress: string): Promise<void> {
     const signer = this.context.getSigner();
     const signerAddress = await this.context.getSignerAddress();
-    const diamondAddress = NEXT_PUBLIC_DIAMOND_ADDRESS;
+    const diamondAddress = this.getDiamondAddress();
 
     // When the token is the Diamond (P2P offers use Diamond as the ERC1155), use
     // the Diamond contract from context so setApprovalForAll/isApprovedForAll
@@ -502,7 +899,9 @@ export class DiamondP2PService implements IP2PService {
     const erc1155 = isDiamondToken
       ? this.context.getDiamond()
       : 'getERC1155Contract' in this.context
-        ? (this.context as unknown as ContextWithOptionalContracts).getERC1155Contract(tokenAddress)
+        ? (
+            this.context as unknown as ContextWithOptionalContracts
+          ).getERC1155Contract(tokenAddress)
         : new ethers.Contract(tokenAddress, ERC1155_ABI, signer);
 
     try {
@@ -513,21 +912,18 @@ export class DiamondP2PService implements IP2PService {
 
       if (!isApproved) {
         const tx = await erc1155.setApprovalForAll(diamondAddress, true);
-        const receipt = await tx.wait();
+        await tx.wait();
 
-        // Verify the approval took effect; retry with short delay to handle RPC propagation
-        let verified = false;
-        for (let attempt = 0; attempt < 3; attempt++) {
-          if (attempt > 0) {
-            await new Promise((r) => setTimeout(r, 500 * attempt));
-          }
-          verified = await erc1155.isApprovedForAll(
-            signerAddress,
-            diamondAddress,
-          );
-          if (verified) break;
-        }
-        if (!verified) {
+        try {
+          await this.waitForApprovalState({
+            label: `ERC1155 operator approval for token ${tokenAddress}`,
+            read: async () =>
+              Boolean(
+                await erc1155.isApprovedForAll(signerAddress, diamondAddress),
+              ),
+            isSatisfied: (approved) => approved,
+          });
+        } catch (verificationError) {
           console.error(
             '[DiamondP2PService] Approval failed - token:',
             tokenAddress,
@@ -537,7 +933,7 @@ export class DiamondP2PService implements IP2PService {
             diamondAddress,
           );
           throw new Error(
-            `ERC1155 approval failed — setApprovalForAll did not take effect for token ${tokenAddress}`,
+            `ERC1155 approval failed — ${verificationError instanceof Error ? verificationError.message : String(verificationError)}`,
           );
         }
       } else {
@@ -576,7 +972,9 @@ export class DiamondP2PService implements IP2PService {
  */
 export class DiamondP2PRepository implements IP2PRepository {
   private context: DiamondContext;
-  private graphQLEndpoint = NEXT_PUBLIC_INDEXER_URL;
+  private get graphQLEndpoint() {
+    return getCurrentIndexerUrl();
+  }
 
   constructor(context: DiamondContext) {
     this.context = context;

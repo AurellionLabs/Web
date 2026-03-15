@@ -7,6 +7,7 @@ import { getSettlementService } from '@/infrastructure/services/settlement-servi
 export interface CustodyEntry {
   nodeAddress: string;
   nodeLocation: string;
+  nodeHash: string;
   amount: bigint;
 }
 
@@ -19,9 +20,12 @@ export interface AssetCustodyResult {
 }
 
 /**
- * For a given tokenId, queries on-chain getCustodyInfo(tokenId, nodeAddress)
- * for each of the user's nodes. Token wallet location is irrelevant —
- * only the custodian record on AssetsFacet matters for redemption.
+ * For a given tokenId, queries per-node custody amounts from the Diamond.
+ * Uses getNodeCustodyInfo(tokenId, nodeHash) which tracks how much of a
+ * token is physically custodied at each specific node — not just per-wallet.
+ *
+ * Falls back to wallet-level getCustodyInfo if per-node data isn't available
+ * (e.g. tokens minted before the per-node tracking was added).
  */
 export function useAssetCustody(
   tokenId: string | undefined,
@@ -42,22 +46,34 @@ export function useAssetCustody(
 
     try {
       const service = getSettlementService();
+
+      // Query per-node custody for each node that has this asset
       const results = await Promise.all(
-        nodes.map(async (node) => {
-          // node.address is the bytes32 nodeHash — NOT a valid Ethereum address.
-          // The custodian recorded in AssetsFacet is the node owner's wallet (node.owner).
-          const custodian = node.owner;
-          const amount = await service.getCustodyInfo(tokenId, custodian);
-          return {
-            nodeAddress: custodian,
-            nodeLocation: node.location?.addressName || custodian,
-            amount,
-          };
-        }),
+        nodes
+          .filter((node) => node.assets.some((a) => a.tokenId === tokenId))
+          .map(async (node) => {
+            let amount = 0n;
+            try {
+              // Try per-node custody first (new mapping)
+              amount = await service.getNodeCustodyInfo(tokenId, node.address);
+            } catch {
+              // Fallback: per-wallet custody (pre-upgrade tokens)
+              try {
+                amount = await service.getCustodyInfo(tokenId, node.owner);
+              } catch {
+                amount = 0n;
+              }
+            }
+            return {
+              nodeAddress: node.owner,
+              nodeLocation: node.location?.addressName || node.owner,
+              nodeHash: node.address,
+              amount,
+            };
+          }),
       );
 
-      // Exclude nodes with zero custody
-      setEntries(results.filter((entry) => entry.amount > 0n));
+      setEntries(results.filter((e) => e.amount > 0n));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch custody');
     } finally {

@@ -3,6 +3,7 @@ import React, {
   createContext,
   useContext,
   useState,
+  useMemo,
   type ReactNode,
 } from 'react';
 import { PrivyProvider } from '@privy-io/react-auth';
@@ -57,12 +58,15 @@ export function MainProvider({ children }: { children: ReactNode }) {
     }
   }, [pathname]);
 
-  const value = {
-    currentUserRole,
-    setCurrentUserRole,
-    connected,
-    setIsWalletConnected,
-  };
+  const value = useMemo(
+    () => ({
+      currentUserRole,
+      setCurrentUserRole,
+      connected,
+      setIsWalletConnected,
+    }),
+    [currentUserRole, connected],
+  );
 
   return <MainContext.Provider value={value}>{children}</MainContext.Provider>;
 }

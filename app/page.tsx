@@ -22,6 +22,7 @@ import {
   MagiVoting,
   TerminalOutput,
   AnimatedCounterCards,
+  FadeInSection,
 } from '@/app/components/eva/eva-animations';
 
 /**
@@ -261,88 +262,187 @@ export default function LandingPage() {
       </section>
 
       {/* ===== BOOT SEQUENCE — System Init ===== */}
-      <section className="relative border-t border-border/20">
-        <EvaSectionMarker
-          section="SEC.01"
-          label="System Initialization"
-          variant="crimson"
-        />
-        <div className="px-6 md:px-16 lg:px-24 pb-12">
-          <div className="max-w-5xl mx-auto">
-            <BootSequence
-              items={[
-                { label: 'SMART CONTRACT VERIFICATION', code: 'SC.VERIFY.OK' },
-                { label: 'ORACLE FEED INITIALIZATION', code: 'ORC.FEED.V3' },
-                { label: 'COMPLIANCE ENGINE ONLINE', code: 'CMPL.ENG.18J' },
-                { label: 'TOKENIZATION PROTOCOL ACTIVE', code: 'TKN.PROTO.OK' },
-              ]}
-              onComplete={() => setBootComplete(true)}
-            />
-          </div>
-        </div>
-      </section>
+      <FadeInSection>
+        <section className="relative border-t border-border/20">
+          <EvaSectionMarker
+            section="SEC.01"
+            label="System Initialization"
+            variant="crimson"
+          />
+          <div className="px-6 md:px-16 lg:px-24 pb-12">
+            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] gap-0 items-stretch">
+              <BootSequence
+                items={[
+                  {
+                    label: 'SMART CONTRACT VERIFICATION',
+                    code: 'SC.VERIFY.OK',
+                  },
+                  { label: 'ORACLE FEED INITIALIZATION', code: 'ORC.FEED.V3' },
+                  { label: 'COMPLIANCE ENGINE ONLINE', code: 'CMPL.ENG.18J' },
+                  {
+                    label: 'TOKENIZATION PROTOCOL ACTIVE',
+                    code: 'TKN.PROTO.OK',
+                  },
+                ]}
+                onComplete={() => setBootComplete(true)}
+              />
 
-      {/* ===== LIVE WAVEFORM — Market Data ===== */}
-      <section className="relative border-t border-border/20">
-        <EvaSectionMarker
-          section="SEC.02"
-          label="Market Psychograph"
-          variant="gold"
-        />
-        <div className="px-6 md:px-16 lg:px-24 pb-12">
-          <div className="max-w-7xl mx-auto">
-            <LiveWaveform
-              label="Active Price Discovery"
-              sublabel="FEED: SOURCE PRICING / LIVE DATA"
-              height={140}
-            />
-
-            {/* Price Discovery blurb */}
-            <div className="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              <div className="lg:col-span-7">
-                <div className="flex gap-4">
-                  <div className="w-[2px] bg-gold/30 shrink-0 mt-1" />
-                  <div>
-                    <h3 className="font-mono text-sm tracking-[0.15em] uppercase text-gold mb-3">
-                      Source-Level Price Discovery
-                    </h3>
-                    <p className="font-sans text-sm leading-relaxed text-foreground/50">
-                      By enabling the tokenization of physical assets at their
-                      source — the goat herder, the gemstone mine, the grain
-                      producer — we disintermediate the layers of middlemen that
-                      chip away at true value. Price discovery happens where
-                      value originates, not where it&apos;s arbitraged. This is
-                      fairer for producers, more transparent for buyers, and
-                      creates markets that are fundamentally more liquid than
-                      anything that exists today.
-                    </p>
-                  </div>
-                </div>
+              {/* Animated connector line between cards */}
+              <div className="hidden lg:flex items-center justify-center w-16 relative">
+                <div className="absolute h-[2px] w-full bg-emerald-500/15" />
+                <div
+                  className="absolute h-[2px] bg-emerald-500/60"
+                  style={{
+                    animation: 'flowLine 2s ease-in-out infinite',
+                    width: '40%',
+                  }}
+                />
+                <div
+                  className="relative z-10 w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"
+                  style={{
+                    animation: 'flowDot 2s ease-in-out infinite',
+                  }}
+                />
+                <style>{`
+                @keyframes flowDot {
+                  0%, 100% { transform: translateX(-24px); opacity: 0.4; }
+                  50% { transform: translateX(24px); opacity: 1; }
+                }
+                @keyframes flowLine {
+                  0%, 100% { transform: translateX(-30%); opacity: 0.3; }
+                  50% { transform: translateX(30%); opacity: 0.7; }
+                }
+              `}</style>
               </div>
-              <div className="lg:col-span-5 border border-border/25 bg-card/40 p-4">
-                <div className="grid grid-cols-2 gap-4">
+
+              {/* On-Chain Metadata & Node Scoring */}
+              <div
+                className="relative bg-card/60 border border-border/30 overflow-hidden flex flex-col"
+                style={{
+                  clipPath:
+                    'polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px))',
+                }}
+              >
+                <div className="absolute inset-0 eva-hex-pattern opacity-10 pointer-events-none" />
+                <div className="p-6 md:p-8 flex flex-col justify-between flex-1">
                   <div>
-                    <span className="font-mono text-[10px] tracking-[0.2em] uppercase text-foreground/30 block mb-1">
-                      Middlemen Removed
-                    </span>
-                    <span className="font-mono text-xl font-bold text-gold">
-                      3–7 layers
-                    </span>
-                  </div>
-                  <div>
-                    <span className="font-mono text-[10px] tracking-[0.2em] uppercase text-foreground/30 block mb-1">
-                      Price Efficiency
-                    </span>
-                    <span className="font-mono text-xl font-bold text-emerald-400">
-                      +40–60%
-                    </span>
+                    <div className="font-mono text-xs tracking-[0.2em] text-gold/60 uppercase mb-6">
+                      ASSET METADATA &amp; NODE INTEGRITY
+                    </div>
+
+                    <div className="space-y-5">
+                      {/* Metadata section */}
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-1.5 h-1.5 bg-gold rotate-45" />
+                          <span className="font-mono text-sm text-foreground/80 font-bold tracking-wide">
+                            IMMUTABLE METADATA
+                          </span>
+                          <span className="font-mono text-[10px] text-gold/40 tracking-widest ml-auto">
+                            IPFS.PIN.OK
+                          </span>
+                        </div>
+                        <p className="font-sans text-sm leading-relaxed text-foreground/45 pl-4">
+                          Every tokenized asset carries on-chain provenance —
+                          species, weight, origin, and custodian identity are
+                          hashed into the token at mint and pinned to IPFS.
+                          Attributes are cryptographically bound to the ERC-1155
+                          token ID, making post-mint tampering impossible.
+                        </p>
+                      </div>
+
+                      {/* Node scoring section */}
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-1.5 h-1.5 bg-emerald-500 rotate-45" />
+                          <span className="font-mono text-sm text-foreground/80 font-bold tracking-wide">
+                            NODE TRUST SCORING
+                          </span>
+                          <span className="font-mono text-[10px] text-emerald-500/40 tracking-widest ml-auto">
+                            REP.ENGINE.V2
+                          </span>
+                        </div>
+                        <p className="font-sans text-sm leading-relaxed text-foreground/45 pl-4">
+                          Custodian nodes earn reputation through verified
+                          deliveries, on-time settlements, and staking
+                          collateral. The protocol scores each node across
+                          uptime, fulfilment rate, and dispute history —
+                          weighting recent performance to surface reliable
+                          custodians for buyer selection.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </FadeInSection>
+
+      {/* ===== LIVE WAVEFORM — Market Data ===== */}
+      <FadeInSection>
+        <section className="relative border-t border-border/20">
+          <EvaSectionMarker
+            section="SEC.02"
+            label="Market Psychograph"
+            variant="gold"
+          />
+          <div className="px-6 md:px-16 lg:px-24 pb-12">
+            <div className="max-w-7xl mx-auto">
+              <LiveWaveform
+                label="Active Price Discovery"
+                sublabel="FEED: SOURCE PRICING / LIVE DATA"
+                height={140}
+              />
+
+              {/* Price Discovery blurb */}
+              <div className="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <div className="lg:col-span-7">
+                  <div className="flex gap-4">
+                    <div className="w-[2px] bg-gold/30 shrink-0 mt-1" />
+                    <div>
+                      <h3 className="font-mono text-sm tracking-[0.15em] uppercase text-gold mb-3">
+                        Source-Level Price Discovery
+                      </h3>
+                      <p className="font-sans text-sm leading-relaxed text-foreground/50">
+                        By enabling the tokenization of physical assets at their
+                        source — the goat herder, the gemstone mine, the grain
+                        producer — we disintermediate the layers of middlemen
+                        that chip away at true value. Price discovery happens
+                        where value originates, not where it&apos;s arbitraged.
+                        This is fairer for producers, more transparent for
+                        buyers, and creates markets that are fundamentally more
+                        liquid than anything that exists today.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="lg:col-span-5 border border-border/25 bg-card/40 p-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="font-mono text-[10px] tracking-[0.2em] uppercase text-foreground/30 block mb-1">
+                        Middlemen Removed
+                      </span>
+                      <span className="font-mono text-xl font-bold text-gold">
+                        3–7 layers
+                      </span>
+                    </div>
+                    <div>
+                      <span className="font-mono text-[10px] tracking-[0.2em] uppercase text-foreground/30 block mb-1">
+                        Price Efficiency
+                      </span>
+                      <span className="font-mono text-xl font-bold text-emerald-400">
+                        +40–60%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </FadeInSection>
 
       {/* ===== Chevron Data Stream divider ===== */}
       <div className="px-6 md:px-16 lg:px-24">
@@ -350,249 +450,257 @@ export default function LandingPage() {
       </div>
 
       {/* ===== SECTION: Featured Assets ===== */}
-      <section className="relative border-t border-border/20">
-        <EvaSectionMarker
-          section="SEC.03"
-          label="Featured Classes"
-          variant="crimson"
-        />
-
-        <div className="px-6 md:px-16 lg:px-24 pb-24">
-          <div className="max-w-7xl mx-auto">
-            {/* Section header */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-16">
-              <div className="lg:col-span-6">
-                <h2 className="font-serif text-3xl md:text-5xl leading-tight text-balance">
-                  <span className="text-gold">Featured</span>{' '}
-                  <span className="text-foreground/80">Asset Classes</span>
-                </h2>
-              </div>
-              <div className="lg:col-span-6 flex items-end lg:justify-end">
-                <p className="font-sans text-base text-foreground/45 leading-relaxed max-w-md">
-                  Each asset undergoes rigorous compliance vetting, legal
-                  structuring, and custodial verification before tokenization.
-                </p>
-              </div>
-            </div>
-
-            {/* Asset cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-[1px] bg-border/15">
-              {[
-                {
-                  name: 'Manhattan RE Fund IV',
-                  type: 'Real Estate',
-                  apy: '8.2%',
-                  tvl: '$420M',
-                  id: 'RE-0041',
-                  power: 8,
-                },
-                {
-                  name: 'Sovereign Gold Reserve',
-                  type: 'Commodities',
-                  apy: '4.1%',
-                  tvl: '$180M',
-                  id: 'CM-0017',
-                  power: 5,
-                },
-                {
-                  name: 'Renaissance Art Trust',
-                  type: 'Fine Art',
-                  apy: '12.7%',
-                  tvl: '$95M',
-                  id: 'FA-0008',
-                  power: 9,
-                },
-              ].map((asset) => (
-                <div
-                  key={asset.id}
-                  className="relative bg-card/60 group cursor-pointer hover:bg-card transition-colors duration-500"
-                >
-                  <div className="h-[2px] bg-gold/10 group-hover:bg-gold/30 transition-colors duration-500" />
-                  <div className="absolute inset-0 eva-hex-pattern opacity-10 pointer-events-none" />
-                  <div className="p-6 relative">
-                    <div className="flex items-center justify-between mb-5">
-                      <span className="font-mono text-[11px] tracking-[0.15em] text-crimson/50">
-                        {asset.id}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        <span className="font-mono text-[11px] tracking-[0.15em] text-emerald-400 uppercase">
-                          Live
-                        </span>
-                      </div>
-                    </div>
-
-                    <span className="font-mono text-[11px] tracking-[0.3em] uppercase text-crimson/45 block mb-1">
-                      {asset.type}
-                    </span>
-
-                    <h3 className="font-serif text-xl text-foreground/80 group-hover:text-gold transition-colors duration-500 mb-4">
-                      {asset.name}
-                    </h3>
-
-                    <EvaProgress
-                      value={asset.power}
-                      max={10}
-                      color="gold"
-                      segments={10}
-                    />
-
-                    <div className="border-t border-border/25 pt-4 mt-4 flex justify-between items-end">
-                      <div>
-                        <span className="font-mono text-[11px] tracking-[0.2em] text-foreground/30 block mb-1">
-                          APY
-                        </span>
-                        <span className="font-mono text-2xl font-bold text-gold">
-                          {asset.apy}
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <span className="font-mono text-[11px] tracking-[0.2em] text-foreground/30 block mb-1">
-                          TVL
-                        </span>
-                        <span className="font-mono text-base text-foreground/60">
-                          {asset.tvl}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <EvaScanLine variant="mixed" />
-
-      {/* ===== SECTION: Workflow ===== */}
-      <section className="relative border-t border-border/20 bg-card/20">
-        <div className="absolute inset-0 eva-hex-pattern" />
-
-        <div className="relative z-10">
-          <EvaSectionMarker section="SEC.04" label="Process" variant="gold" />
+      <FadeInSection>
+        <section className="relative border-t border-border/20">
+          <EvaSectionMarker
+            section="SEC.03"
+            label="Featured Classes"
+            variant="crimson"
+          />
 
           <div className="px-6 md:px-16 lg:px-24 pb-24">
-            <div className="max-w-7xl mx-auto relative">
-              <HexCluster size="lg" className="absolute -top-2 right-8" />
-              <h2 className="font-serif text-3xl md:text-5xl leading-tight mb-20 text-balance">
-                Tokenization{' '}
-                <span className="italic text-crimson">Workflow</span>
-              </h2>
+            <div className="max-w-7xl mx-auto">
+              {/* Section header */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-16">
+                <div className="lg:col-span-6">
+                  <h2 className="font-serif text-3xl md:text-5xl leading-tight text-balance">
+                    <span className="text-gold">Featured</span>{' '}
+                    <span className="text-foreground/80">Asset Classes</span>
+                  </h2>
+                </div>
+                <div className="lg:col-span-6 flex items-end lg:justify-end">
+                  <p className="font-sans text-base text-foreground/45 leading-relaxed max-w-md">
+                    Each asset undergoes rigorous compliance vetting, legal
+                    structuring, and custodial verification before tokenization.
+                  </p>
+                </div>
+              </div>
 
-              {/* 5-step process */}
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-[1px]">
+              {/* Asset cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-[1px] bg-border/15">
                 {[
                   {
-                    step: '01',
-                    label: 'Asset Intake',
-                    desc: 'Due diligence, valuations, and legal review of the underlying asset',
+                    name: 'Manhattan RE Fund IV',
+                    type: 'Real Estate',
+                    apy: '8.2%',
+                    tvl: '$420M',
+                    id: 'RE-0041',
+                    power: 8,
                   },
                   {
-                    step: '02',
-                    label: 'Compliance',
-                    desc: 'KYC/AML verification and regulatory framework alignment',
+                    name: 'Sovereign Gold Reserve',
+                    type: 'Commodities',
+                    apy: '4.1%',
+                    tvl: '$180M',
+                    id: 'CM-0017',
+                    power: 5,
                   },
                   {
-                    step: '03',
-                    label: 'Structuring',
-                    desc: 'Fractional pools, custodial setup, and legal wrappers',
+                    name: 'Renaissance Art Trust',
+                    type: 'Fine Art',
+                    apy: '12.7%',
+                    tvl: '$95M',
+                    id: 'FA-0008',
+                    power: 9,
                   },
-                  {
-                    step: '04',
-                    label: 'Tokenization',
-                    desc: 'On-chain issuance with audited smart contracts',
-                  },
-                  {
-                    step: '05',
-                    label: 'Market Access',
-                    desc: 'Secondary trading, liquidity pools, and settlement',
-                  },
-                ].map((s) => (
-                  <div key={s.step} className="group">
-                    <div className="border border-border/25 bg-background/80 p-5 h-full hover:border-gold/30 transition-colors duration-500">
-                      <div className="flex items-center gap-2 mb-5">
-                        <span className="font-mono text-sm font-bold text-crimson/60 group-hover:text-crimson transition-colors">
-                          {s.step}
+                ].map((asset) => (
+                  <div
+                    key={asset.id}
+                    className="relative bg-card/60 group cursor-pointer hover:bg-card transition-colors duration-500"
+                  >
+                    <div className="h-[2px] bg-gold/10 group-hover:bg-gold/30 transition-colors duration-500" />
+                    <div className="absolute inset-0 eva-hex-pattern opacity-10 pointer-events-none" />
+                    <div className="p-6 relative">
+                      <div className="flex items-center justify-between mb-5">
+                        <span className="font-mono text-[11px] tracking-[0.15em] text-crimson/50">
+                          {asset.id}
                         </span>
-                        <div className="flex-1 h-[1px] bg-border/20 group-hover:bg-gold/20 transition-colors" />
+                        <div className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          <span className="font-mono text-[11px] tracking-[0.15em] text-emerald-400 uppercase">
+                            Live
+                          </span>
+                        </div>
                       </div>
-                      <h3 className="font-mono text-sm tracking-[0.1em] uppercase text-gold group-hover:text-gold-light transition-colors mb-3">
-                        {s.label}
+
+                      <span className="font-mono text-[11px] tracking-[0.3em] uppercase text-crimson/45 block mb-1">
+                        {asset.type}
+                      </span>
+
+                      <h3 className="font-serif text-xl text-foreground/80 group-hover:text-gold transition-colors duration-500 mb-4">
+                        {asset.name}
                       </h3>
-                      <p className="font-sans text-sm text-foreground/45 leading-relaxed">
-                        {s.desc}
-                      </p>
+
+                      <EvaProgress
+                        value={asset.power}
+                        max={10}
+                        color="gold"
+                        segments={10}
+                      />
+
+                      <div className="border-t border-border/25 pt-4 mt-4 flex justify-between items-end">
+                        <div>
+                          <span className="font-mono text-[11px] tracking-[0.2em] text-foreground/30 block mb-1">
+                            APY
+                          </span>
+                          <span className="font-mono text-2xl font-bold text-gold">
+                            {asset.apy}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-mono text-[11px] tracking-[0.2em] text-foreground/30 block mb-1">
+                            TVL
+                          </span>
+                          <span className="font-mono text-base text-foreground/60">
+                            {asset.tvl}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </FadeInSection>
+
+      <EvaScanLine variant="mixed" />
+
+      {/* ===== SECTION: Workflow ===== */}
+      <FadeInSection>
+        <section className="relative border-t border-border/20 bg-card/20">
+          <div className="absolute inset-0 eva-hex-pattern" />
+
+          <div className="relative z-10">
+            <EvaSectionMarker section="SEC.04" label="Process" variant="gold" />
+
+            <div className="px-6 md:px-16 lg:px-24 pb-24">
+              <div className="max-w-7xl mx-auto relative">
+                <HexCluster size="lg" className="absolute -top-2 right-8" />
+                <h2 className="font-serif text-3xl md:text-5xl leading-tight mb-20 text-balance">
+                  Tokenization{' '}
+                  <span className="italic text-crimson">Workflow</span>
+                </h2>
+
+                {/* 5-step process */}
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-[1px]">
+                  {[
+                    {
+                      step: '01',
+                      label: 'Asset Intake',
+                      desc: 'Due diligence, valuations, and legal review of the underlying asset',
+                    },
+                    {
+                      step: '02',
+                      label: 'Compliance',
+                      desc: 'KYC/AML verification and regulatory framework alignment',
+                    },
+                    {
+                      step: '03',
+                      label: 'Structuring',
+                      desc: 'Fractional pools, custodial setup, and legal wrappers',
+                    },
+                    {
+                      step: '04',
+                      label: 'Tokenization',
+                      desc: 'On-chain issuance with audited smart contracts',
+                    },
+                    {
+                      step: '05',
+                      label: 'Market Access',
+                      desc: 'Secondary trading, liquidity pools, and settlement',
+                    },
+                  ].map((s) => (
+                    <div key={s.step} className="group">
+                      <div className="border border-border/25 bg-background/80 p-5 h-full hover:border-gold/30 transition-colors duration-500">
+                        <div className="flex items-center gap-2 mb-5">
+                          <span className="font-mono text-sm font-bold text-crimson/60 group-hover:text-crimson transition-colors">
+                            {s.step}
+                          </span>
+                          <div className="flex-1 h-[1px] bg-border/20 group-hover:bg-gold/20 transition-colors" />
+                        </div>
+                        <h3 className="font-mono text-sm tracking-[0.1em] uppercase text-gold group-hover:text-gold-light transition-colors mb-3">
+                          {s.label}
+                        </h3>
+                        <p className="font-sans text-sm text-foreground/45 leading-relaxed">
+                          {s.desc}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </FadeInSection>
 
       {/* ===== MAGI VOTING — Tokenization Governance ===== */}
-      <section className="relative border-t border-border/20">
-        <EvaSectionMarker
-          section="SEC.05"
-          label="Aurum Authorization"
-          variant="crimson"
-        />
-        <div className="px-6 md:px-16 lg:px-24 pb-12">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-8">
-              <h2 className="font-serif text-3xl md:text-4xl text-foreground/80 mb-3">
-                Consensus-Driven <span className="text-gold">Governance</span>
-              </h2>
-              <p className="font-sans text-base text-foreground/40 max-w-lg mx-auto">
-                Every tokenization decision passes through a multi-node
-                consensus protocol. Click each node to cast your vote.
-              </p>
+      <FadeInSection>
+        <section className="relative border-t border-border/20">
+          <EvaSectionMarker
+            section="SEC.05"
+            label="Aurum Authorization"
+            variant="crimson"
+          />
+          <div className="px-6 md:px-16 lg:px-24 pb-12">
+            <div className="max-w-4xl mx-auto">
+              <div className="text-center mb-8">
+                <h2 className="font-serif text-3xl md:text-4xl text-foreground/80 mb-3">
+                  Consensus-Driven <span className="text-gold">Governance</span>
+                </h2>
+                <p className="font-sans text-base text-foreground/40 max-w-lg mx-auto">
+                  Every tokenization decision passes through a multi-node
+                  consensus protocol. Click each node to cast your vote.
+                </p>
+              </div>
+              <MagiVoting
+                proposal="Deploy RWA Tokenization Contract v2.1"
+                autoApprove
+              />
             </div>
-            <MagiVoting
-              proposal="Deploy RWA Tokenization Contract v2.1"
-              autoApprove
-            />
           </div>
-        </div>
-      </section>
+        </section>
+      </FadeInSection>
 
       {/* ===== ANIMATED COUNTER CARDS — Protocol Metrics ===== */}
-      <section className="relative border-t border-border/20">
-        <EvaSectionMarker
-          section="SEC.06"
-          label="Protocol Metrics"
-          variant="gold"
-        />
-        <div className="px-6 md:px-16 lg:px-24 pb-12">
-          <div className="max-w-5xl mx-auto">
-            <AnimatedCounterCards
-              items={[
-                {
-                  label: 'Total Value Locked',
-                  target: 2847392,
-                  prefix: '$',
-                  format: true,
-                  duration: 3000,
-                },
-                {
-                  label: 'Assets Tokenized',
-                  target: 847,
-                  format: false,
-                  duration: 2000,
-                },
-                {
-                  label: 'Active Nodes',
-                  target: 342,
-                  format: false,
-                  duration: 2500,
-                },
-              ]}
-            />
+      <FadeInSection>
+        <section className="relative border-t border-border/20">
+          <EvaSectionMarker
+            section="SEC.06"
+            label="Protocol Metrics"
+            variant="gold"
+          />
+          <div className="px-6 md:px-16 lg:px-24 pb-12">
+            <div className="max-w-5xl mx-auto">
+              <AnimatedCounterCards
+                items={[
+                  {
+                    label: 'Total Value Locked',
+                    target: 2847392,
+                    prefix: '$',
+                    format: true,
+                    duration: 3000,
+                  },
+                  {
+                    label: 'Assets Tokenized',
+                    target: 847,
+                    format: false,
+                    duration: 2000,
+                  },
+                  {
+                    label: 'Active Nodes',
+                    target: 342,
+                    format: false,
+                    duration: 2500,
+                  },
+                ]}
+              />
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </FadeInSection>
 
       {/* ===== Chevron Data Stream divider ===== */}
       <div className="px-6 md:px-16 lg:px-24">
@@ -600,119 +708,125 @@ export default function LandingPage() {
       </div>
 
       {/* ===== PHILOSOPHER QUOTE CAROUSEL ===== */}
-      <section className="border-t border-border/20 py-12">
-        <EvaSectionMarker
-          section="SEC.07"
-          label="Oracle Transmissions"
-          variant="gold"
-        />
-        <div className="px-6 md:px-16 lg:px-24 max-w-4xl mx-auto">
-          <PhilosopherCarousel
-            quotes={[
-              {
-                text: 'The unexamined portfolio is not worth holding.',
-                author: 'Socrates of the Chain',
-              },
-              {
-                text: 'We are what we repeatedly tokenize. Excellence, then, is not an act, but a habit.',
-                author: 'Aristotle',
-              },
-              {
-                text: 'The object of life is not to be on the side of the majority, but to escape finding oneself in the ranks of the insane.',
-                author: 'Marcus Aurelius',
-              },
-              {
-                text: 'The measure of an asset is what it does with its liquidity.',
-                author: 'Plato',
-              },
-            ]}
+      <FadeInSection>
+        <section className="border-t border-border/20 py-12">
+          <EvaSectionMarker
+            section="SEC.07"
+            label="Oracle Transmissions"
+            variant="gold"
           />
-        </div>
-      </section>
+          <div className="px-6 md:px-16 lg:px-24 max-w-4xl mx-auto">
+            <PhilosopherCarousel
+              quotes={[
+                {
+                  text: 'The unexamined portfolio is not worth holding.',
+                  author: 'Socrates of the Chain',
+                },
+                {
+                  text: 'We are what we repeatedly tokenize. Excellence, then, is not an act, but a habit.',
+                  author: 'Aristotle',
+                },
+                {
+                  text: 'The object of life is not to be on the side of the majority, but to escape finding oneself in the ranks of the insane.',
+                  author: 'Marcus Aurelius',
+                },
+                {
+                  text: 'The measure of an asset is what it does with its liquidity.',
+                  author: 'Plato',
+                },
+              ]}
+            />
+          </div>
+        </section>
+      </FadeInSection>
 
       <EvaScanLine variant="crimson" />
 
       {/* ===== TERMINAL OUTPUT — Protocol Console ===== */}
-      <section className="relative border-t border-border/20">
-        <EvaSectionMarker
-          section="SEC.08"
-          label="Protocol Terminal"
-          variant="crimson"
-        />
-        <div className="px-6 md:px-16 lg:px-24 pb-12">
-          <div className="max-w-5xl mx-auto">
-            <TerminalOutput
-              title="AURELLION Protocol Console"
-              lines={[
-                '> INITIALIZING AURELLION PROTOCOL v2.1.7...',
-                '> CONNECTING TO ETHEREUM MAINNET...',
-                '> BLOCK: 19,847,293 | GAS: 12 GWEI',
-                '> AURUM SYSTEM CHECK: MELCHIOR [OK] BALTHASAR [OK] CASPER [OK]',
-                '> AT FIELD GENERATOR: ONLINE',
-                '> TOKENIZATION ENGINE: LOADED',
-                '> LOADING ASSET REGISTRY...',
-                '> FOUND 847 REGISTERED ASSETS (12 CLASSES)',
-                '> SYNC RATE: 78.4% | STATUS: NOMINAL',
-                '> COMPLIANCE MODULE: ACTIVE (18 JURISDICTIONS)',
-                '> ORACLE FEED: CONNECTED (CHAINLINK, BAND, API3)',
-                '> "The beginning of wisdom is the definition of terms." — Socrates',
-                '> CUSTODIAL VERIFICATION: ALL NODES GREEN',
-                '> SYSTEM READY. AWAITING OPERATOR INPUT.',
-                '> _',
-              ]}
-            />
+      <FadeInSection>
+        <section className="relative border-t border-border/20">
+          <EvaSectionMarker
+            section="SEC.08"
+            label="Protocol Terminal"
+            variant="crimson"
+          />
+          <div className="px-6 md:px-16 lg:px-24 pb-12">
+            <div className="max-w-5xl mx-auto">
+              <TerminalOutput
+                title="AURELLION Protocol Console"
+                lines={[
+                  '> INITIALIZING AURELLION PROTOCOL v2.1.7...',
+                  '> CONNECTING TO ETHEREUM MAINNET...',
+                  '> BLOCK: 19,847,293 | GAS: 12 GWEI',
+                  '> AURUM SYSTEM CHECK: MELCHIOR [OK] BALTHASAR [OK] CASPER [OK]',
+                  '> AT FIELD GENERATOR: ONLINE',
+                  '> TOKENIZATION ENGINE: LOADED',
+                  '> LOADING ASSET REGISTRY...',
+                  '> FOUND 847 REGISTERED ASSETS (12 CLASSES)',
+                  '> SYNC RATE: 78.4% | STATUS: NOMINAL',
+                  '> COMPLIANCE MODULE: ACTIVE (18 JURISDICTIONS)',
+                  '> ORACLE FEED: CONNECTED (CHAINLINK, BAND, API3)',
+                  '> "The beginning of wisdom is the definition of terms." — Socrates',
+                  '> CUSTODIAL VERIFICATION: ALL NODES GREEN',
+                  '> SYSTEM READY. AWAITING OPERATOR INPUT.',
+                  '> _',
+                ]}
+              />
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </FadeInSection>
 
       {/* ===== CTA ===== */}
-      <section className="border-t border-border/20 relative">
-        <div className="absolute inset-0 eva-hex-pattern opacity-50" />
-        <TargetRings
-          size={120}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-        />
+      <FadeInSection>
+        <section className="border-t border-border/20 relative">
+          <div className="absolute inset-0 eva-hex-pattern opacity-50" />
+          <TargetRings
+            size={120}
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+          />
 
-        <div className="px-6 md:px-16 lg:px-24 py-24 relative z-10">
-          <div className="max-w-7xl mx-auto text-center">
-            <span className="font-mono text-xs tracking-[0.4em] uppercase text-crimson/50 block mb-8">
-              Join the Agora
-            </span>
-            <h2 className="font-serif text-3xl md:text-5xl text-gold mb-5">
-              Begin Tokenizing
-            </h2>
-            <p className="font-sans text-base text-foreground/45 max-w-md mx-auto mb-12">
-              Connect your wallet and explore the marketplace of tokenized
-              real-world assets.
-            </p>
-            <Link href="/customer/dashboard">
-              <TrapButton variant="gold" size="lg">
-                Enter Platform
-              </TrapButton>
-            </Link>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="border-t border-border/20 px-6 md:px-16 py-5 flex items-center justify-between relative z-10">
-          <span className="font-mono text-[11px] tracking-[0.2em] text-foreground/25">
-            AURELLION PROTOCOL / MMXXIV
-          </span>
-          <div className="flex items-center gap-6">
-            {['Privacy', 'Terms', 'Docs'].map((item) => (
-              <span
-                key={item}
-                className="font-mono text-[11px] tracking-[0.15em] text-foreground/25 hover:text-foreground/50 cursor-pointer transition-colors"
-              >
-                {item}
+          <div className="px-6 md:px-16 lg:px-24 py-24 relative z-10">
+            <div className="max-w-7xl mx-auto text-center">
+              <span className="font-mono text-xs tracking-[0.4em] uppercase text-crimson/50 block mb-8">
+                Join the Agora
               </span>
-            ))}
+              <h2 className="font-serif text-3xl md:text-5xl text-gold mb-5">
+                Begin Tokenizing
+              </h2>
+              <p className="font-sans text-base text-foreground/45 max-w-md mx-auto mb-12">
+                Connect your wallet and explore the marketplace of tokenized
+                real-world assets.
+              </p>
+              <Link href="/customer/dashboard">
+                <TrapButton variant="gold" size="lg">
+                  Enter Platform
+                </TrapButton>
+              </Link>
+            </div>
           </div>
-          <span className="font-mono text-[11px] tracking-[0.2em] text-foreground/25">
-            BUILT ON ETHEREUM
-          </span>
-        </div>
-      </section>
+
+          {/* Footer */}
+          <div className="border-t border-border/20 px-6 md:px-16 py-5 flex items-center justify-between relative z-10">
+            <span className="font-mono text-[11px] tracking-[0.2em] text-foreground/25">
+              AURELLION PROTOCOL / MMXXIV
+            </span>
+            <div className="flex items-center gap-6">
+              {['Privacy', 'Terms', 'Docs'].map((item) => (
+                <span
+                  key={item}
+                  className="font-mono text-[11px] tracking-[0.15em] text-foreground/25 hover:text-foreground/50 cursor-pointer transition-colors"
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
+            <span className="font-mono text-[11px] tracking-[0.2em] text-foreground/25">
+              BUILT ON ETHEREUM
+            </span>
+          </div>
+        </section>
+      </FadeInSection>
 
       {/* Bottom marquee */}
       <div className="border-t border-border/10 py-3 overflow-hidden">

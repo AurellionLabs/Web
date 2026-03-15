@@ -1,5 +1,5 @@
 // Auto-generated from CLOBMEVFacet.sol - DO NOT EDIT
-// Generated at: 2026-03-03T07:50:03.651Z
+// Generated at: 2026-03-10T19:30:30.101Z
 
 export const CLOBMEVFacetABI = [
   {
@@ -65,6 +65,17 @@ export const CLOBMEVFacetABI = [
   {
     inputs: [],
     name: 'RevealTooLate',
+    type: 'error',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'address',
+        name: 'token',
+        type: 'address',
+      },
+    ],
+    name: 'SafeERC20FailedOperation',
     type: 'error',
   },
   {

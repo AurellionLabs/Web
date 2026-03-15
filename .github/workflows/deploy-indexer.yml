@@ -135,14 +135,12 @@ jobs:
 
             echo "Deploying branch: $BRANCH"
 
-            # Reset any local changes (generated files may have changed)
-            git reset --hard HEAD
-            git clean -fd
-
-            # Pull latest code (for chain-constants.ts and other config)
-            git fetch origin
+            # Force server worktree to exactly match remote branch tip.
+            # This avoids merge conflicts on long-lived/deviated server clones.
+            git fetch origin "$BRANCH"
             git checkout "$BRANCH"
-            git pull origin "$BRANCH"
+            git reset --hard "origin/$BRANCH"
+            git clean -fd
 
             cd /srv/Web/indexer
 

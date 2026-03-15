@@ -51,6 +51,7 @@ vi.mock('@/utils/error-handler', () => ({
 }));
 
 vi.mock('@/chain-constants', () => ({
+  getIndexerUrl: () => 'http://localhost:42069',
   NEXT_PUBLIC_AUSYS_SUBGRAPH_URL: 'http://localhost:42069',
   NEXT_PUBLIC_INDEXER_URL: 'http://localhost:42069',
   NEXT_PUBLIC_AURA_GOAT_ADDRESS: '0x0000000000000000000000000000000000000001',

@@ -76,6 +76,7 @@ vi.mock('@/infrastructure/contexts/repository-context', () => ({
 }));
 
 vi.mock('@/chain-constants', () => ({
+  getIndexerUrl: () => 'http://localhost:42069',
   NEXT_PUBLIC_CLOB_V2_DIAMOND_ADDRESS:
     '0xd1a0000000000000000000000000000000000001',
   NEXT_PUBLIC_DIAMOND_ADDRESS: '0xd1a0000000000000000000000000000000000001',

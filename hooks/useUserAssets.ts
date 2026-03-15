@@ -23,9 +23,9 @@ interface AssetWithAttributes extends TokenizedAsset {
 /**
  * Hook to fetch user's owned assets with balances
  *
- * Uses the Diamond contract to get accurate inventory balances.
- * Gets asset list from getNodeAssets() (metadata) and actual tradable
- * balance from getNodeTokenBalance() for each asset.
+ * Uses the same node-asset source as the node dashboard.
+ * getNodeAssets() returns node sellable amount in `asset.amount`, so this
+ * hook treats that as the tradable quantity source for sell flows.
  * No node selection required - automatically aggregates from all owned nodes.
  *
  * @param filterClass - Optional asset class to filter by
@@ -38,7 +38,6 @@ export function useUserAssets(filterClass?: string) {
     getOwnedNodes,
     getNodeAssets,
     getAssetAttributes,
-    balanceOf,
   } = useDiamond();
 
   const [assets, setAssets] = useState<AssetWithAttributes[]>([]);
@@ -74,51 +73,32 @@ export function useUserAssets(filterClass?: string) {
         return;
       }
 
-      // Step 2: Fetch assets for each node from getNodeAssets (metadata)
-      // Then get ACTUAL tradable balance from getNodeTokenBalance for each
-      const allAssets: AssetWithAttributes[] = [];
-
-      for (const nodeId of ownedNodeIds) {
-        try {
-          // Get asset metadata from getNodeAssets
-          const nodeAssets = await getNodeAssets(nodeId);
-
-          // For each asset, get wallet's ERC1155 balance (actual tokens in wallet)
-          for (const asset of nodeAssets) {
-            try {
-              // Query wallet's actual ERC1155 balance (for P2P sell orders)
-              const actualBalance = await balanceOf(address, asset.id);
-
-              // Create asset entry with actual balance
-              const assetEntry: AssetWithAttributes = {
+      // Step 2: Fetch assets for ALL nodes in PARALLEL.
+      const nodeAssetPromises = ownedNodeIds.map(
+        async (nodeId): Promise<AssetWithAttributes[]> => {
+          try {
+            const nodeAssets = await getNodeAssets(nodeId);
+            return nodeAssets.map(
+              (asset): AssetWithAttributes => ({
                 ...asset,
-                actualBalance: actualBalance.toString(),
+                actualBalance: asset.amount || '0',
                 nodeHash: nodeId,
-              };
-
-              allAssets.push(assetEntry);
-            } catch (balanceError) {
-              console.warn(
-                '[useUserAssets] Error getting balance for asset',
-                asset.id,
-                balanceError,
-              );
-              // Still add the asset but with capacity as fallback
-              allAssets.push({
-                ...asset,
-                actualBalance: asset.capacity || '0',
-                nodeHash: nodeId,
-              });
-            }
+              }),
+            );
+          } catch (nodeError) {
+            console.error(
+              '[useUserAssets] Error fetching assets for node',
+              nodeId,
+              nodeError,
+            );
+            return [];
           }
-        } catch (nodeError) {
-          console.error(
-            '[useUserAssets] Error fetching assets for node',
-            nodeId,
-            nodeError,
-          );
-        }
-      }
+        },
+      );
+
+      // Wait for all nodes in parallel
+      const nodeAssetResults = await Promise.all(nodeAssetPromises);
+      const allAssets = nodeAssetResults.flat();
 
       // Step 3: Fetch attributes for each asset
       const assetsWithAttributes: AssetWithAttributes[] = await Promise.all(
@@ -159,13 +139,11 @@ export function useUserAssets(filterClass?: string) {
       setIsLoading(false);
     }
   }, [
-    address,
     isConnected,
-    diamondInitialized,
     getOwnedNodes,
     getNodeAssets,
     getAssetAttributes,
-    balanceOf,
+    diamondInitialized,
   ]);
 
   // Fetch on mount and when dependencies change
@@ -174,9 +152,9 @@ export function useUserAssets(filterClass?: string) {
   }, [fetchUserAssets]);
 
   /**
-   * Convert TokenizedAsset to SellableAsset format
-   * Uses actualBalance (real node inventory) - this is what the CLOB will check
-   * Falls back to capacity if actualBalance is not available
+   * Convert TokenizedAsset to SellableAsset format.
+   * Uses node sellable balances from the repository so sell-offer quantity
+   * gating matches on-chain availability.
    */
   const sellableAssets = useMemo((): SellableAsset[] => {
     const result: SellableAsset[] = [];
@@ -190,15 +168,9 @@ export function useUserAssets(filterClass?: string) {
         continue;
       }
 
-      // Use actualBalance (real tradable inventory) - this matches what CLOB checks
-      // Fall back to capacity if actualBalance is not set
       const actualBalance = BigInt(asset.actualBalance || '0');
-      const capacity = BigInt(asset.capacity || '0');
 
-      // Use actualBalance if available, otherwise fall back to capacity
-      const displayBalance = actualBalance > 0n ? actualBalance : capacity;
-
-      if (displayBalance <= 0n) {
+      if (actualBalance <= 0n) {
         continue; // Skip assets with no balance
       }
 
@@ -207,7 +179,7 @@ export function useUserAssets(filterClass?: string) {
         tokenId: asset.id,
         name: asset.name || 'Unknown Asset',
         class: asset.class || 'Unknown',
-        balance: displayBalance.toString(),
+        balance: actualBalance.toString(),
         price: asset.price
           ? (Number(asset.price) / 1e18).toFixed(2)
           : undefined,

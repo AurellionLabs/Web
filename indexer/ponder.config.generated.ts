@@ -1,47 +1,33 @@
-// Auto-generated Ponder config
-// Supports multi-chain via environment variables
+// Auto-generated Ponder config - DO NOT EDIT
+// Generated at: 2026-03-10T19:30:30.105Z
 
 import { createConfig } from 'ponder';
 
 // Import generated ABIs
 import { DiamondABI } from './abis/generated';
 
-// Import chain constants (now env-var configurable)
+
+// Import chain constants
+import { DIAMOND_ADDRESS, DIAMOND_DEPLOY_BLOCK } from './diamond-constants';
 import {
-  DIAMOND_ADDRESS,
-  DIAMOND_DEPLOY_BLOCK,
-  CHAIN_ID,
-  CHAIN_NAME,
-} from './diamond-constants';
+  NEXT_PUBLIC_RPC_URL_84532,
+} from './chain-constants';
 
-// RPC URL from environment - prefer the one matching our chain ID
-const RPC_URL =
-  process.env.PONDER_RPC_URL ||
-  (CHAIN_ID === 84532 ? process.env.NEXT_PUBLIC_RPC_URL_84532 : '') ||
-  (CHAIN_ID === 42161 ? process.env.NEXT_PUBLIC_RPC_URL_42161 : '') ||
-  process.env.NEXT_PUBLIC_RPC_URL_84532 ||
-  process.env.NEXT_PUBLIC_RPC_URL_42161 ||
-  '';
-
-if (!RPC_URL) {
-  throw new Error(
-    'No RPC URL configured. Set PONDER_RPC_URL or NEXT_PUBLIC_RPC_URL_<chainId>',
-  );
-}
+const BASE_SEPOLIA_CHAIN_ID = 84532;
 
 export default createConfig({
   chains: {
-    [CHAIN_NAME]: {
-      id: CHAIN_ID,
-      rpc: RPC_URL,
+    baseSepolia: {
+      id: BASE_SEPOLIA_CHAIN_ID,
+      rpc: NEXT_PUBLIC_RPC_URL_84532,
     },
   },
   contracts: {
     Diamond: {
-      chain: CHAIN_NAME as 'baseSepolia',
+      chain: 'baseSepolia',
       abi: DiamondABI,
       address: DIAMOND_ADDRESS,
       startBlock: DIAMOND_DEPLOY_BLOCK,
-    },
+    }
   },
 });

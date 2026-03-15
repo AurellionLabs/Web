@@ -24,18 +24,23 @@ import {
   GET_JOURNEY_STATUS_UPDATED_EVENTS,
   GET_P2P_OFFERS_BY_CREATOR,
   GET_P2P_OFFERS_ACCEPTED_BY_USER,
+  GET_ALL_P2P_OFFER_ACCEPTED_EVENTS,
   GET_P2P_OFFER_DETAILS_BY_ORDER_IDS,
   GET_AUSYS_ORDER_STATUS_UPDATES,
   GET_JOURNEYS_BY_ORDER,
   GET_JOURNEY_STATUS_UPDATES_ALL,
 } from '../shared/graph-queries';
 import type {
+  AllP2POfferAcceptedEventsResponse,
   P2POffersByCreatorResponse,
   P2POffersAcceptedByUserResponse,
   P2POfferDetailsResponse,
   AuSysOrderStatusUpdatesResponse,
   JourneysByOrderResponse,
   JourneyStatusUpdatesAllResponse,
+  // Aliased response type for GET_ALL_UNIFIED_ORDER_EVENTS (uses GQL aliases:
+  // created / logistics / journeyUpdates / settled — NOT raw table names)
+  UnifiedOrderEventsResponse as AllUnifiedOrderEventsResponse,
 } from '../shared/graph-queries';
 import {
   aggregateUnifiedOrders,
@@ -49,7 +54,7 @@ import {
   LogisticsOrderCreatedEvent,
   JourneyStatusUpdatedEvent,
 } from '../shared/indexer-types';
-import { NEXT_PUBLIC_AUSYS_SUBGRAPH_URL } from '@/chain-constants';
+import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 
 interface GraphQLResponse<T> {
   items: T[];
@@ -181,7 +186,9 @@ export class OrderRepository implements IOrderRepository {
   private signer: Signer;
   private contractAddress: string;
   private isInitialized = false;
-  private graphQLEndpoint = NEXT_PUBLIC_AUSYS_SUBGRAPH_URL;
+  private get graphQLEndpoint() {
+    return getCurrentIndexerUrl();
+  }
 
   constructor(contract: Ausys, userProvider: BrowserProvider, signer: Signer) {
     if (!contract) {
@@ -229,35 +236,37 @@ export class OrderRepository implements IOrderRepository {
     try {
       const nodeAddress = address.toLowerCase();
 
-      const [orderResponse, logisticsResponse] = await Promise.all([
-        graphqlRequest<UnifiedOrderEventsResponse>(
-          this.graphQLEndpoint,
-          GET_ALL_UNIFIED_ORDER_EVENTS,
-          { limit: 500 },
-        ),
-        graphqlRequest<LogisticsEventsResponse>(
-          this.graphQLEndpoint,
-          GET_LOGISTICS_ORDER_CREATED_EVENTS,
-          { limit: 500 },
-        ),
-      ]);
+      // GET_ALL_UNIFIED_ORDER_EVENTS uses GQL aliases so the response shape
+      // is { created, logistics, journeyUpdates, settled } — NOT raw table names.
+      const orderResponse = await graphqlRequest<AllUnifiedOrderEventsResponse>(
+        this.graphQLEndpoint,
+        GET_ALL_UNIFIED_ORDER_EVENTS,
+        { limit: 500 },
+      );
+
+      const logisticsItems = orderResponse.logistics?.items || [];
 
       const orders = aggregateUnifiedOrders({
-        created: orderResponse.diamondUnifiedOrderCreatedEventss?.items || [],
-        logistics:
-          logisticsResponse.diamondLogisticsOrderCreatedEventss?.items || [],
-        journeyUpdates: [],
-        settled: [],
+        created: orderResponse.created?.items || [],
+        logistics: logisticsItems,
+        journeyUpdates: orderResponse.journeyUpdates?.items || [],
+        settled: orderResponse.settled?.items || [],
       });
 
+      // Filter by the `node` field on the LogisticsOrderCreated event,
+      // not by journeyIds (which are bytes32 hashes, not node addresses).
+      const nodeLinkedOrderIds = new Set(
+        logisticsItems
+          .filter((l) => l.node?.toLowerCase() === nodeAddress)
+          .map((l) => l.unified_order_id.toLowerCase()),
+      );
+
       const nodeOrders = orders.filter((order) =>
-        order.journeyIds.some((jid) => jid.toLowerCase() === nodeAddress),
+        nodeLinkedOrderIds.has(order.unifiedOrderId.toLowerCase()),
       );
 
       const logisticsByOrder = new Map(
-        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items.map(
-          (l) => [l.unified_order_id.toLowerCase(), l],
-        ) || [],
+        logisticsItems.map((l) => [l.unified_order_id.toLowerCase(), l]),
       );
 
       return nodeOrders.map((order) => {
@@ -698,6 +707,7 @@ export class OrderRepository implements IOrderRepository {
         createdResp,
         acceptedResp,
         allCreatedResp,
+        allAcceptedResp,
         statusResp,
         journeysResp,
         journeyStatusResp,
@@ -715,6 +725,11 @@ export class OrderRepository implements IOrderRepository {
         graphqlRequest<P2POfferDetailsResponse>(
           this.graphQLEndpoint,
           GET_P2P_OFFER_DETAILS_BY_ORDER_IDS,
+          { limit: 500 },
+        ),
+        graphqlRequest<AllP2POfferAcceptedEventsResponse>(
+          this.graphQLEndpoint,
+          GET_ALL_P2P_OFFER_ACCEPTED_EVENTS,
           { limit: 500 },
         ),
         graphqlRequest<AuSysOrderStatusUpdatesResponse>(
@@ -738,6 +753,7 @@ export class OrderRepository implements IOrderRepository {
         createdResp.diamondP2POfferCreatedEventss?.items || [],
         acceptedResp.diamondP2POfferAcceptedEventss?.items || [],
         allCreatedResp.diamondP2POfferCreatedEventss?.items || [],
+        allAcceptedResp.diamondP2POfferAcceptedEventss?.items || [],
         statusResp.diamondAuSysOrderStatusUpdatedEventss?.items || [],
         userAddress,
         journeysResp.diamondJourneyCreatedEventss?.items || [],

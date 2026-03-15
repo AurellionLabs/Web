@@ -36,8 +36,13 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
     error InvalidTrade();
     error InvalidSignature();
     error InvalidSeller();
+    error InvalidToken();
+    error SellerMismatch();
     error SignatureAlreadyUsed();
     error OrderExpired();
+    error JourneyNotFound();
+    error InvalidDriver();
+    error InvalidJourneyTransition();
 
     event UnifiedOrderCreated(
         bytes32 indexed unifiedOrderId,
@@ -84,6 +89,7 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
     event BridgeFeeRecipientUpdated(address indexed oldRecipient, address indexed newRecipient);
     event FundsEscrowed(address indexed buyer, uint256 amount);
     event FundsRefunded(address indexed recipient, uint256 amount);
+    event JourneyDriverAssigned(bytes32 indexed unifiedOrderId, bytes32 indexed journeyId, address indexed driver);
 
     uint256 public constant BOUNTY_PERCENTAGE = 200; // 2% (aligned with OrderBridge.sol)
     uint256 public constant PROTOCOL_FEE_PERCENTAGE = 25; // 0.25% (aligned with OrderBridge.sol)
@@ -92,6 +98,32 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
 
     // Signature tracking to prevent replay attacks
     mapping(bytes32 => bool) public usedSignatures;
+
+    function _getBridgeAuthorizationHash(
+        bytes32 _unifiedOrderId,
+        bytes32 _clobOrderId,
+        bytes32 _clobTradeId,
+        bytes32 _ausysOrderId,
+        address _seller,
+        address _token,
+        uint256 _tokenId,
+        uint256 _tokenQuantity
+    ) internal view returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                _unifiedOrderId,
+                _clobOrderId,
+                _clobTradeId,
+                _ausysOrderId,
+                _seller,
+                _token,
+                _tokenId,
+                _tokenQuantity,
+                address(this),
+                block.chainid
+            )
+        );
+    }
 
     function initialize() public initializer {
         feeRecipient = LibDiamond.contractOwner();
@@ -202,18 +234,20 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
 
         // Verify the CLOB order actually exists in storage
         if (order.clobOrderId == bytes32(0)) revert InvalidTrade();
-        if (s.clobOrders[order.clobOrderId].maker == address(0)) revert InvalidTrade();
+        address clobMaker = s.clobOrders[order.clobOrderId].maker;
+        if (clobMaker == address(0)) revert InvalidTrade();
+        if (clobMaker != _seller) revert SellerMismatch();
 
         // Real ECDSA signature verification
-        bytes32 messageHash = keccak256(
-            abi.encodePacked(
-                order.clobOrderId,
-                _seller,
-                _tokenId,
-                order.tokenQuantity,
-                address(this),
-                block.chainid
-            )
+        bytes32 messageHash = _getBridgeAuthorizationHash(
+            _unifiedOrderId,
+            order.clobOrderId,
+            _clobTradeId,
+            _ausysOrderId,
+            _seller,
+            _token,
+            _tokenId,
+            order.tokenQuantity
         );
         bytes32 ethSignedHash = MessageHashUtils.toEthSignedMessageHash(messageHash);
 
@@ -230,6 +264,16 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
         // Verify trade not already mapped to a different unified order
         bytes32 existingMapping = s.clobTradeToUnifiedOrder[_clobTradeId];
         if (existingMapping != bytes32(0) && existingMapping != _unifiedOrderId) revert InvalidTrade();
+        if (_token == address(0)) revert InvalidToken();
+
+        // Pull the matched asset into escrow before the order can advance.
+        IERC1155(_token).safeTransferFrom(
+            _seller,
+            address(this),
+            _tokenId,
+            order.tokenQuantity,
+            ''
+        );
 
         order.clobTradeId = _clobTradeId;
         order.ausysOrderId = _ausysOrderId;
@@ -255,7 +299,7 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
         );
     }
 
-    function createLogisticsOrder(bytes32 _unifiedOrderId) external returns (bytes32 journeyId) {
+    function createLogisticsOrder(bytes32 _unifiedOrderId) external nonReentrant returns (bytes32 journeyId) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.UnifiedOrder storage order = s.unifiedOrders[_unifiedOrderId];
 
@@ -265,6 +309,7 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
         );
         require(order.status == OrderStatus.UNIFIED_TRADE_MATCHED, 'Order not bridged');
         require(order.journeyIds.length == 0, 'Journey already created');
+        require(order.token != address(0), 'Token not escrowed');
 
         journeyId = keccak256(
             abi.encodePacked(_unifiedOrderId, block.prevrandao, msg.sender, block.timestamp)
@@ -281,6 +326,7 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
         order.journeyIds.push(journeyId);
         s.orderJourneys[_unifiedOrderId].push(journeyId);
         s.totalJourneys[_unifiedOrderId]++;
+        order.status = OrderStatus.UNIFIED_LOGISTICS_CREATED;
 
         emit LogisticsOrderCreated(
             _unifiedOrderId,
@@ -291,24 +337,65 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
         );
     }
 
-    function updateJourneyStatus(bytes32 _journeyId, uint8 _phase) external {
+    function assignJourneyDriver(bytes32 _journeyId, address _driver) external nonReentrant {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        DiamondStorage.Journey storage journey = s.journeys[_journeyId];
+
+        if (journey.unifiedOrderId == bytes32(0)) revert JourneyNotFound();
+        if (_driver == address(0)) revert InvalidDriver();
+        if (journey.driver != address(0)) revert InvalidDriver();
+
+        DiamondStorage.UnifiedOrder storage order = s.unifiedOrders[journey.unifiedOrderId];
+        require(
+            order.seller == msg.sender ||
+            order.sellerNode == msg.sender ||
+            LibDiamond.contractOwner() == msg.sender,
+            'Not authorized'
+        );
+
+        journey.driver = _driver;
+        journey.updatedAt = block.timestamp;
+
+        emit JourneyDriverAssigned(journey.unifiedOrderId, _journeyId, _driver);
+    }
+
+    function updateJourneyStatus(bytes32 _journeyId, uint8 _phase) external nonReentrant {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.Journey storage journey = s.journeys[_journeyId];
 
         require(_phase <= OrderStatus.JOURNEY_CANCELED, 'Invalid phase');
+        if (journey.unifiedOrderId == bytes32(0)) revert JourneyNotFound();
         
         // Get the order to check seller/sellerNode
         bytes32 unifiedOrderId = journey.unifiedOrderId;
         DiamondStorage.UnifiedOrder storage order = s.unifiedOrders[unifiedOrderId];
-        
-        // Allow: driver (if set), seller, sellerNode, or contract owner
-        bool isAuthorized = 
-            journey.driver == msg.sender ||
+
+        bool isSellerSide =
             order.seller == msg.sender ||
             order.sellerNode == msg.sender ||
             LibDiamond.contractOwner() == msg.sender;
-        
-        require(isAuthorized, 'Not authorized');
+        bool isAssignedDriver = journey.driver != address(0) && journey.driver == msg.sender;
+
+        if (_phase == OrderStatus.JOURNEY_IN_TRANSIT) {
+            if (!isAssignedDriver || journey.phase != OrderStatus.JOURNEY_PENDING) {
+                revert InvalidJourneyTransition();
+            }
+            order.status = OrderStatus.UNIFIED_IN_TRANSIT;
+        } else if (_phase == OrderStatus.JOURNEY_DELIVERED) {
+            if (!isAssignedDriver || journey.phase != OrderStatus.JOURNEY_IN_TRANSIT) {
+                revert InvalidJourneyTransition();
+            }
+            order.status = OrderStatus.UNIFIED_DELIVERED;
+        } else if (_phase == OrderStatus.JOURNEY_CANCELED) {
+            if (!isAssignedDriver && !isSellerSide) {
+                revert InvalidJourneyTransition();
+            }
+            order.status = OrderStatus.UNIFIED_CANCELLED;
+        } else {
+            if (!isSellerSide || journey.phase != OrderStatus.JOURNEY_PENDING) {
+                revert InvalidJourneyTransition();
+            }
+        }
 
         journey.phase = _phase;
         journey.updatedAt = block.timestamp;
@@ -329,17 +416,19 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
         require(order.buyer == msg.sender, 'Not buyer');
         require(order.seller != address(0), 'Invalid seller');
         require(order.logisticsStatus == OrderStatus.JOURNEY_DELIVERED, 'Order not delivered');
-        require(order.status == OrderStatus.UNIFIED_TRADE_MATCHED, 'Order not bridged');
+        require(order.status == OrderStatus.UNIFIED_DELIVERED, 'Order not ready for settlement');
         require(order.escrowedAmount > 0, 'No escrowed funds');
+        require(order.token != address(0), 'Token not escrowed');
 
         uint256 orderValue = order.price * order.tokenQuantity;
         uint256 protocolFeePct = s.protocolFeePercentage != 0 ? s.protocolFeePercentage : PROTOCOL_FEE_PERCENTAGE;
         uint256 protocolFee = (orderValue * protocolFeePct) / 10000;
         uint256 bounty = order.bounty;
-        uint256 sellerAmount = orderValue - protocolFee - bounty;
+        uint256 sellerAmount = orderValue;
 
         order.status = OrderStatus.UNIFIED_SETTLED;
         order.settledAt = block.timestamp;
+        order.escrowedAmount = 0;
 
         address payToken = s.quoteTokenAddress;
         require(payToken != address(0), 'Quote token not set');
@@ -406,11 +495,7 @@ contract BridgeFacet is Initializable, ReentrancyGuard {
             'Not authorized'
         );
         
-        // Can cancel if: order is pending, OR order has expired
-        bool canCancel = order.status == OrderStatus.UNIFIED_PENDING_TRADE;
-        bool isExpired = order.expiresAt > 0 && block.timestamp > order.expiresAt;
-        
-        require(canCancel || isExpired, 'Cannot cancel: order not pending or expired');
+        require(order.status == OrderStatus.UNIFIED_PENDING_TRADE, 'Cannot cancel after trade matching');
 
         uint8 previousStatus = order.status;
         order.status = OrderStatus.UNIFIED_CANCELLED;

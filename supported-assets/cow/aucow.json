@@ -1,0 +1,8 @@
+{
+  "className": "COW",
+  "name": "AUCOW",
+  "attributes": [],
+  "metadata": {
+    "description": "Canonical supported asset definition for COW."
+  }
+}

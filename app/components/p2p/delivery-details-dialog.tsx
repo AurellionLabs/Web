@@ -1,8 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { MapPin, Truck, Package } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { MapPin, Truck, Package, Network } from 'lucide-react';
 import { TrapButton } from '@/app/components/eva/eva-components';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/app/components/ui/select';
 import { cn } from '@/lib/utils';
 import { P2POffer } from '@/domain/p2p';
 import { formatUnits } from 'ethers';
@@ -20,8 +27,25 @@ export interface DeliveryFormData {
   deliveryAddress: string;
   /** Derived sender node address from the offer */
   senderNodeAddress: string;
+  /** Selected pickup node reference (bytes32 node hash) */
+  pickupNodeRef?: string;
+  /** Pickup metadata derived from the selected node */
+  pickupStartName?: string;
+  pickupStartLocation?: { lat: string; lng: string };
   /** Delivery coordinates (lat/lng) from Google Places */
   deliveryCoords?: { lat: number; lng: number };
+}
+
+export interface PickupNodeOption {
+  pickupNodeRef: string;
+  senderNodeAddress: string;
+  label: string;
+  startName: string;
+  startLocation: {
+    lat: string;
+    lng: string;
+  };
+  inventoryLabel?: string;
 }
 
 export interface DeliveryDetailsDialogProps {
@@ -39,6 +63,18 @@ export interface DeliveryDetailsDialogProps {
   initialDeliveryAddress?: string;
   /** If true, delivery address is fixed and not editable */
   lockDeliveryAddress?: boolean;
+  /** Optional node options for strict pickup-node selection */
+  pickupNodeOptions?: PickupNodeOption[];
+  /** If true, user must select a fulfillment node from pickupNodeOptions */
+  requirePickupNodeSelection?: boolean;
+  /** Optional custom header title */
+  title?: string;
+  /** Optional custom header subtitle */
+  subtitle?: string;
+  /** Optional confirm button label */
+  confirmLabel?: string;
+  /** Optional pending button label */
+  pendingLabel?: string;
 }
 
 // =============================================================================
@@ -53,6 +89,12 @@ export function DeliveryDetailsDialog({
   assetName,
   initialDeliveryAddress,
   lockDeliveryAddress = false,
+  pickupNodeOptions,
+  requirePickupNodeSelection = false,
+  title,
+  subtitle,
+  confirmLabel,
+  pendingLabel,
 }: DeliveryDetailsDialogProps) {
   const [deliveryAddress, setDeliveryAddress] = useState(
     initialDeliveryAddress || '',
@@ -61,6 +103,8 @@ export function DeliveryDetailsDialog({
     lat: number;
     lng: number;
   } | null>(null);
+  const [selectedPickupNodeRef, setSelectedPickupNodeRef] =
+    useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,16 +116,40 @@ export function DeliveryDetailsDialog({
   const [autocomplete, setAutocomplete] =
     useState<google.maps.places.Autocomplete | null>(null);
 
+  const effectiveNodeOptions = useMemo<PickupNodeOption[]>(
+    () => pickupNodeOptions || [],
+    [pickupNodeOptions],
+  );
+
+  const defaultSenderNodeAddress = useMemo(() => {
+    const sellerAddress = String(offer.seller || '').trim();
+    if (sellerAddress) return sellerAddress;
+    return String(offer.creator || '').trim();
+  }, [offer.creator, offer.seller]);
+
   useEffect(() => {
     if (!open) return;
     setDeliveryAddress(initialDeliveryAddress || '');
-  }, [open, initialDeliveryAddress]);
+    setDeliveryCoords(null);
+    setError(null);
+    setSelectedPickupNodeRef(
+      requirePickupNodeSelection
+        ? effectiveNodeOptions[0]?.pickupNodeRef || ''
+        : '',
+    );
+  }, [
+    open,
+    initialDeliveryAddress,
+    effectiveNodeOptions,
+    requirePickupNodeSelection,
+  ]);
 
-  // Use the first node as sender, or fall back to the seller address
-  const senderNode =
-    offer.nodes && offer.nodes.length > 0
-      ? offer.nodes[0]
-      : offer.seller || offer.creator;
+  const selectedNode =
+    effectiveNodeOptions.find(
+      (option) => option.pickupNodeRef === selectedPickupNodeRef,
+    ) || effectiveNodeOptions[0];
+  const hasMultipleNodes =
+    requirePickupNodeSelection && effectiveNodeOptions.length > 0;
 
   const formatPrice = (price: bigint) => {
     return parseFloat(formatUnits(price, 18)).toLocaleString(undefined, {
@@ -105,11 +173,36 @@ export function DeliveryDetailsDialog({
 
   const handleConfirm = async () => {
     setError(null);
+    if (!deliveryAddress.trim()) {
+      setError('Delivery address is required.');
+      return;
+    }
+    if (!lockDeliveryAddress && !deliveryCoords) {
+      setError(
+        'Please choose a suggested delivery address so coordinates are captured.',
+      );
+      return;
+    }
+    if (requirePickupNodeSelection && !selectedNode) {
+      setError('Please select which node will fulfill this order.');
+      return;
+    }
     setIsSubmitting(true);
     try {
       await onConfirm({
         deliveryAddress,
-        senderNodeAddress: senderNode,
+        senderNodeAddress: requirePickupNodeSelection
+          ? selectedNode?.senderNodeAddress || ''
+          : defaultSenderNodeAddress,
+        pickupNodeRef: requirePickupNodeSelection
+          ? selectedNode?.pickupNodeRef || undefined
+          : undefined,
+        pickupStartName: requirePickupNodeSelection
+          ? selectedNode?.startName || undefined
+          : undefined,
+        pickupStartLocation: requirePickupNodeSelection
+          ? selectedNode?.startLocation || undefined
+          : undefined,
         deliveryCoords: deliveryCoords || undefined,
       });
     } catch (err) {
@@ -124,6 +217,18 @@ export function DeliveryDetailsDialog({
   };
 
   if (!open) return null;
+
+  const resolvedTitle = title || 'Confirm & Schedule Delivery';
+  const resolvedSubtitle =
+    subtitle || 'Enter your delivery address to complete the purchase';
+  const resolvedConfirmLabel = confirmLabel || 'Accept & Schedule Delivery';
+  const resolvedPendingLabel = pendingLabel || 'Scheduling...';
+
+  const isConfirmDisabled =
+    isSubmitting ||
+    !deliveryAddress.trim() ||
+    (!lockDeliveryAddress && !deliveryCoords) ||
+    (requirePickupNodeSelection && effectiveNodeOptions.length === 0);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -143,11 +248,9 @@ export function DeliveryDetailsDialog({
             </div>
             <div>
               <h2 className="text-lg font-semibold text-white">
-                Confirm &amp; Schedule Delivery
+                {resolvedTitle}
               </h2>
-              <p className="text-sm text-white/80">
-                Enter your delivery address to complete the purchase
-              </p>
+              <p className="text-sm text-white/80">{resolvedSubtitle}</p>
             </div>
           </div>
         </div>
@@ -191,6 +294,47 @@ export function DeliveryDetailsDialog({
               </div>
             </div>
           </div>
+
+          {/* Node selector - show when wallet has multiple nodes */}
+          {hasMultipleNodes && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-white flex items-center gap-2">
+                <Network className="w-4 h-4 text-amber-400" />
+                Fulfillment Node
+              </label>
+              <Select
+                value={selectedPickupNodeRef}
+                onValueChange={(value) => setSelectedPickupNodeRef(value)}
+              >
+                <SelectTrigger className="w-full font-mono text-sm">
+                  <SelectValue placeholder="Select a node" />
+                </SelectTrigger>
+                <SelectContent className="bg-neutral-900 border-neutral-800">
+                  {effectiveNodeOptions.map((nodeOption) => (
+                    <SelectItem
+                      key={nodeOption.pickupNodeRef}
+                      value={nodeOption.pickupNodeRef}
+                      className="font-mono text-sm text-white/80 focus:bg-amber-500/10 focus:text-amber-400"
+                    >
+                      {nodeOption.label}
+                      {nodeOption.inventoryLabel
+                        ? ` (${nodeOption.inventoryLabel})`
+                        : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-white/70">
+                Choose which node will fulfill this order
+              </p>
+            </div>
+          )}
+          {requirePickupNodeSelection && effectiveNodeOptions.length === 0 && (
+            <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+              No eligible fulfillment nodes found. Verify this wallet owns a
+              node with inventory for the offer.
+            </div>
+          )}
 
           {/* Delivery address */}
           <div className="space-y-2">
@@ -247,7 +391,9 @@ export function DeliveryDetailsDialog({
             <p className="text-xs text-white/70">
               {lockDeliveryAddress
                 ? 'Delivery destination already set on the buy offer'
-                : 'This is where your goods will be delivered'}
+                : mapsLoaded
+                  ? 'This is where your goods will be delivered'
+                  : 'Address suggestions are unavailable. Reload until search is available so coordinates can be captured.'}
             </p>
           </div>
 
@@ -278,10 +424,10 @@ export function DeliveryDetailsDialog({
             variant="gold"
             className="flex-1 min-w-0"
             onClick={handleConfirm}
-            disabled={!deliveryAddress.trim() || isSubmitting}
+            disabled={isConfirmDisabled}
           >
             <span className="inline-flex items-center justify-center gap-2">
-              {isSubmitting ? 'Scheduling...' : 'Accept & Schedule Delivery'}
+              {isSubmitting ? resolvedPendingLabel : resolvedConfirmLabel}
             </span>
           </TrapButton>
         </div>

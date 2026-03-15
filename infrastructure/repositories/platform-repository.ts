@@ -7,12 +7,18 @@ import {
   GET_SUPPORTED_CLASS_ADDED_EVENTS,
   GET_SUPPORTED_CLASS_REMOVED_EVENTS,
 } from '../shared/graph-queries';
-import { NEXT_PUBLIC_INDEXER_URL } from '@/chain-constants';
+import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 import {
   SupportedAssetAddedEvent,
   SupportedClassAddedEvent,
   SupportedClassRemovedEvent,
 } from '../shared/indexer-types';
+import { getIpfsGroupId } from '@/chain-constants';
+import {
+  fetchAssetByTokenIdFromMetadataApi,
+  fetchAssetsByTokenIdsFromMetadataApi,
+  fetchClassAssetsFromMetadataApi,
+} from './shared/platform-metadata-api';
 
 interface SupportedAssetEventsResponse {
   diamondSupportedAssetAddedEventss: {
@@ -22,8 +28,11 @@ interface SupportedAssetEventsResponse {
 }
 
 export class PlatformRepository implements IPlatformRepository {
-  pinata: PinataSDK;
-  private graphEndpoint = NEXT_PUBLIC_INDEXER_URL;
+  pinata: PinataSDK | null;
+  private chainId: number;
+  private get graphEndpoint() {
+    return getCurrentIndexerUrl();
+  }
   private processedTokenIds = new Set<string>();
   private assetByTokenIdCache = new Map<string, Asset | null>();
   private inFlightAssetByTokenId = new Map<string, Promise<Asset | null>>();
@@ -84,11 +93,56 @@ export class PlatformRepository implements IPlatformRepository {
     return results;
   }
 
-  constructor(_contractOrPinata: unknown, _pinata?: PinataSDK) {
+  constructor(
+    _contractOrPinata: unknown,
+    _pinata?: PinataSDK,
+    _chainId?: number,
+  ) {
     // Backward-compatible constructor:
     // - old callsites/tests: new PlatformRepository(contract, pinata)
-    // - new callsites: new PlatformRepository(pinata)
-    this.pinata = (_pinata ?? _contractOrPinata) as PinataSDK;
+    // - new callsites: new PlatformRepository(pinata, chainId)
+    const maybePinata =
+      _pinata ??
+      (_contractOrPinata &&
+      typeof _contractOrPinata === 'object' &&
+      'files' in (_contractOrPinata as Record<string, unknown>) &&
+      'gateways' in (_contractOrPinata as Record<string, unknown>)
+        ? (_contractOrPinata as PinataSDK)
+        : null);
+
+    this.pinata = maybePinata;
+    this.chainId = _chainId ?? 0;
+  }
+
+  private get groupId(): string {
+    if (!this.chainId) {
+      throw new Error('PlatformRepository: chainId not set');
+    }
+    return getIpfsGroupId(this.chainId);
+  }
+
+  private getPinataListBuilder() {
+    const listBuilder = this.pinata!.files.public.list() as any;
+
+    if (typeof listBuilder.group === 'function' && this.chainId) {
+      return listBuilder.group(this.groupId);
+    }
+
+    return listBuilder;
+  }
+
+  private getAssetClassFromMetadata(
+    json: Record<string, any>,
+    fallbackClass?: string,
+  ): string {
+    return (
+      json.className ??
+      json.class ??
+      json.assetClass ??
+      json.asset?.assetClass ??
+      fallbackClass ??
+      'Unknown'
+    );
   }
 
   async getSupportedAssets(): Promise<Asset[]> {
@@ -111,6 +165,16 @@ export class PlatformRepository implements IPlatformRepository {
       const items = res.diamondSupportedAssetAddedEventss?.items || [];
       if (items.length === 0) break;
 
+      const metadataByTokenId = !this.pinata
+        ? new Map(
+            (
+              await fetchAssetsByTokenIdsFromMetadataApi(
+                items.map((event) => String(event.token_id)),
+              )
+            ).map((asset) => [asset.tokenId, asset]),
+          )
+        : null;
+
       for (const event of items) {
         const tokenIdKey = `${event.token}-${event.token_id}`;
         if (this.processedTokenIds.has(tokenIdKey)) continue;
@@ -121,10 +185,28 @@ export class PlatformRepository implements IPlatformRepository {
         let assetName = '';
 
         try {
-          const cid = await this.getAssetCID(event.token, event.token_id);
-          if (cid) {
+          if (!this.pinata) {
+            const asset =
+              metadataByTokenId?.get(String(event.token_id)) ?? null;
+            if (asset) {
+              assetClass = asset.assetClass;
+              assetName = asset.name;
+              attributes = asset.attributes;
+            }
+          } else {
+            const cid = await this.getAssetCID(event.token, event.token_id);
+            if (!cid) {
+              out.push({
+                assetClass,
+                tokenId: String(event.token_id),
+                name: assetName,
+                attributes,
+              });
+              continue;
+            }
+
             const { data } = await this.withPinataRetry<any>(() =>
-              this.pinata.gateways.public.get(cid),
+              this.pinata!.gateways.public.get(cid),
             );
             const json = typeof data === 'string' ? JSON.parse(data) : data;
 
@@ -189,11 +271,14 @@ export class PlatformRepository implements IPlatformRepository {
     token: string,
     tokenId: string,
   ): Promise<string | null> {
+    if (!this.pinata) {
+      return null;
+    }
+
     try {
       // Try with both token + tokenId first (most specific)
       let list = await this.withPinataRetry(() =>
-        this.pinata.files.public
-          .list()
+        this.getPinataListBuilder()
           .keyvalues({ token: token, tokenId: tokenId })
           .all(),
       );
@@ -201,7 +286,7 @@ export class PlatformRepository implements IPlatformRepository {
 
       // Fallback: query by tokenId only (upload scripts may not set 'token' keyvalue)
       list = await this.withPinataRetry(() =>
-        this.pinata.files.public.list().keyvalues({ tokenId: tokenId }).all(),
+        this.getPinataListBuilder().keyvalues({ tokenId: tokenId }).all(),
       );
       if (list && list.length > 0) return list[0].cid;
 
@@ -210,8 +295,7 @@ export class PlatformRepository implements IPlatformRepository {
         const tokenIdDecimal = BigInt(tokenId).toString(10);
         if (tokenIdDecimal !== tokenId) {
           list = await this.withPinataRetry(() =>
-            this.pinata.files.public
-              .list()
+            this.getPinataListBuilder()
               .keyvalues({ tokenId: tokenIdDecimal })
               .all(),
           );
@@ -308,8 +392,12 @@ export class PlatformRepository implements IPlatformRepository {
   }
 
   async getClassAssets(assetClass: string): Promise<Asset[]> {
-    // Client-only: query Pinata Files via keyvalues; no on-chain fallback.
-    const hasJwt = Boolean((this.pinata as any)?.config?.pinataJwt);
+    if (!this.pinata) {
+      return fetchClassAssetsFromMetadataApi(assetClass);
+    }
+    const pinata = this.pinata;
+
+    const hasJwt = Boolean((pinata as any)?.config?.pinataJwt);
     if (!hasJwt) {
       console.warn(
         '[getClassAssets] Missing Pinata JWT; cannot query by keyvalues',
@@ -319,13 +407,23 @@ export class PlatformRepository implements IPlatformRepository {
 
     let list: { cid: string }[] = [];
     try {
-      list = await this.pinata.files.public
-        .list()
+      list = await this.getPinataListBuilder()
         .keyvalues({ className: assetClass })
         .all();
     } catch (e) {
       console.error('[getClassAssets] Pinata files.list failed', e);
       return [];
+    }
+
+    let shouldFilterByPayloadClass = false;
+    if (!list || list.length === 0) {
+      shouldFilterByPayloadClass = true;
+      try {
+        list = await this.getPinataListBuilder().all();
+      } catch (e) {
+        console.error('[getClassAssets] Pinata fallback scan failed', e);
+        return [];
+      }
     }
 
     if (!list || list.length === 0) return [];
@@ -334,9 +432,16 @@ export class PlatformRepository implements IPlatformRepository {
       try {
         const cid = item.cid;
         const { data } = await this.withPinataRetry<any>(() =>
-          this.pinata.gateways.public.get(`${cid}`),
+          pinata.gateways.public.get(`${cid}`),
         );
         const json = typeof data === 'string' ? JSON.parse(data) : data;
+        const resolvedClass = this.getAssetClassFromMetadata(json, assetClass);
+        if (
+          shouldFilterByPayloadClass &&
+          resolvedClass.toLowerCase() !== assetClass.toLowerCase()
+        ) {
+          return null;
+        }
         const contractAsset = json.asset as {
           id?: string | number | bigint;
           name?: string;
@@ -367,7 +472,7 @@ export class PlatformRepository implements IPlatformRepository {
             : [];
 
         const asset: Asset = {
-          assetClass: json.className ?? (json.class as string) ?? assetClass,
+          assetClass: resolvedClass,
           tokenId: String(
             (json.tokenId as any) ?? (contractAsset?.id as any) ?? 0,
           ),
@@ -394,14 +499,18 @@ export class PlatformRepository implements IPlatformRepository {
    * Lookup an asset JSON via Pinata keyvalues using the stored owner+asset hash
    */
   async getAssetByOwnerAssetHash(hashHex: string): Promise<Asset | null> {
+    if (!this.pinata) {
+      return null;
+    }
+
     try {
       const list = await this.withPinataRetry(() =>
-        this.pinata.files.public.list().keyvalues({ hash: hashHex }).all(),
+        this.getPinataListBuilder().keyvalues({ hash: hashHex }).all(),
       );
       if (!list || list.length === 0) return null;
       const cid = list[0].cid;
       const { data } = await this.withPinataRetry<any>(() =>
-        this.pinata.gateways.public.get(`${cid}`),
+        this.pinata!.gateways.public.get(`${cid}`),
       );
       const json = typeof data === 'string' ? JSON.parse(data) : data;
       const contractAsset = json.asset as {
@@ -475,6 +584,14 @@ export class PlatformRepository implements IPlatformRepository {
 
     const lookupPromise = (async (): Promise<Asset | null> => {
       try {
+        if (!this.pinata) {
+          const apiResult =
+            await fetchAssetByTokenIdFromMetadataApi(canonicalTokenId);
+          this.assetByTokenIdCache.set(canonicalTokenId, apiResult.asset);
+          return apiResult.asset;
+        }
+        const pinata = this.pinata;
+
         const tokenIdStr = String(tokenId);
 
         // Build list of candidate formats to try
@@ -492,10 +609,7 @@ export class PlatformRepository implements IPlatformRepository {
         let list: any[] | null = null;
         for (const candidate of candidates) {
           list = await this.withPinataRetry(() =>
-            this.pinata.files.public
-              .list()
-              .keyvalues({ tokenId: candidate })
-              .all(),
+            this.getPinataListBuilder().keyvalues({ tokenId: candidate }).all(),
           );
           if (list && list.length > 0) break;
         }
@@ -510,7 +624,7 @@ export class PlatformRepository implements IPlatformRepository {
         }
         const cid = list[0].cid;
         const { data } = await this.withPinataRetry<any>(() =>
-          this.pinata.gateways.public.get(`${cid}`),
+          pinata.gateways.public.get(`${cid}`),
         );
         const json = typeof data === 'string' ? JSON.parse(data) : data;
         const contractAsset = json.asset as {

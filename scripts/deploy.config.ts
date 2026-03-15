@@ -17,6 +17,15 @@ export type {
   ABIFragment,
 } from '../types/abi';
 
+import {
+  getSupportedAssetClasses,
+  loadSupportedAssetCatalog,
+} from './lib/supported-assets';
+
+const DEFAULT_SUPPORTED_ASSET_CLASSES = getSupportedAssetClasses(
+  loadSupportedAssetCatalog(),
+);
+
 export interface ContractConfig {
   name: string;
   contractName: string;
@@ -163,8 +172,7 @@ export const CONTRACTS: Record<string, ContractConfig> = {
     indexerConfig: { abiName: 'AuraAssetAbi', startBlockKey: 'auraAsset' },
     postDeploy: async (contract, addresses) => {
       console.log('   Adding default asset classes...');
-      const classes = ['GOAT', 'SHEEP', 'COW', 'CHICKEN', 'DUCK'];
-      for (const className of classes) {
+      for (const className of DEFAULT_SUPPORTED_ASSET_CLASSES) {
         const tx = await contract.addSupportedClass(className);
         await tx.wait();
         console.log(`   ✓ Added class: ${className}`);
@@ -318,6 +326,21 @@ export const CONTRACTS: Record<string, ContractConfig> = {
     contractName: 'AuSysFacet',
     category: 'facet',
     chainConstantKey: 'NEXT_PUBLIC_AUSYS_FACET_ADDRESS',
+  },
+
+  AuSysAdminFacet: {
+    name: 'AuSysAdminFacet',
+    contractName: 'AuSysAdminFacet',
+    category: 'facet',
+    chainConstantKey: 'NEXT_PUBLIC_AUSYS_ADMIN_FACET_ADDRESS',
+  },
+
+  // AuSysViewFacet - Read-only AuSys helpers split from AuSysFacet
+  AuSysViewFacet: {
+    name: 'AuSysViewFacet',
+    contractName: 'AuSysViewFacet',
+    category: 'facet',
+    chainConstantKey: 'NEXT_PUBLIC_AUSYS_VIEW_FACET_ADDRESS',
   },
 
   // CLOBLogisticsFacet - Driver and delivery logistics management
@@ -529,6 +552,8 @@ export const DEPLOYMENT_MODES: Record<string, DeploymentMode> = {
       'CLOBMEVFacet',
       'OrderMatchingFacet',
       'AuSysFacet',
+      'AuSysAdminFacet',
+      'AuSysViewFacet',
       'CLOBLogisticsFacet',
       'Diamond',
     ],
@@ -553,6 +578,8 @@ export const DEPLOYMENT_MODES: Record<string, DeploymentMode> = {
       'CLOBFacet',
       'OrderRouterFacet',
       'AuSysFacet',
+      'AuSysAdminFacet',
+      'AuSysViewFacet',
       'Diamond',
     ],
   },
@@ -602,6 +629,7 @@ export const DEPLOYMENT_MODES: Record<string, DeploymentMode> = {
       'BridgeFacet',
       'CLOBFacet',
       'AuSysFacet',
+      'AuSysAdminFacet',
       'Diamond',
       // Standalone
       'OrderBridge',
@@ -1176,6 +1204,33 @@ export const FACET_ABI: Record<string, ABIFragment[]> = {
       name: 'getOwnerNodes',
       inputs: [{ name: '_owner', type: 'address' }],
       outputs: [{ name: '', type: 'bytes32[]' }],
+      stateMutability: 'view',
+    },
+    {
+      type: 'function',
+      name: 'setNodeRegistrar',
+      inputs: [
+        { name: 'registrar', type: 'address' },
+        { name: 'enable', type: 'bool' },
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    },
+    {
+      type: 'function',
+      name: 'hasNodeRole',
+      inputs: [
+        { name: 'role', type: 'bytes32' },
+        { name: 'account', type: 'address' },
+      ],
+      outputs: [{ name: '', type: 'bool' }],
+      stateMutability: 'view',
+    },
+    {
+      type: 'function',
+      name: 'getAllowedNodeRegistrars',
+      inputs: [],
+      outputs: [{ name: '', type: 'address[]' }],
       stateMutability: 'view',
     },
     {
@@ -2434,6 +2489,13 @@ export const FACET_ABI: Record<string, ABIFragment[]> = {
         { name: 'account', type: 'address' },
       ],
       outputs: [{ name: '', type: 'bool' }],
+      stateMutability: 'view',
+    },
+    {
+      type: 'function',
+      name: 'getAllowedDrivers',
+      inputs: [],
+      outputs: [{ name: '', type: 'address[]' }],
       stateMutability: 'view',
     },
     // Order functions

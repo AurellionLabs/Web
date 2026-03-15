@@ -11,6 +11,7 @@ import {
 } from '@/infrastructure/diamond/diamond-p2p-service';
 
 vi.mock('@/chain-constants', () => ({
+  getIndexerUrl: () => 'http://localhost:42069',
   NEXT_PUBLIC_INDEXER_URL: 'https://mock-indexer.test/graphql',
   NEXT_PUBLIC_AURA_ASSET_ADDRESS: '0x1235E39477752713902bCE541Fc02ADeb6FF465b',
   NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS: '0xQuoteToken0000000000000000000000000000',
@@ -23,6 +24,8 @@ const TOKEN_ID =
   '0xb4ea2cef8a0db05f1d5db458b7e725abe12c5dea46810992eae76b8687876a40';
 const OFFER_ID =
   '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
+const SELLER_NODE_REF =
+  '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 
 function createMockContext(overrides: Record<string, any> = {}) {
   const mockTx = {
@@ -46,20 +49,29 @@ function createMockContext(overrides: Record<string, any> = {}) {
     }),
   };
 
-  // Default: a buy offer (acceptor is seller → no ERC20 approval needed)
+  // Default: a sell offer (acceptor is buyer)
   const defaultOrder = {
     id: OFFER_ID,
     token: TOKEN,
-    isSellerInitiated: false,
+    isSellerInitiated: true,
     price: BigInt('1000000000000000000'),
     tokenQuantity: BigInt(1),
     txFee: BigInt(0),
+    buyer: ethers.ZeroAddress,
+    seller: SELLER,
   };
 
   const diamond = {
     createAuSysOrder: vi.fn().mockResolvedValue(mockTx),
     acceptP2POffer: vi.fn().mockResolvedValue(mockTx),
+    acceptP2POfferWithPickupNode: vi.fn().mockResolvedValue(mockTx),
     cancelP2POffer: vi.fn().mockResolvedValue(mockTx),
+    getOwnerNodes: vi.fn().mockResolvedValue([SELLER_NODE_REF]),
+    getNode: vi.fn().mockResolvedValue({
+      lat: '-26.2000',
+      lng: '28.0000',
+      addressName: 'Seller Node',
+    }),
     getAuSysOrder: vi.fn().mockResolvedValue(defaultOrder),
     getPayToken: vi
       .fn()
@@ -112,6 +124,7 @@ describe('DiamondP2PService', () => {
         quantity: BigInt(100000),
         price: BigInt('10000000000000000000'),
         isSellOffer: true,
+        pickupNodeRef: SELLER_NODE_REF,
         expiresAt: 1700000000,
       });
 
@@ -137,6 +150,7 @@ describe('DiamondP2PService', () => {
         quantity: BigInt(100),
         price: BigInt(1000),
         isSellOffer: true,
+        pickupNodeRef: SELLER_NODE_REF,
       });
 
       const orderArg = context._diamond.createAuSysOrder.mock.calls[0][0];
@@ -173,10 +187,205 @@ describe('DiamondP2PService', () => {
         price: BigInt(1000),
         isSellOffer: true,
         targetCounterparty: target,
+        pickupNodeRef: SELLER_NODE_REF,
       });
 
       const orderArg = context._diamond.createAuSysOrder.mock.calls[0][0];
       expect(orderArg.targetCounterparty).toBe(target);
+    });
+
+    it('should attach the selected node to sell offers', async () => {
+      const selectedNodeHash =
+        '0x1111111111111111111111111111111111111111111111111111111111111111';
+      const context = createMockContext();
+      const service = new DiamondP2PService(context);
+
+      await service.createOffer({
+        token: TOKEN,
+        tokenId: TOKEN_ID,
+        quantity: BigInt(100),
+        price: BigInt(1000),
+        isSellOffer: true,
+        nodes: [selectedNodeHash],
+        pickupNodeRef: SELLER_NODE_REF,
+      });
+
+      const orderArg = context._diamond.createAuSysOrder.mock.calls[0][0];
+      expect(orderArg.nodes).toEqual([selectedNodeHash]);
+    });
+
+    it('should populate sell offer pickup metadata from seller owned node', async () => {
+      const ownerNodeRef =
+        '0x2222222222222222222222222222222222222222222222222222222222222222';
+      const context = createMockContext({
+        diamond: {
+          getOwnerNodes: vi.fn().mockResolvedValue([ownerNodeRef]),
+          getNode: vi.fn().mockResolvedValue({
+            lat: '-26.2041',
+            lng: '28.0473',
+            addressName: 'Johannesburg Warehouse',
+          }),
+        },
+      });
+      const service = new DiamondP2PService(context);
+
+      await service.createOffer({
+        token: TOKEN,
+        tokenId: TOKEN_ID,
+        quantity: BigInt(100),
+        price: BigInt(1000),
+        isSellOffer: true,
+        nodes: [SELLER], // current UI provides owner wallet
+        pickupNodeRef: ownerNodeRef,
+      });
+
+      const orderArg = context._diamond.createAuSysOrder.mock.calls[0][0];
+      expect(orderArg.locationData.startLocation.lat).toBe('-26.2041');
+      expect(orderArg.locationData.startLocation.lng).toBe('28.0473');
+      expect(orderArg.locationData.startName).toBe('Johannesburg Warehouse');
+    });
+
+    it('should populate pickup metadata when getNode returns tuple-indexed fields', async () => {
+      const ownerNodeRef =
+        '0x2222222222222222222222222222222222222222222222222222222222222222';
+      const context = createMockContext({
+        diamond: {
+          getOwnerNodes: vi.fn().mockResolvedValue([ownerNodeRef]),
+          getNode: vi.fn().mockResolvedValue({
+            7: 'Tuple Warehouse',
+            8: '-33.8688',
+            9: '151.2093',
+          }),
+        },
+      });
+      const service = new DiamondP2PService(context);
+
+      await service.createOffer({
+        token: TOKEN,
+        tokenId: TOKEN_ID,
+        quantity: BigInt(100),
+        price: BigInt(1000),
+        isSellOffer: true,
+        nodes: [SELLER],
+        pickupNodeRef: ownerNodeRef,
+      });
+
+      const orderArg = context._diamond.createAuSysOrder.mock.calls[0][0];
+      expect(orderArg.locationData.startLocation.lat).toBe('-33.8688');
+      expect(orderArg.locationData.startLocation.lng).toBe('151.2093');
+      expect(orderArg.locationData.startName).toBe('Tuple Warehouse');
+    });
+
+    it('should throw when selected pickup node has missing location metadata', async () => {
+      const ownerNodeRef =
+        '0x2222222222222222222222222222222222222222222222222222222222222222';
+      const context = createMockContext({
+        diamond: {
+          getOwnerNodes: vi.fn().mockResolvedValue([ownerNodeRef]),
+          getNode: vi.fn().mockResolvedValue({
+            lat: '',
+            lng: '151.2093',
+            addressName: 'Incomplete Warehouse',
+          }),
+        },
+      });
+      const service = new DiamondP2PService(context);
+
+      await expect(
+        service.createOffer({
+          token: TOKEN,
+          tokenId: TOKEN_ID,
+          quantity: BigInt(100),
+          price: BigInt(1000),
+          isSellOffer: true,
+          nodes: [SELLER],
+          pickupNodeRef: ownerNodeRef,
+        }),
+      ).rejects.toThrow(/missing location metadata/i);
+
+      expect(context._diamond.createAuSysOrder).not.toHaveBeenCalled();
+    });
+
+    it('should throw when selected pickup node is not owned', async () => {
+      const selectedButUnowned =
+        '0x4444444444444444444444444444444444444444444444444444444444444444';
+      const context = createMockContext({
+        diamond: {
+          getOwnerNodes: vi.fn().mockResolvedValue([SELLER_NODE_REF]),
+        },
+      });
+      const service = new DiamondP2PService(context);
+
+      await expect(
+        service.createOffer({
+          token: TOKEN,
+          tokenId: TOKEN_ID,
+          quantity: BigInt(100),
+          price: BigInt(1000),
+          isSellOffer: true,
+          nodes: [SELLER],
+          pickupNodeRef: selectedButUnowned,
+        }),
+      ).rejects.toThrow(/Selected pickup node is not owned/i);
+
+      expect(context._diamond.createAuSysOrder).not.toHaveBeenCalled();
+    });
+
+    it('should throw when pickupNodeRef is missing for sell offer', async () => {
+      const context = createMockContext();
+      const service = new DiamondP2PService(context);
+
+      await expect(
+        service.createOffer({
+          token: TOKEN,
+          tokenId: TOKEN_ID,
+          quantity: BigInt(100),
+          price: BigInt(1000),
+          isSellOffer: true,
+        }),
+      ).rejects.toThrow(/pickup node reference/i);
+
+      expect(context._diamond.createAuSysOrder).not.toHaveBeenCalled();
+    });
+
+    it('should throw when pickupNodeRef is not a bytes32 node reference', async () => {
+      const context = createMockContext();
+      const service = new DiamondP2PService(context);
+
+      await expect(
+        service.createOffer({
+          token: TOKEN,
+          tokenId: TOKEN_ID,
+          quantity: BigInt(100),
+          price: BigInt(1000),
+          isSellOffer: true,
+          pickupNodeRef: SELLER,
+        }),
+      ).rejects.toThrow(/Invalid pickupNodeRef/i);
+
+      expect(context._diamond.createAuSysOrder).not.toHaveBeenCalled();
+    });
+
+    it('should throw when sell offer pickup node cannot be resolved', async () => {
+      const context = createMockContext({
+        diamond: {
+          getOwnerNodes: vi.fn().mockResolvedValue([]),
+        },
+      });
+      const service = new DiamondP2PService(context);
+
+      await expect(
+        service.createOffer({
+          token: TOKEN,
+          tokenId: TOKEN_ID,
+          quantity: BigInt(100),
+          price: BigInt(1000),
+          isSellOffer: true,
+          pickupNodeRef: SELLER_NODE_REF,
+        }),
+      ).rejects.toThrow(/Unable to resolve sell offer pickup metadata/i);
+
+      expect(context._diamond.createAuSysOrder).not.toHaveBeenCalled();
     });
 
     it('should propagate contract errors', async () => {
@@ -196,6 +405,7 @@ describe('DiamondP2PService', () => {
           quantity: BigInt(100),
           price: BigInt(1000),
           isSellOffer: true,
+          pickupNodeRef: SELLER_NODE_REF,
         }),
       ).rejects.toThrow('Diamond: Function does not exist');
     });
@@ -240,11 +450,49 @@ describe('DiamondP2PService', () => {
         quantity: BigInt(100),
         price: BigInt(1000),
         isSellOffer: true,
+        pickupNodeRef: SELLER_NODE_REF,
       });
 
       expect(mockERC1155.isApprovedForAll).toHaveBeenCalled();
       expect(mockERC1155.setApprovalForAll).toHaveBeenCalled();
       expect(context._diamond.createAuSysOrder).toHaveBeenCalled();
+    });
+
+    it('should tolerate delayed ERC1155 approval visibility after approval tx confirmation', async () => {
+      vi.useFakeTimers();
+      try {
+        const mockERC1155 = {
+          isApprovedForAll: vi
+            .fn()
+            .mockResolvedValueOnce(false)
+            .mockResolvedValueOnce(false)
+            .mockResolvedValueOnce(false)
+            .mockResolvedValueOnce(false)
+            .mockResolvedValueOnce(true),
+          setApprovalForAll: vi.fn().mockResolvedValue({
+            wait: vi.fn().mockResolvedValue({}),
+          }),
+        };
+        const context = createMockContext({ erc1155: mockERC1155 });
+        const service = new DiamondP2PService(context);
+
+        const offerPromise = service.createOffer({
+          token: TOKEN,
+          tokenId: TOKEN_ID,
+          quantity: BigInt(100),
+          price: BigInt(1000),
+          isSellOffer: true,
+          pickupNodeRef: SELLER_NODE_REF,
+        });
+
+        await vi.runAllTimersAsync();
+
+        await expect(offerPromise).resolves.toBeUndefined();
+        expect(mockERC1155.setApprovalForAll).toHaveBeenCalledTimes(1);
+        expect(context._diamond.createAuSysOrder).toHaveBeenCalledTimes(1);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('should skip ERC1155 approval for sell offers when already approved', async () => {
@@ -261,6 +509,7 @@ describe('DiamondP2PService', () => {
         quantity: BigInt(100),
         price: BigInt(1000),
         isSellOffer: true,
+        pickupNodeRef: SELLER_NODE_REF,
       });
 
       expect(mockERC1155.isApprovedForAll).toHaveBeenCalled();
@@ -338,17 +587,20 @@ describe('DiamondP2PService', () => {
 
     it('should calculate totalCost as price + txFee (not price * qty)', async () => {
       // Verify the approval amount is price + txFee (contract's formula)
+      const price = BigInt('5000000000000000000'); // 5 tokens
+      const txFee = BigInt('100000000000000000'); // 0.1 tokens
+      const expectedTotal = price + txFee; // 5100000000000000000n
       const mockApproveTx = {
         hash: '0xapprove',
         wait: vi.fn().mockResolvedValue({}),
       };
       const mockQuoteToken = {
-        allowance: vi.fn().mockResolvedValue(0n),
+        allowance: vi
+          .fn()
+          .mockResolvedValueOnce(0n)
+          .mockResolvedValue(expectedTotal),
         approve: vi.fn().mockResolvedValue(mockApproveTx),
       };
-
-      const price = BigInt('5000000000000000000'); // 5 tokens
-      const txFee = BigInt('100000000000000000'); // 0.1 tokens
       const tokenQuantity = BigInt(10);
 
       const context = createMockContext({
@@ -369,7 +621,6 @@ describe('DiamondP2PService', () => {
 
       // Allowance check should use price + txFee = 5.1 tokens
       // NOT price * tokenQuantity + txFee = 50.1 tokens
-      const expectedTotal = price + txFee; // 5100000000000000000n
       expect(mockQuoteToken.allowance).toHaveBeenCalled();
 
       // Since allowance was 0, approve was called. The ensureQuoteTokenApproval
@@ -390,7 +641,12 @@ describe('DiamondP2PService', () => {
         wait: vi.fn().mockResolvedValue({}),
       };
       const mockQuoteToken = {
-        allowance: vi.fn().mockResolvedValue(0n), // Insufficient
+        allowance: vi
+          .fn()
+          .mockResolvedValueOnce(0n)
+          .mockResolvedValue(
+            BigInt('5000000000000000000') + BigInt('100000000000000000'),
+          ),
         approve: vi.fn().mockResolvedValue(mockApproveTx),
       };
 
@@ -418,14 +674,25 @@ describe('DiamondP2PService', () => {
       expect(mockQuoteToken.approve).toHaveBeenCalled();
     });
 
-    it('should skip ERC20 approval when accepting a buy offer (acceptor is seller)', async () => {
-      // Default mock context has isSellerInitiated: false (buy offer)
-      const context = createMockContext();
+    it('should reject buy offers and require selected fulfillment node', async () => {
+      const context = createMockContext({
+        diamond: {
+          getAuSysOrder: vi.fn().mockResolvedValue({
+            id: OFFER_ID,
+            token: TOKEN,
+            isSellerInitiated: false,
+            price: BigInt('5000000000000000000'),
+            tokenQuantity: BigInt(10),
+            txFee: BigInt('100000000000000000'),
+          }),
+        },
+      });
       const service = new DiamondP2PService(context);
 
-      await service.acceptOffer(OFFER_ID);
-
-      // Should NOT check allowance for seller accepting a buy offer
+      await expect(service.acceptOffer(OFFER_ID)).rejects.toThrow(
+        /selected fulfillment node/i,
+      );
+      expect(context._diamond.acceptP2POffer).not.toHaveBeenCalled();
       expect(context._mockQuoteToken.allowance).not.toHaveBeenCalled();
     });
 
@@ -455,6 +722,101 @@ describe('DiamondP2PService', () => {
       expect(mockQuoteToken.allowance).toHaveBeenCalled();
       // Should NOT approve (already sufficient)
       expect(mockQuoteToken.approve).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('acceptOfferWithPickupNode', () => {
+    it('should ensure ERC1155 approval then call acceptP2POfferWithPickupNode', async () => {
+      const pickupNodeRef =
+        '0x2222222222222222222222222222222222222222222222222222222222222222';
+      const mockERC1155 = {
+        isApprovedForAll: vi
+          .fn()
+          .mockResolvedValueOnce(false)
+          .mockResolvedValueOnce(true),
+        setApprovalForAll: vi.fn().mockResolvedValue({
+          wait: vi.fn().mockResolvedValue({}),
+        }),
+      };
+      const context = createMockContext({
+        erc1155: mockERC1155,
+        diamond: {
+          getAuSysOrder: vi.fn().mockResolvedValue({
+            id: OFFER_ID,
+            token: TOKEN,
+            isSellerInitiated: false,
+            price: BigInt('1000000000000000000'),
+            tokenQuantity: BigInt(1),
+            txFee: BigInt(0),
+            buyer: '0xBuyer000000000000000000000000000000000000',
+            seller: ethers.ZeroAddress,
+          }),
+          getOwnerNodes: vi.fn().mockResolvedValue([pickupNodeRef]),
+          getNode: vi.fn().mockResolvedValue({
+            lat: '-26.2041',
+            lng: '28.0473',
+            addressName: 'Johannesburg Warehouse',
+          }),
+        },
+      });
+      const service = new DiamondP2PService(context);
+
+      await service.acceptOfferWithPickupNode(OFFER_ID, pickupNodeRef);
+
+      expect(mockERC1155.isApprovedForAll).toHaveBeenCalled();
+      expect(mockERC1155.setApprovalForAll).toHaveBeenCalled();
+      expect(
+        context._diamond.acceptP2POfferWithPickupNode,
+      ).toHaveBeenCalledWith(OFFER_ID, pickupNodeRef);
+      expect(context._diamond.acceptP2POffer).not.toHaveBeenCalled();
+    });
+
+    it('should reject when called for seller-initiated offers', async () => {
+      const context = createMockContext({
+        diamond: {
+          getAuSysOrder: vi.fn().mockResolvedValue({
+            id: OFFER_ID,
+            token: TOKEN,
+            isSellerInitiated: true,
+            price: BigInt('1000000000000000000'),
+            tokenQuantity: BigInt(1),
+            txFee: BigInt(0),
+            buyer: ethers.ZeroAddress,
+            seller: SELLER,
+          }),
+        },
+      });
+      const service = new DiamondP2PService(context);
+
+      await expect(
+        service.acceptOfferWithPickupNode(OFFER_ID, SELLER_NODE_REF),
+      ).rejects.toThrow(/only for buyer-initiated offers/i);
+      expect(
+        context._diamond.acceptP2POfferWithPickupNode,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('should reject invalid pickup node refs', async () => {
+      const context = createMockContext({
+        diamond: {
+          getAuSysOrder: vi.fn().mockResolvedValue({
+            id: OFFER_ID,
+            token: TOKEN,
+            isSellerInitiated: false,
+            price: BigInt('1000000000000000000'),
+            tokenQuantity: BigInt(1),
+            txFee: BigInt(0),
+          }),
+        },
+      });
+      const service = new DiamondP2PService(context);
+
+      await expect(
+        service.acceptOfferWithPickupNode(OFFER_ID, SELLER),
+      ).rejects.toThrow(/invalid pickupnoderef/i);
+      expect(
+        context._diamond.acceptP2POfferWithPickupNode,
+      ).not.toHaveBeenCalled();
     });
   });
 
@@ -569,6 +931,7 @@ describe('decodeP2PError', () => {
 describe('acceptOfferWithDelivery', () => {
   const DELIVERY_DETAILS = {
     senderNodeAddress: '0xNodeSender000000000000000000000000000000',
+    pickupNodeRef: SELLER_NODE_REF,
     receiverAddress: '0xBuyerAddr0000000000000000000000000000000',
     parcelData: {
       startLocation: { lat: '-26.2', lng: '28.0' },
@@ -617,6 +980,7 @@ describe('acceptOfferWithDelivery', () => {
 
     const sellOrder = {
       id: OFFER_ID,
+      token: TOKEN,
       isSellerInitiated: true,
       price: BigInt('1000000000000000000'), // 1 USDT
       tokenQuantity: BigInt(1000),
@@ -632,11 +996,23 @@ describe('acceptOfferWithDelivery', () => {
         wait: vi.fn().mockResolvedValue({}),
       }),
     };
+    const mockERC1155 = {
+      isApprovedForAll: vi.fn().mockResolvedValue(true),
+      setApprovalForAll: vi.fn().mockResolvedValue({
+        wait: vi.fn().mockResolvedValue({}),
+      }),
+    };
 
     const diamond = {
       createAuSysOrder: vi.fn(),
       acceptP2POffer: vi.fn().mockResolvedValue(acceptTx),
       cancelP2POffer: vi.fn(),
+      getOwnerNodes: vi.fn().mockResolvedValue([SELLER_NODE_REF]),
+      getNode: vi.fn().mockResolvedValue({
+        lat: '-26.2041',
+        lng: '28.0473',
+        addressName: 'Seller Node',
+      }),
       getAuSysOrder: vi.fn().mockResolvedValue(sellOrder),
       getPayToken: vi
         .fn()
@@ -646,11 +1022,15 @@ describe('acceptOfferWithDelivery', () => {
     };
 
     return {
+      _mockERC1155: mockERC1155,
       getDiamond: vi.fn().mockReturnValue(diamond),
-      getSignerAddress: vi.fn().mockResolvedValue(SELLER),
+      getSignerAddress: vi
+        .fn()
+        .mockResolvedValue('0xBuyerAddr0000000000000000000000000000000'),
       getSigner: vi.fn(),
       getProvider: vi.fn(),
       getQuoteTokenContract: vi.fn().mockReturnValue(mockQuoteToken),
+      getERC1155Contract: vi.fn().mockReturnValue(mockERC1155),
       _diamond: diamond,
       _acceptTx: acceptTx,
       _journeyTx: journeyTx,
@@ -672,7 +1052,124 @@ describe('acceptOfferWithDelivery', () => {
     expect(context._diamond.createOrderJourney).toHaveBeenCalledTimes(1);
     expect(context._diamond.createOrderJourney).toHaveBeenCalledWith(
       OFFER_ID,
-      DELIVERY_DETAILS.senderNodeAddress,
+      SELLER,
+      DELIVERY_DETAILS.receiverAddress,
+      DELIVERY_DETAILS.parcelData,
+      DELIVERY_DETAILS.bountyWei,
+      DELIVERY_DETAILS.etaTimestamp,
+      DELIVERY_DETAILS.tokenQuantity,
+      DELIVERY_DETAILS.assetId,
+    );
+  });
+
+  it('should reject buy offers and instruct selected-node accept flow', async () => {
+    const context = createAcceptWithDeliveryContext();
+    context.getSignerAddress = vi.fn().mockResolvedValue(SELLER);
+    context._diamond.getAuSysOrder = vi.fn().mockResolvedValue({
+      id: OFFER_ID,
+      token: TOKEN,
+      isSellerInitiated: false,
+      price: BigInt('1000000000000000000'),
+      tokenQuantity: BigInt(1000),
+      txFee: BigInt('20000000000000000'),
+      currentStatus: 1n,
+      seller: ethers.ZeroAddress,
+      buyer: DELIVERY_DETAILS.receiverAddress,
+      locationData: {
+        startLocation: { lat: '', lng: '' },
+        endLocation: { lat: '-33.9', lng: '18.4' },
+        startName: '',
+        endName: 'Buyer Location',
+      },
+    });
+    const service = new DiamondP2PService(context);
+
+    await expect(
+      service.acceptOfferWithDelivery(OFFER_ID, {
+        ...DELIVERY_DETAILS,
+      }),
+    ).rejects.toThrow(/selected fulfillment node/i);
+    expect(context._diamond.acceptP2POffer).not.toHaveBeenCalled();
+    expect(context._diamond.createOrderJourney).not.toHaveBeenCalled();
+  });
+
+  it('should use canonical order pickup metadata when delivery pickup is missing', async () => {
+    const context = createAcceptWithDeliveryContext();
+    context._diamond.getAuSysOrder = vi.fn().mockResolvedValue({
+      id: OFFER_ID,
+      isSellerInitiated: true,
+      price: BigInt('1000000000000000000'),
+      tokenQuantity: BigInt(1000),
+      txFee: BigInt('20000000000000000'),
+      currentStatus: 1n,
+      seller: SELLER,
+      buyer: DELIVERY_DETAILS.receiverAddress,
+      locationData: {
+        startLocation: { lat: '-33.9249', lng: '18.4241' },
+        endLocation: { lat: '', lng: '' },
+        startName: 'Cape Town Node',
+        endName: '',
+      },
+    });
+    const service = new DiamondP2PService(context);
+
+    const deliveryWithoutPickup = {
+      ...DELIVERY_DETAILS,
+      parcelData: {
+        ...DELIVERY_DETAILS.parcelData,
+        startLocation: { lat: '', lng: '' },
+        startName: '',
+      },
+    };
+
+    await service.acceptOfferWithDelivery(OFFER_ID, deliveryWithoutPickup);
+
+    expect(context._diamond.createOrderJourney).toHaveBeenCalledWith(
+      OFFER_ID,
+      SELLER,
+      DELIVERY_DETAILS.receiverAddress,
+      expect.objectContaining({
+        startLocation: { lat: '-33.9249', lng: '18.4241' },
+        startName: 'Cape Town Node',
+      }),
+      DELIVERY_DETAILS.bountyWei,
+      DELIVERY_DETAILS.etaTimestamp,
+      DELIVERY_DETAILS.tokenQuantity,
+      DELIVERY_DETAILS.assetId,
+    );
+  });
+
+  it('should fail when pickup metadata is missing in both delivery and order', async () => {
+    const context = createAcceptWithDeliveryContext();
+    const service = new DiamondP2PService(context);
+
+    const deliveryWithoutPickup = {
+      ...DELIVERY_DETAILS,
+      parcelData: {
+        ...DELIVERY_DETAILS.parcelData,
+        startLocation: { lat: '', lng: '' },
+        startName: '',
+      },
+    };
+
+    await expect(
+      service.acceptOfferWithDelivery(OFFER_ID, deliveryWithoutPickup),
+    ).rejects.toThrow(/pickup location/i);
+  });
+
+  it('should ignore mismatched UI receiver and use canonical buyer', async () => {
+    const context = createAcceptWithDeliveryContext();
+    const service = new DiamondP2PService(context);
+    const deliveryWithWrongReceiver = {
+      ...DELIVERY_DETAILS,
+      receiverAddress: '0x9999999999999999999999999999999999999999',
+    };
+
+    await service.acceptOfferWithDelivery(OFFER_ID, deliveryWithWrongReceiver);
+
+    expect(context._diamond.createOrderJourney).toHaveBeenCalledWith(
+      OFFER_ID,
+      SELLER,
       DELIVERY_DETAILS.receiverAddress,
       DELIVERY_DETAILS.parcelData,
       DELIVERY_DETAILS.bountyWei,
@@ -685,7 +1182,13 @@ describe('acceptOfferWithDelivery', () => {
   it('should ensure ERC20 approval covers price + txFee + bounty', async () => {
     // Set allowance to 0 so approval is needed
     const context = createAcceptWithDeliveryContext();
-    context._mockQuoteToken.allowance.mockResolvedValue(BigInt(0));
+    context._mockQuoteToken.allowance
+      .mockResolvedValueOnce(BigInt(0))
+      .mockResolvedValue(
+        BigInt('1000000000000000000') +
+          BigInt('20000000000000000') +
+          DELIVERY_DETAILS.bountyWei,
+      );
     context._mockQuoteToken.approve.mockResolvedValue({
       wait: vi.fn().mockResolvedValue({}),
     });
@@ -696,6 +1199,48 @@ describe('acceptOfferWithDelivery', () => {
 
     // Should have called approve (since allowance was 0)
     expect(context._mockQuoteToken.approve).toHaveBeenCalled();
+  });
+
+  it('should wait for ERC20 allowance visibility before accepting with delivery', async () => {
+    vi.useFakeTimers();
+    try {
+      const context = createAcceptWithDeliveryContext();
+      const service = new DiamondP2PService(context);
+      const requiredAllowance =
+        BigInt('1000000000000000000') +
+        BigInt('20000000000000000') +
+        DELIVERY_DETAILS.bountyWei;
+      let allowanceReads = 0;
+
+      context._mockQuoteToken.allowance.mockImplementation(() => {
+        allowanceReads += 1;
+        if (allowanceReads < 3) {
+          return Promise.resolve(BigInt(0));
+        }
+        return Promise.resolve(requiredAllowance);
+      });
+
+      context._diamond.acceptP2POffer.mockImplementation(() => {
+        if (allowanceReads < 3) {
+          return Promise.reject(new Error('ERC20: insufficient allowance'));
+        }
+        return Promise.resolve(context._acceptTx);
+      });
+
+      const acceptPromise = service.acceptOfferWithDelivery(
+        OFFER_ID,
+        DELIVERY_DETAILS,
+      );
+
+      await vi.runAllTimersAsync();
+
+      await expect(acceptPromise).resolves.toBeUndefined();
+      expect(context._mockQuoteToken.approve).toHaveBeenCalledTimes(1);
+      expect(context._mockQuoteToken.allowance).toHaveBeenCalledTimes(3);
+      expect(context._diamond.acceptP2POffer).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('should not call createOrderJourney if acceptP2POffer fails', async () => {
@@ -779,5 +1324,86 @@ describe('acceptOfferWithDelivery', () => {
     await expect(
       service.acceptOfferWithDelivery(OFFER_ID, DELIVERY_DETAILS),
     ).rejects.toThrow('InvalidETA');
+  });
+
+  it('retries createOrderJourney once when first attempt reverts with InvalidNode', async () => {
+    vi.useFakeTimers();
+    try {
+      const context = createAcceptWithDeliveryContext();
+      context._diamond.createOrderJourney
+        .mockRejectedValueOnce({
+          data: '0x30812d42',
+          message: 'execution reverted',
+        })
+        .mockResolvedValueOnce(context._journeyTx);
+      const service = new DiamondP2PService(context);
+
+      const promise = service.acceptOfferWithDelivery(
+        OFFER_ID,
+        DELIVERY_DETAILS,
+      );
+      await vi.runAllTimersAsync();
+      await expect(promise).resolves.toBeUndefined();
+      expect(context._diamond.createOrderJourney).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('falls back to provided sender/receiver when canonical participants remain unresolved after one retry', async () => {
+    vi.useFakeTimers();
+    try {
+      const context = createAcceptWithDeliveryContext();
+      context._diamond.getAuSysOrder = vi
+        .fn()
+        // Initial read before accept (approval/isSellerInitiated)
+        .mockResolvedValueOnce({
+          id: OFFER_ID,
+          isSellerInitiated: true,
+          price: BigInt('1000000000000000000'),
+          txFee: BigInt('20000000000000000'),
+          seller: SELLER,
+          buyer: DELIVERY_DETAILS.receiverAddress,
+        })
+        // Post-accept read (attempt 1)
+        .mockResolvedValueOnce({
+          id: OFFER_ID,
+          isSellerInitiated: true,
+          price: BigInt('1000000000000000000'),
+          txFee: BigInt('20000000000000000'),
+          seller: ethers.ZeroAddress,
+          buyer: ethers.ZeroAddress,
+        })
+        // Post-accept read (retry once)
+        .mockResolvedValueOnce({
+          id: OFFER_ID,
+          isSellerInitiated: true,
+          price: BigInt('1000000000000000000'),
+          txFee: BigInt('20000000000000000'),
+          seller: ethers.ZeroAddress,
+          buyer: ethers.ZeroAddress,
+        });
+
+      const service = new DiamondP2PService(context);
+      const promise = service.acceptOfferWithDelivery(
+        OFFER_ID,
+        DELIVERY_DETAILS,
+      );
+      await vi.runAllTimersAsync();
+      await expect(promise).resolves.toBeUndefined();
+
+      expect(context._diamond.createOrderJourney).toHaveBeenCalledWith(
+        OFFER_ID,
+        DELIVERY_DETAILS.senderNodeAddress,
+        DELIVERY_DETAILS.receiverAddress,
+        expect.any(Object),
+        DELIVERY_DETAILS.bountyWei,
+        DELIVERY_DETAILS.etaTimestamp,
+        DELIVERY_DETAILS.tokenQuantity,
+        DELIVERY_DETAILS.assetId,
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

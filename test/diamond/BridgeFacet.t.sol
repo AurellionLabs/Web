@@ -4,7 +4,12 @@ pragma solidity ^0.8.28;
 import { Test, console2 } from 'forge-std/Test.sol';
 import { DiamondTestBase } from './helpers/DiamondTestBase.sol';
 import { BridgeFacet } from 'contracts/diamond/facets/BridgeFacet.sol';
+import { DiamondCutFacet } from 'contracts/diamond/facets/DiamondCutFacet.sol';
 import { DiamondStorage } from 'contracts/diamond/libraries/DiamondStorage.sol';
+import { IDiamondCut } from 'contracts/diamond/interfaces/IDiamondCut.sol';
+import { BridgeTestHelperFacet } from './helpers/BridgeTestHelperFacet.sol';
+import { ERC1155Mock } from './helpers/ERC1155Mock.sol';
+import { MessageHashUtils } from '@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol';
 
 /**
  * @title BridgeFacetTest
@@ -12,6 +17,10 @@ import { DiamondStorage } from 'contracts/diamond/libraries/DiamondStorage.sol';
  */
 contract BridgeFacetTest is DiamondTestBase {
     BridgeFacet public bridge;
+    BridgeTestHelperFacet public bridgeHelper;
+    ERC1155Mock public bridgeToken;
+    uint256 internal sellerPk;
+    address internal sellerSigner;
 
     // Events
     event UnifiedOrderCreated(
@@ -28,6 +37,26 @@ contract BridgeFacetTest is DiamondTestBase {
     function setUp() public override {
         super.setUp();
         bridge = BridgeFacet(address(diamond));
+        bridgeHelper = new BridgeTestHelperFacet();
+        bridgeToken = new ERC1155Mock();
+        sellerPk = 0xA11CE;
+        sellerSigner = vm.addr(sellerPk);
+
+        bytes4[] memory selectors = new bytes4[](1);
+        selectors[0] = BridgeTestHelperFacet.seedClobOrder.selector;
+
+        IDiamondCut.FacetCut[] memory cut = new IDiamondCut.FacetCut[](1);
+        cut[0] = IDiamondCut.FacetCut({
+            facetAddress: address(bridgeHelper),
+            action: IDiamondCut.FacetCutAction.Add,
+            functionSelectors: selectors
+        });
+
+        vm.startPrank(owner);
+        DiamondCutFacet(address(diamond)).scheduleDiamondCut(cut, address(0), '');
+        vm.warp(block.timestamp + DiamondCutFacet(address(diamond)).getDiamondCutTimelock());
+        IDiamondCut(address(diamond)).diamondCut(cut, address(0), '');
+        vm.stopPrank();
     }
 
     // ============================================================================
@@ -202,5 +231,134 @@ contract BridgeFacetTest is DiamondTestBase {
         vm.prank(user1);
         vm.expectRevert();
         bridge.updateAusysAddress(makeAddr('fake'));
+    }
+
+    function test_bridgeTradeToLogistics_revertWhenSellerDoesNotMatchClobMaker() public {
+        bytes32 clobOrderId = keccak256('bridge-order-mismatch');
+        bytes32 clobTradeId = keccak256('trade-1');
+        bytes32 ausysOrderId = keccak256('ausys-1');
+        DiamondStorage.ParcelData memory parcelData = _createParcelData(
+            '40.7128', '-74.0060', '34.0522', '-118.2437', 'Origin', 'Destination'
+        );
+
+        vm.startPrank(user1);
+        quoteToken.approve(address(diamond), 2000 ether);
+        bytes32 unifiedOrderId = bridge.createUnifiedOrder(
+            clobOrderId,
+            nodeOperator,
+            100 ether,
+            10,
+            block.timestamp + 7 days,
+            parcelData
+        );
+        vm.stopPrank();
+
+        BridgeTestHelperFacet(address(diamond)).seedClobOrder(clobOrderId, user2);
+
+        bytes memory signature = _signBridgeAuthorization(
+            unifiedOrderId,
+            clobOrderId,
+            clobTradeId,
+            ausysOrderId,
+            sellerSigner,
+            address(bridgeToken),
+            7,
+            10
+        );
+
+        vm.prank(user1);
+        vm.expectRevert(BridgeFacet.SellerMismatch.selector);
+        bridge.bridgeTradeToLogistics(
+            unifiedOrderId,
+            clobTradeId,
+            ausysOrderId,
+            sellerSigner,
+            address(bridgeToken),
+            7,
+            signature
+        );
+    }
+
+    function test_bridgeTradeToLogistics_revertWhenSignatureDoesNotBindTradeContext() public {
+        bytes32 clobOrderId = keccak256('bridge-order-sig');
+        bytes32 clobTradeId = keccak256('trade-expected');
+        bytes32 signedTradeId = keccak256('trade-signed');
+        bytes32 ausysOrderId = keccak256('ausys-expected');
+        bytes32 signedAusysOrderId = keccak256('ausys-signed');
+        DiamondStorage.ParcelData memory parcelData = _createParcelData(
+            '40.7128', '-74.0060', '34.0522', '-118.2437', 'Origin', 'Destination'
+        );
+
+        vm.startPrank(user1);
+        quoteToken.approve(address(diamond), 2000 ether);
+        bytes32 unifiedOrderId = bridge.createUnifiedOrder(
+            clobOrderId,
+            nodeOperator,
+            100 ether,
+            10,
+            block.timestamp + 7 days,
+            parcelData
+        );
+        vm.stopPrank();
+
+        BridgeTestHelperFacet(address(diamond)).seedClobOrder(clobOrderId, sellerSigner);
+
+        vm.prank(sellerSigner);
+        bridgeToken.setApprovalForAll(address(diamond), true);
+        bridgeToken.mint(sellerSigner, 7, 10);
+
+        bytes memory signature = _signBridgeAuthorization(
+            unifiedOrderId,
+            clobOrderId,
+            signedTradeId,
+            signedAusysOrderId,
+            sellerSigner,
+            address(bridgeToken),
+            7,
+            10
+        );
+
+        vm.prank(user1);
+        vm.expectRevert(BridgeFacet.InvalidSignature.selector);
+        bridge.bridgeTradeToLogistics(
+            unifiedOrderId,
+            clobTradeId,
+            ausysOrderId,
+            sellerSigner,
+            address(bridgeToken),
+            7,
+            signature
+        );
+    }
+
+    function _signBridgeAuthorization(
+        bytes32 unifiedOrderId,
+        bytes32 clobOrderId,
+        bytes32 clobTradeId,
+        bytes32 ausysOrderId,
+        address seller,
+        address token,
+        uint256 tokenId,
+        uint256 quantity
+    ) internal view returns (bytes memory) {
+        bytes32 digest = MessageHashUtils.toEthSignedMessageHash(
+            keccak256(
+                abi.encode(
+                    unifiedOrderId,
+                    clobOrderId,
+                    clobTradeId,
+                    ausysOrderId,
+                    seller,
+                    token,
+                    tokenId,
+                    quantity,
+                    address(diamond),
+                    block.chainid
+                )
+            )
+        );
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(sellerPk, digest);
+        return abi.encodePacked(r, s, v);
     }
 }

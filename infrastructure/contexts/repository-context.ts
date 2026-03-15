@@ -7,10 +7,7 @@ import type { Ausys as LocationContract } from '@/lib/contracts';
 import { BrowserProvider, ethers } from 'ethers';
 import { DriverRepository } from '../repositories/driver-repository';
 import { IDriverRepository } from '@/domain/driver/driver';
-import {
-  NEXT_PUBLIC_AUSYS_SUBGRAPH_URL,
-  NEXT_PUBLIC_INDEXER_URL,
-} from '@/chain-constants';
+import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 import { listenForSignature } from '../services/signature-listener.service';
 import { IPoolRepository } from '@/domain/pool';
 import { PoolRepository } from '../repositories/pool-repository';
@@ -52,15 +49,16 @@ export class RepositoryContext {
     ausysContract: Ausys,
     provider: BrowserProvider,
     signer: ethers.Signer,
-    pinata: PinataSDK,
+    pinata?: PinataSDK,
+    chainId: number = 0,
   ) {
     this.ausysContract = ausysContract;
     this.signer = signer;
 
     try {
-      // Initialize Diamond context
+      // Initialize Diamond context with chainId
       this.diamondContext = new DiamondContext();
-      await this.diamondContext.initialize(provider, signer);
+      await this.diamondContext.initialize(provider, signer, chainId);
 
       // Create Diamond-based NodeRepository with Pinata for IPFS metadata
       this.nodeRepository = new DiamondNodeRepository(
@@ -84,7 +82,7 @@ export class RepositoryContext {
 
       this.poolRepository = new PoolRepository(provider, signer);
 
-      this.platformRepository = new PlatformRepository(pinata);
+      this.platformRepository = new PlatformRepository(pinata, undefined, chainId);
     } catch (error) {
       console.error(
         '[RepositoryContext] Failed to create repositories:',
@@ -253,8 +251,8 @@ export class RepositoryContext {
    */
   public getSubgraphEndpoints() {
     return {
-      indexer: NEXT_PUBLIC_INDEXER_URL,
-      ausys: NEXT_PUBLIC_AUSYS_SUBGRAPH_URL,
+      indexer: getCurrentIndexerUrl(),
+      ausys: getCurrentIndexerUrl(),
     };
   }
 

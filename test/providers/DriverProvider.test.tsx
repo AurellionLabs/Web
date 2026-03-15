@@ -89,6 +89,7 @@ vi.mock('@/hooks/useWallet', () => ({
 }));
 
 vi.mock('@/chain-constants', () => ({
+  getIndexerUrl: () => 'http://localhost:42069',
   NEXT_PUBLIC_AUSYS_SUBGRAPH_URL: 'http://localhost:42069',
   NEXT_PUBLIC_INDEXER_URL: 'http://localhost:42069',
   NEXT_PUBLIC_AURA_GOAT_ADDRESS: '0x0000000000000000000000000000000000000001',
@@ -225,6 +226,34 @@ describe('DriverProvider', () => {
       // contract will fail. The legacy method should NOT have been called.
       expect(legacyOnlyContract.assignDriverToJourneyId).not.toHaveBeenCalled();
       expect(result.current.error).toBeTruthy();
+    });
+
+    it('should block acceptDelivery when driver wallet matches sender', async () => {
+      mockDiamondContract.getJourney = vi.fn().mockResolvedValue({
+        sender: '0x742d35Cc6634C0532925a3b844Bc9e7595f2bD4c',
+        receiver: '0x2222222222222222222222222222222222222222',
+        driver: '0x0000000000000000000000000000000000000000',
+        currentStatus: 0n,
+      });
+
+      const { result } = renderHook(() => useDriver(), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      await act(async () => {
+        await expect(
+          result.current.acceptDelivery('0xjourney123'),
+        ).rejects.toThrow(
+          'Driver wallet cannot be the same as the sender wallet.',
+        );
+      });
+
+      expect(mockDiamondContract.assignDriverToJourney).not.toHaveBeenCalled();
+      expect(result.current.error).toBeNull();
     });
 
     it('should handle DRIVER_ROLE check failure gracefully and still attempt delivery', async () => {

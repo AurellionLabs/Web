@@ -1,5 +1,5 @@
 // Auto-generated Ponder Schema - DO NOT EDIT
-// Generated at: 2026-03-03T07:50:03.653Z
+// Generated at: 2026-03-11T00:43:03.884Z
 //
 // This schema is derived from Diamond facet events.
 // Regenerate with: npm run generate:indexer
@@ -1559,41 +1559,6 @@ export const diamondSellerPaidEvents = onchainTable(
   }),
 );
 
-export const diamondTokenDestinationPendingEvents = onchainTable(
-  'diamond_token_destination_pending_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    order_id: t.hex().notNull(),
-    buyer: t.hex().notNull(),
-    token_id: t.bigint().notNull(),
-    quantity: t.bigint().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    orderIdIdx: index().on(table.order_id),
-    buyerIdx: index().on(table.buyer),
-  }),
-);
-
-export const diamondTokenDestinationSelectedEvents = onchainTable(
-  'diamond_token_destination_selected_events',
-  (t) => ({
-    id: t.text().primaryKey(),
-    order_id: t.hex().notNull(),
-    destination: t.hex().notNull(),
-    node_id: t.hex().notNull(),
-    burned: t.boolean().notNull(),
-    block_number: t.bigint().notNull(),
-    block_timestamp: t.bigint().notNull(),
-    transaction_hash: t.hex().notNull(),
-  }),
-  (table) => ({
-    orderIdIdx: index().on(table.order_id),
-  }),
-);
-
 export const diamondApprovalForAllEvents = onchainTable(
   'diamond_approval_for_all_events',
   (t) => ({
@@ -1861,8 +1826,6 @@ export const tables = {
   diamondP2POfferCanceledEvents,
   diamondP2POfferCreatedEvents,
   diamondSellerPaidEvents,
-  diamondTokenDestinationPendingEvents,
-  diamondTokenDestinationSelectedEvents,
   diamondApprovalForAllEvents,
   diamondAssetAttributeAddedEvents,
   diamondCustodyEstablishedEvents,

@@ -19,6 +19,7 @@ export class DiamondContext {
   private diamond: Contract | null = null;
   private initialized = false;
   private readOnly = false;
+  private chainId: number = 0;
 
   /**
    * Initialize the context with a wallet provider
@@ -26,13 +27,46 @@ export class DiamondContext {
   async initialize(
     walletProvider: BrowserProvider,
     prebuiltSigner?: ethers.Signer,
+    chainId?: number,
   ): Promise<void> {
     this.provider = walletProvider;
     // Accept a pre-built signer (e.g. from E2EServerSigner) to avoid calling
     // walletProvider.getSigner() which hangs on JsonRpcProvider (public node).
     this.signer = prebuiltSigner ?? (await walletProvider.getSigner());
 
+    // Get chainId from parameter or from provider
+    if (chainId !== undefined) {
+      this.chainId = chainId;
+    } else {
+      const network = await walletProvider.getNetwork();
+      this.chainId = Number(network.chainId);
+    }
+
     // Connect to Diamond proxy - all facet functions are called through this
+    this.diamond = new ethers.Contract(
+      NEXT_PUBLIC_DIAMOND_ADDRESS,
+      DIAMOND_ABI,
+      this.signer,
+    );
+
+    this.initialized = true;
+    this.readOnly = false;
+  }
+
+  /**
+   * Initialize with a pre-built signer + JsonRpcProvider (e.g. E2E test wallet).
+   * Avoids requiring a BrowserProvider when one is not available.
+   */
+  async initializeWithSigner(
+    signer: ethers.Signer,
+    provider: ethers.JsonRpcProvider,
+  ): Promise<void> {
+    this.provider = provider;
+    this.signer = signer;
+
+    const network = await provider.getNetwork();
+    this.chainId = Number(network.chainId);
+
     this.diamond = new ethers.Contract(
       NEXT_PUBLIC_DIAMOND_ADDRESS,
       DIAMOND_ABI,
@@ -113,7 +147,19 @@ export class DiamondContext {
   }
 
   /**
-   * Get the current signer address
+   * Get the current chain ID
+   */
+  getChainId(): number {
+    if (!this.initialized) {
+      throw new Error(
+        'DiamondContext not initialized. Call initialize() first.',
+      );
+    }
+    return this.chainId;
+  }
+
+  /**
+   * Get the signer's address
    */
   async getSignerAddress(): Promise<string> {
     const signer = this.getSigner();

@@ -166,6 +166,7 @@ vi.mock('@/infrastructure/services/clob-v2-service', () => ({
 }));
 
 vi.mock('@/chain-constants', () => ({
+  getIndexerUrl: () => 'http://localhost:42069',
   NEXT_PUBLIC_DIAMOND_ADDRESS: mocks.NEXT_PUBLIC_DIAMOND_ADDRESS,
   NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS: mocks.NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
 }));

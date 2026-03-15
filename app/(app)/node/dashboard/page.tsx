@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Plus,
   ChevronLeft,
@@ -43,6 +43,7 @@ import {
   PulsingHexNetwork,
   CascadeLoadBars,
   useCounter,
+  projectNodesToSVG,
 } from '@/app/components/eva/eva-animations';
 import {
   Dialog,
@@ -83,7 +84,8 @@ import {
   GET_EMIT_SIG_EVENTS_BY_JOURNEY,
   type EmitSigEventsByJourneyResponse,
 } from '@/infrastructure/shared/graph-queries';
-import { NEXT_PUBLIC_AUSYS_SUBGRAPH_URL } from '@/chain-constants';
+import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
+import { detectJourneyRoleConflict } from '@/utils/journey-role-conflicts';
 
 const tokenizeFormSchema = z.object({
   assetClass: z.string().min(1, { message: 'Please select an asset class.' }),
@@ -133,7 +135,7 @@ export default function NodeDashboardPage() {
     refreshOrders,
   } = useSelectedNode();
 
-  const { refreshNodes } = useNodes();
+  const { nodes: allNodes, refreshNodes } = useNodes();
   const router = useRouter();
   const { toast } = useToast();
   const { isReadOnly: diamondIsReadOnly } = useDiamond();
@@ -146,6 +148,7 @@ export default function NodeDashboardPage() {
 
   const [isAddAssetOpen, setIsAddAssetOpen] = useState(false);
   const [isTokenizing, setIsTokenizing] = useState(false);
+  const isTokenizingRef = useRef(false);
   const [isViewingOrders, setIsViewingOrders] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const ordersPerPage = 5;
@@ -165,6 +168,28 @@ export default function NodeDashboardPage() {
   const [editingCapacity, setEditingCapacity] =
     useState<EditingCapacity | null>(null);
   const { supportedAssetClasses, getAssetByTokenId } = usePlatform();
+
+  const dashboardTopologyNodes = useMemo(() => {
+    const unique = new Map<string, (typeof allNodes)[number]>();
+    (allNodes || []).forEach((n) => {
+      const key = (n.address || '').toLowerCase();
+      if (key && !unique.has(key)) unique.set(key, n);
+    });
+    return projectNodesToSVG(
+      Array.from(unique.values()).map((n) => ({
+        lat: n.location?.location?.lat || '0',
+        lng: n.location?.location?.lng || '0',
+        label: n.address
+          ? n.address.slice(0, 6) + '...' + n.address.slice(-4)
+          : undefined,
+        status:
+          n.status === 'Active' ? ('Active' as const) : ('Inactive' as const),
+        address: n.address,
+        locationName: n.location?.addressName,
+      })),
+    );
+  }, [allNodes]);
+
   const [selectedAssetName, setSelectedAssetName] = useState<string>('');
 
   // Document management state
@@ -222,12 +247,19 @@ export default function NodeDashboardPage() {
     driverDeliverySigned: boolean;
     senderPickupSigned?: boolean;
     driverPickupSigned?: boolean;
+    roleConflict?: boolean;
+    roleConflictReason?: string;
   }> => {
     try {
       const repoContext = RepositoryContext.getInstance();
       const ausys = repoContext.getAusysContract();
       const journey = await ausys.getJourney(journeyId);
       const status = Number(journey.currentStatus);
+      const roleConflict = detectJourneyRoleConflict(
+        journey.sender,
+        journey.receiver,
+        journey.driver,
+      );
 
       if (status >= 2) {
         return {
@@ -235,6 +267,7 @@ export default function NodeDashboardPage() {
           driverDeliverySigned: true,
           senderPickupSigned: true,
           driverPickupSigned: true,
+          roleConflict: false,
         };
       }
 
@@ -242,7 +275,7 @@ export default function NodeDashboardPage() {
       try {
         const sigResponse =
           await graphqlRequest<EmitSigEventsByJourneyResponse>(
-            NEXT_PUBLIC_AUSYS_SUBGRAPH_URL,
+            getCurrentIndexerUrl(),
             GET_EMIT_SIG_EVENTS_BY_JOURNEY,
             { journeyId, limit: 50 },
           );
@@ -267,6 +300,8 @@ export default function NodeDashboardPage() {
             driverDeliverySigned: false,
             senderPickupSigned,
             driverPickupSigned,
+            roleConflict: roleConflict.hasConflict,
+            roleConflictReason: roleConflict.message,
           };
         }
 
@@ -289,6 +324,8 @@ export default function NodeDashboardPage() {
             driverDeliverySigned,
             senderPickupSigned: true,
             driverPickupSigned: true,
+            roleConflict: roleConflict.hasConflict,
+            roleConflictReason: roleConflict.message,
           };
         }
       } catch (indexerErr) {
@@ -330,7 +367,8 @@ export default function NodeDashboardPage() {
 
       attemptSelection();
     }
-  }, [nodeIdFromUrl, selectedNodeAddress, selectNode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodeIdFromUrl, selectedNodeAddress, selectNode]); // toast excluded: stable callback, including would cause infinite re-render
 
   // When returning to this page with an already-selected node, force a fresh load
   // so newly created offers/orders appear without requiring a hard browser reload.
@@ -355,7 +393,9 @@ export default function NodeDashboardPage() {
 
   const onSubmit = async (values: z.infer<typeof tokenizeFormSchema>) => {
     if (!selectedNodeAddress || !currentNodeData) return;
+    if (isTokenizingRef.current) return;
 
+    isTokenizingRef.current = true;
     setCapacityError(null);
     setIsTokenizing(true);
     try {
@@ -380,6 +420,7 @@ export default function NodeDashboardPage() {
           setCapacityError(
             `You are exceeding capacity for ${getAssetByTokenId(assetIdStr)}. Remaining capacity: ${remainingCapacity}. Increase capacity to tokenize more assets of this type.`,
           );
+          isTokenizingRef.current = false;
           setIsTokenizing(false);
           return;
         }
@@ -416,6 +457,7 @@ export default function NodeDashboardPage() {
       console.error('Error tokenizing asset:', error);
       setCapacityError('Failed to tokenize asset. Please try again.');
     } finally {
+      isTokenizingRef.current = false;
       setIsTokenizing(false);
     }
   };
@@ -430,11 +472,10 @@ export default function NodeDashboardPage() {
 
   // ── Reputation scores (4 categories) ──
   // 1. Amount Tokenized — tokenized quantity vs total capacity
-  const totalCapacity =
-    currentNodeData?.assets?.reduce(
-      (sum, a) => sum + Number(a.capacity || 0),
-      0,
-    ) || 0;
+  const totalCapacity = assets.reduce(
+    (sum, asset) => sum + Number(asset.capacity || 0),
+    0,
+  );
   const reputationTokenized =
     totalCapacity > 0
       ? Math.min(
@@ -576,7 +617,8 @@ export default function NodeDashboardPage() {
     if (assets.length > 0) {
       loadAssetAttributes(assets);
     }
-  }, [assets]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assets]); // loadAssetAttributes excluded: intentionally runs once when assets change, function reference is stable
 
   const handleAssetAttributeChange = (
     assetId: string,
@@ -718,8 +760,19 @@ export default function NodeDashboardPage() {
 
       // Safety guard: in P2P flows the sender should only sign pickup after
       // the driver has already signed pickup (driver accepted and acknowledged).
+      let senderAlreadySigned = false;
       if (order.isP2P) {
         const sigState = await getP2PSignatureState(order.id, journeyId);
+        if (sigState.roleConflict) {
+          toast({
+            title: 'Journey Blocked',
+            description:
+              sigState.roleConflictReason ||
+              'Sender, driver, and customer must use different wallet addresses.',
+            variant: 'destructive',
+          });
+          return 'signed';
+        }
         if (!sigState.driverPickupSigned) {
           toast({
             title: 'Driver Signature Required',
@@ -728,9 +781,15 @@ export default function NodeDashboardPage() {
           });
           return 'waiting_for_driver';
         }
+        senderAlreadySigned = Boolean(sigState.senderPickupSigned);
       }
 
-      await packageSign(journeyId);
+      // Auto-start logic can re-enter this handler after the sender signature is
+      // already on-chain. Re-signing is unnecessary and creates another wallet
+      // prompt, so skip packageSign once the pickup signature is visible.
+      if (!senderAlreadySigned) {
+        await packageSign(journeyId);
+      }
 
       // Try to start journey (requires both driver + sender signatures)
       try {
@@ -1013,7 +1072,7 @@ export default function NodeDashboardPage() {
                     )}
                     <TrapButton
                       variant="gold"
-                      onClick={form.handleSubmit(onSubmit)}
+                      type="submit"
                       disabled={isTokenizing}
                       className="w-full"
                     >
@@ -1538,7 +1597,15 @@ export default function NodeDashboardPage() {
           status="active"
           accent="gold"
         >
-          <PulsingHexNetwork />
+          <PulsingHexNetwork
+            nodes={dashboardTopologyNodes}
+            selectedAddress={selectedNodeAddress || undefined}
+            onNodeClick={(addr) => {
+              selectNode(addr);
+              router.push(`/node/dashboard?nodeId=${addr}`);
+            }}
+            onAddNode={() => router.push('/node/register')}
+          />
         </EvaPanel>
 
         {/* ── Node Reputation — Cascading Load Bars ── */}
@@ -1685,7 +1752,11 @@ export default function NodeDashboardPage() {
                       </div>
                       <TrapButton
                         variant="gold"
-                        onClick={handleAddDocument as any}
+                        onClick={() =>
+                          handleAddDocument({
+                            preventDefault: () => {},
+                          } as React.FormEvent)
+                        }
                         disabled={isAddingDocument}
                         className="w-full"
                       >

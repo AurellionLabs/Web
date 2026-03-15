@@ -7,7 +7,7 @@ import {
   GetAllActiveNodesResponse,
   ActiveNodeResponse,
 } from '@/infrastructure/shared/graph-queries';
-import { NEXT_PUBLIC_INDEXER_URL } from '@/chain-constants';
+import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 
 /**
  * Node with parsed location data
@@ -50,10 +50,12 @@ export interface CalculatedRoute {
  * - Returns ordered list of node addresses for the delivery route
  */
 export class RouteCalculationService {
-  private indexerUrl: string;
+  private get indexerUrl() {
+    return getCurrentIndexerUrl();
+  }
 
   constructor() {
-    this.indexerUrl = NEXT_PUBLIC_INDEXER_URL;
+    // indexerUrl is now a getter — resolves dynamically per-chain
   }
 
   /**

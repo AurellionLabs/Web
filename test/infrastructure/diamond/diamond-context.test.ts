@@ -12,6 +12,7 @@ import {
 
 // Mock chain-constants
 vi.mock('@/chain-constants', () => ({
+  getIndexerUrl: () => 'http://localhost:42069',
   NEXT_PUBLIC_DIAMOND_ADDRESS: '0xc52Fc65C8F6435c1Ef885e091EBE72AF09D29f58',
 }));
 
@@ -60,6 +61,7 @@ describe('DiamondContext', () => {
       };
       const mockProvider = {
         getSigner: vi.fn().mockResolvedValue(mockSigner),
+        getNetwork: vi.fn().mockResolvedValue({ chainId: 84532n }),
       } as any;
 
       await context.initialize(mockProvider);
@@ -75,6 +77,7 @@ describe('DiamondContext', () => {
       };
       const mockProvider = {
         getSigner: vi.fn().mockResolvedValue(mockSigner),
+        getNetwork: vi.fn().mockResolvedValue({ chainId: 84532n }),
       } as any;
 
       await context.initialize(mockProvider);
@@ -87,6 +90,7 @@ describe('DiamondContext', () => {
       const mockSigner = { getAddress: vi.fn().mockResolvedValue('0x1234') };
       const mockProvider = {
         getSigner: vi.fn().mockResolvedValue(mockSigner),
+        getNetwork: vi.fn().mockResolvedValue({ chainId: 84532n }),
       } as any;
 
       await context.initialize(mockProvider);
@@ -112,6 +116,7 @@ describe('DiamondContext', () => {
       const mockSigner = { getAddress: vi.fn().mockResolvedValue('0x1234') };
       const mockProvider = {
         getSigner: vi.fn().mockResolvedValue(mockSigner),
+        getNetwork: vi.fn().mockResolvedValue({ chainId: 84532n }),
       } as any;
 
       await context.initialize(mockProvider);

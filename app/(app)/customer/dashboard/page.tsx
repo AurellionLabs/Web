@@ -53,6 +53,7 @@ import {
   SelectValue,
 } from '@/app/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { usePlatform } from '@/app/providers/platform.provider';
 import { OrderActionDialog } from '@/app/components/ui/order-action-dialog';
 import {
   DropdownMenu,
@@ -72,9 +73,10 @@ import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
 import { useWallet } from '@/hooks/useWallet';
 import { AUSYS_ABI } from '@/lib/constants/contracts';
 import { formatTokenAmount } from '@/lib/formatters';
+import { getJourneyRoleConflictMessage } from '@/utils/journey-role-conflicts';
 
 type SortConfig = {
-  key: 'tokenQuantity' | 'price' | null;
+  key: 'tokenQuantity' | 'price' | 'createdAt' | null;
   direction: 'asc' | 'desc';
 };
 
@@ -140,6 +142,47 @@ export default function CustomerDashboard() {
     refetch: refetchHoldings,
   } = useUserHoldings();
 
+  // Platform data for asset metadata enrichment
+  const { getAssetByTokenId } = usePlatform();
+
+  // Enrich holdings with IPFS metadata (attributes, full name, class)
+  const [enrichedHoldings, setEnrichedHoldings] = useState<UserHolding[]>([]);
+  useEffect(() => {
+    if (holdings.length === 0) {
+      setEnrichedHoldings([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const enriched = await Promise.all(
+        holdings.map(async (h) => {
+          try {
+            const asset = await getAssetByTokenId(h.tokenId);
+            if (!asset || cancelled) return h;
+            return {
+              ...h,
+              name: asset.name || h.name,
+              assetClass: asset.assetClass || h.assetClass,
+              className: asset.assetClass || h.className,
+              attributes:
+                asset.attributes?.map((a) => ({
+                  name: a.name,
+                  values: a.values,
+                  description: a.description,
+                })) || h.attributes,
+            };
+          } catch {
+            return h;
+          }
+        }),
+      );
+      if (!cancelled) setEnrichedHoldings(enriched);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [holdings, getAssetByTokenId]);
+
   // Settlement destination
   const { pendingOrders: pendingSettlements, refetch: refetchSettlements } =
     useSettlementDestination();
@@ -161,10 +204,10 @@ export default function CustomerDashboard() {
     status: 'all',
   });
 
-  // Sort state
+  // Sort state — default newest first
   const [sortConfig, setSortConfig] = useState<SortConfig>({
-    key: null,
-    direction: 'asc',
+    key: 'createdAt',
+    direction: 'desc',
   });
 
   // Pagination state
@@ -192,13 +235,6 @@ export default function CustomerDashboard() {
   useEffect(() => {
     setCurrentUserRole('customer');
   }, [setCurrentUserRole]);
-
-  // Debug: Log P2P orders with tokenIds
-  useEffect(() => {
-    const p2pOrders = orders.filter((o) => o.isP2P);
-    if (p2pOrders.length > 0) {
-    }
-  }, [orders]);
 
   // Apply filters and sorting
   const filteredOrders = orders.filter((order) => {
@@ -239,19 +275,25 @@ export default function CustomerDashboard() {
   const sortedOrders = [...filteredOrders].sort((a, b) => {
     if (sortConfig.key === null) return 0;
 
-    const aValue =
-      sortConfig.key === 'price'
-        ? parseFloat(a[sortConfig.key])
-        : a[sortConfig.key];
-    const bValue =
-      sortConfig.key === 'price'
-        ? parseFloat(b[sortConfig.key])
-        : b[sortConfig.key];
+    // Coerce to a comparable number/string based on sort key
+    let aVal: number | string;
+    let bVal: number | string;
+
+    if (sortConfig.key === 'price') {
+      aVal = parseFloat((a.price ?? '0') as string);
+      bVal = parseFloat((b.price ?? '0') as string);
+    } else if (sortConfig.key === 'createdAt') {
+      aVal = Number(a.createdAt ?? 0);
+      bVal = Number(b.createdAt ?? 0);
+    } else {
+      aVal = ((a as Record<string, unknown>)[sortConfig.key] as string) ?? '';
+      bVal = ((b as Record<string, unknown>)[sortConfig.key] as string) ?? '';
+    }
 
     if (sortConfig.direction === 'asc') {
-      return aValue > bValue ? 1 : -1;
+      return aVal > bVal ? 1 : -1;
     } else {
-      return aValue < bValue ? 1 : -1;
+      return aVal < bVal ? 1 : -1;
     }
   });
 
@@ -349,9 +391,18 @@ export default function CustomerDashboard() {
 
       return result;
     } catch (err) {
+      let toastTitle = 'Error';
+      let toastDescription = 'Failed to sign for delivery. Please try again.';
+
+      const roleConflictMessage = getJourneyRoleConflictMessage(err);
+      if (roleConflictMessage) {
+        toastTitle = 'Role Mismatch';
+        toastDescription = roleConflictMessage;
+      }
+
       toast({
-        title: 'Error',
-        description: 'Failed to sign for delivery. Please try again.',
+        title: toastTitle,
+        description: toastDescription,
         variant: 'destructive',
       });
       throw err;
@@ -384,9 +435,18 @@ export default function CustomerDashboard() {
 
       return result;
     } catch (err) {
+      let toastTitle = 'Error';
+      let toastDescription = 'Failed to complete handoff. Please try again.';
+
+      const roleConflictMessage = getJourneyRoleConflictMessage(err);
+      if (roleConflictMessage) {
+        toastTitle = 'Role Mismatch';
+        toastDescription = roleConflictMessage;
+      }
+
       toast({
-        title: 'Error',
-        description: 'Failed to complete handoff. Please try again.',
+        title: toastTitle,
+        description: toastDescription,
         variant: 'destructive',
       });
       throw err;
@@ -410,11 +470,7 @@ export default function CustomerDashboard() {
     try {
       setP2PActionLoading(true);
 
-      const senderNode =
-        deliveryData.senderNodeAddress ||
-        order.seller ||
-        order.nodes?.[0] ||
-        '';
+      const senderNode = String(order.seller || '').trim();
 
       const delivery: P2PDeliveryDetails = {
         senderNodeAddress: senderNode,
@@ -424,8 +480,11 @@ export default function CustomerDashboard() {
             lat: order.locationData?.startLocation?.lat || '',
             lng: order.locationData?.startLocation?.lng || '',
           },
-          endLocation: { lat: '', lng: '' },
-          startName: order.locationData?.startName || 'Pickup Location',
+          endLocation: {
+            lat: String(deliveryData.deliveryCoords?.lat ?? '').trim(),
+            lng: String(deliveryData.deliveryCoords?.lng ?? '').trim(),
+          },
+          startName: order.locationData?.startName ?? '',
           endName: deliveryData.deliveryAddress,
         },
         bountyWei: BigInt('500000000000000000'), // 0.5 USDT default bounty
@@ -434,7 +493,6 @@ export default function CustomerDashboard() {
         assetId: BigInt(order.tokenId),
         deliveryAddress: deliveryData.deliveryAddress,
       };
-
       await createP2PJourney(scheduleDeliveryOrderId, delivery);
       setScheduleDeliveryDialogOpen(false);
       setScheduleDeliveryOrderId(null);
@@ -444,16 +502,25 @@ export default function CustomerDashboard() {
       });
     } catch (err) {
       console.error('Error scheduling delivery:', err);
-      const msg =
+      let toastTitle = 'Error';
+      let toastDescription =
         err instanceof Error
           ? err.message
           : 'Failed to schedule delivery. Please try again.';
+
+      const roleConflictMessage = getJourneyRoleConflictMessage(err);
+      if (roleConflictMessage) {
+        toastTitle = 'Role Mismatch';
+        toastDescription = roleConflictMessage;
+      }
+
       toast({
-        title: 'Error',
-        description: msg,
+        title: toastTitle,
+        description: toastDescription,
         variant: 'destructive',
       });
-      throw err; // Re-throw so dialog can show the error
+      // Do NOT re-throw — error already shown via toast; re-throwing
+      // escapes to the React error boundary and shows a full-page crash.
     } finally {
       setP2PActionLoading(false);
     }
@@ -631,7 +698,7 @@ export default function CustomerDashboard() {
                 Try Again
               </TrapButton>
             </div>
-          ) : holdings.length === 0 ? (
+          ) : enrichedHoldings.length === 0 && !holdingsLoading ? (
             <div className="text-center py-12">
               <TargetRings size={80} className="mx-auto mb-4" />
               <p className="font-mono text-sm text-white/70">
@@ -646,7 +713,7 @@ export default function CustomerDashboard() {
               {(() => {
                 return null;
               })()}
-              {holdings.map((holding) => (
+              {enrichedHoldings.map((holding) => (
                 <div
                   key={holding.tokenId}
                   className="relative group"
@@ -686,10 +753,19 @@ export default function CustomerDashboard() {
                       </button>
                     </div>
 
-                    {/* Asset name */}
-                    <p className="font-mono text-sm font-medium text-foreground/70 uppercase tracking-wider mb-1">
-                      {holding.name || holding.className}
+                    {/* Asset name - prominent display */}
+                    <p className="font-mono text-sm font-bold text-foreground/90 uppercase tracking-wider mb-2">
+                      {holding.name || 'Unnamed Asset'}
                     </p>
+
+                    {/* Asset class badge */}
+                    {(holding.assetClass || holding.className) && (
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider bg-gold/10 text-gold border border-gold/20">
+                          {holding.className || holding.assetClass}
+                        </span>
+                      </div>
+                    )}
 
                     {/* Balance */}
                     <div className="flex items-baseline gap-2 mb-2">
@@ -700,6 +776,20 @@ export default function CustomerDashboard() {
                         units
                       </span>
                     </div>
+
+                    {/* Key attributes - show 1-2 key ones like Weight, Sex */}
+                    {holding.attributes && holding.attributes.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {holding.attributes.slice(0, 2).map((attr) => (
+                          <span
+                            key={attr.name}
+                            className="font-mono text-[10px] text-white/50 bg-white/5 px-1.5 py-0.5 rounded"
+                          >
+                            {attr.name}: {attr.values.join(', ')}
+                          </span>
+                        ))}
+                      </div>
+                    )}
 
                     {/* Token ID */}
                     <p className="font-mono text-[10px] text-white/50 tabular-nums">
@@ -1095,7 +1185,12 @@ export default function CustomerDashboard() {
               onConfirm={handleConfirmScheduleDelivery}
               assetName={stuckOrder.asset?.name}
               initialDeliveryAddress={stuckOrder.locationData?.endName || ''}
-              lockDeliveryAddress={Boolean(stuckOrder.locationData?.endName)}
+              lockDeliveryAddress={Boolean(
+                stuckOrder.locationData?.endName &&
+                  stuckOrder.locationData?.endLocation?.lat &&
+                  stuckOrder.locationData?.endLocation?.lng,
+              )}
+              requirePickupNodeSelection={false}
             />
           );
         })()}

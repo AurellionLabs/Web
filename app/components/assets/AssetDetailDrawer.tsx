@@ -87,9 +87,15 @@ export function AssetDetailDrawer({
     copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
   };
 
-  // The holding passed to redemption — augmented with selected node if chosen
+  // The holding passed to redemption — augmented with the selected custodian
+  // wallet plus the node hash used for route lookup.
   const holdingForRedemption: UserHolding = selectedNode
-    ? { ...holding, originNode: selectedNode.nodeAddress }
+    ? {
+        ...holding,
+        originNode: selectedNode.nodeAddress,
+        originCustodianAddress: selectedNode.nodeAddress,
+        originNodeHash: selectedNode.nodeHash,
+      }
     : holding;
 
   return (
@@ -218,11 +224,16 @@ export function AssetDetailDrawer({
               <div className="space-y-2">
                 {/* Node rows — selectable for redemption */}
                 {custody.nodes.map((entry) => {
+                  // Use nodeHash as unique identifier - nodeAddress (owner wallet)
+                  // is the same for all nodes, so we need nodeHash to differentiate
+                  const uniqueKey = entry.nodeHash || entry.nodeLocation;
                   const isSelected =
-                    selectedNode?.nodeAddress === entry.nodeAddress;
+                    selectedNode?.nodeHash === entry.nodeHash ||
+                    (entry.nodeHash === undefined &&
+                      selectedNode?.nodeLocation === entry.nodeLocation);
                   return (
                     <button
-                      key={entry.nodeAddress}
+                      key={uniqueKey}
                       onClick={() => setSelectedNode(isSelected ? null : entry)}
                       className={cn(
                         'w-full flex items-center justify-between py-2 px-3 rounded border transition-all text-left',

@@ -17,6 +17,7 @@ import {
   MoonpayConfig,
   MoonpayCurrencyCode,
 } from '@privy-io/react-auth';
+import { useE2EAuth } from '@/app/providers/e2e-auth.provider';
 
 import {
   base,
@@ -25,6 +26,8 @@ import {
   baseSepolia as bSepolia,
 } from 'viem/chains';
 
+const IS_E2E_TEST_MODE = process.env.NEXT_PUBLIC_E2E_TEST_MODE === 'true';
+
 const usdcContractAddresses: Record<number, string | undefined> = {
   [ethMainnet.id]: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
   [base.id]: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
@@ -32,7 +35,42 @@ const usdcContractAddresses: Record<number, string | undefined> = {
   [bSepolia.id]: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
 };
 
+// ---------------------------------------------------------------------------
+// E2E mode — lightweight wallet display using E2EAuth, no Privy hooks
+// ---------------------------------------------------------------------------
+function WalletConnectionE2E() {
+  const { address, isReady } = useE2EAuth();
+  const { setIsWalletConnected } = useMainProvider();
+
+  useEffect(() => {
+    setIsWalletConnected(isReady && !!address);
+  }, [isReady, address, setIsWalletConnected]);
+
+  if (!isReady || !address) return null;
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-white/5 border border-white/10 text-sm text-white/80 font-mono">
+      <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />
+      <span>
+        {address.slice(0, 6)}…{address.slice(-4)}
+      </span>
+      <span className="text-xs text-amber-400 font-sans font-medium uppercase tracking-wide">
+        [TEST]
+      </span>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Public export — build-time constant selects the right implementation
+// ---------------------------------------------------------------------------
 export function WalletConnection() {
+  if (IS_E2E_TEST_MODE) {
+    return <WalletConnectionE2E />;
+  }
+  return <WalletConnectionPrivy />;
+}
+
+function WalletConnectionPrivy() {
   const { setIsWalletConnected } = useMainProvider();
   const { ready, authenticated } = usePrivy();
   const { fundWallet } = useFundWallet();
@@ -132,7 +170,8 @@ export function WalletConnection() {
     if (isOpen) {
       fetchAllBalances();
     }
-  }, [isOpen, address, walletsReady, wallets, currentChainId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, address, walletsReady, wallets, currentChainId]); // repository excluded: stable reference from context, would cause unnecessary re-runs
 
   const handleAccountsChanged = async () => {
     if (!repository) return;

@@ -18,6 +18,7 @@ library DiamondStorage {
     bytes32 constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 constant DRIVER_ROLE = keccak256("DRIVER_ROLE");
     bytes32 constant DISPATCHER_ROLE = keccak256("DISPATCHER_ROLE");
+    bytes32 constant NODE_REGISTRAR_ROLE = keccak256("NODE_REGISTRAR_ROLE");
 
     struct AppStorage {
         // ======= OWNERSHIP =======
@@ -35,6 +36,10 @@ library DiamondStorage {
         mapping(bytes32 => uint256) totalNodeAssets;
         // Node admin system (from AurumNodeManager)
         mapping(address => bool) nodeAdmins;
+        // Allowed node registrars
+        mapping(address => bool) nodeRegistrars;
+        address[] nodeRegistrarList;
+        mapping(address => uint256) nodeRegistrarIndex;
 
         // ======= ASSETS (LEGACY) =======
         mapping(uint256 => Asset) assets;
@@ -140,6 +145,8 @@ library DiamondStorage {
         mapping(bytes32 => bool) journeyRewardPaid;
         // RBAC for AuSys
         mapping(bytes32 => mapping(address => bool)) ausysRoles;
+        mapping(address => uint256) driverRoleIndex;
+        address[] driverRoleMembers;
         // P2P offer tracking
         bytes32[] openP2POfferIds;                    // Track open (unaccepted) P2P offers
         mapping(address => bytes32[]) userP2POffers;  // Track P2P offers by creator
@@ -237,10 +244,28 @@ library DiamondStorage {
         // Multiple nodes can mint the same tokenId; each tracks their own custody
         mapping(uint256 => mapping(address => uint256)) tokenCustodianAmounts;
 
+        // Per-node custody: tokenId => nodeHash => amount in custody at this specific node
+        // Needed because multiple nodes can share the same owner wallet
+        mapping(uint256 => mapping(bytes32 => uint256)) tokenNodeCustodyAmounts;
+
+        // ======= OWNER-NODE SELLABLE ALLOCATION =======
+        // Wallet-held, node-attributed sellable amounts: owner => tokenId => nodeHash => amount
+        // This preserves a canonical split for holders with balances linked to multiple nodes.
+        mapping(address => mapping(uint256 => mapping(bytes32 => uint256))) ownerNodeSellableAmounts;
+        // Enumerates node hashes that have ever had sellable allocation for a given owner/token.
+        mapping(address => mapping(uint256 => bytes32[])) ownerTokenSellableNodes;
+        mapping(address => mapping(uint256 => mapping(bytes32 => bool))) ownerTokenHasSellableNode;
+        // Tracks how much sellable allocation was debited per order escrow, by node.
+        // Used to restore attribution on seller-offer cancellation refunds.
+        mapping(bytes32 => mapping(bytes32 => uint256)) ausysOrderEscrowNodeDebits;
+        mapping(bytes32 => bytes32[]) ausysOrderEscrowNodes;
+        mapping(bytes32 => mapping(bytes32 => bool)) ausysOrderEscrowNodeSeen;
+
         // ======= TOKEN DESTINATION ESCROW =======
         mapping(bytes32 => bool) pendingTokenDestination;
         mapping(bytes32 => address) pendingTokenBuyer;
         mapping(bytes32 => uint256) ausysOrderSettledAt;
+        mapping(bytes32 => bool) ausysOrderTokenEscrowed;
 
         // ======= AUSYS SECURITY =======
         // Nonce-based replay protection for P2P offer acceptance
@@ -248,8 +273,29 @@ library DiamondStorage {
         // Trusted off-chain signer that authorises P2P offer acceptance (EIP-712)
         address trustedP2PSigner;
 
+        // ======= TREASURY =======
+        // Accrued protocol fees claimable by owner (pull pattern)
+        uint256 treasuryAccrued;
+        // Fee rates in basis points (100 bps = 1%). Defaults set during init.
+        uint16 treasuryFeeBps; // default 10 = 0.1% — always charged
+        uint16 nodeFeeBps;     // default 10 = 0.1% — only charged when intermediate nodes present
+
+        // ======= AUDIT 2026-03-10 ADDITIONS =======
+        // M-05: Namespaced reentrancy guard (replaces OZ slot-0 guard)
+        uint256 reentrancyStatus; // 1 = not entered, 2 = entered
+
+        // L-03: Node registrar cap
+        uint256 maxNodesPerRegistrar; // 0 = unlimited (default)
+
+        // L-01: Renounce ownership timelock
+        uint256 pendingRenounceTimestamp; // 0 = no pending renounce
+
+        // L-06: ERC1155 receiver token whitelist
+        mapping(address => bool) acceptedTokenContracts;
+        bool erc1155WhitelistEnabled;
+
         // ======= RESERVED =======
-        uint256[50] __reserved1;
+        uint256[46] __reserved1;
         mapping(bytes32 => uint256) __reserved2;
     }
     
@@ -449,6 +495,12 @@ library DiamondStorage {
         bool isSellerInitiated;      // true = seller created offer, false = buyer created
         address targetCounterparty;  // address(0) = open to all, else specific address only
         uint256 expiresAt;           // 0 = no expiry, else unix timestamp
+        // H-04: Fee rate snapshot at creation time
+        uint16 snapshotTreasuryBps;
+        uint16 snapshotNodeBps;
+        // Source node: the specific node the seller is fulfilling this order from.
+        // Used by _debitOwnerSellableForEscrow to debit the correct node only.
+        bytes32 sellerNode;
     }
 
     /// @notice AuSys Journey (from AuSys.sol)

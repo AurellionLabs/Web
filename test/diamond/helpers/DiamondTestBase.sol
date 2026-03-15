@@ -11,10 +11,13 @@ import { OwnershipFacet } from 'contracts/diamond/facets/OwnershipFacet.sol';
 import { NodesFacet } from 'contracts/diamond/facets/NodesFacet.sol';
 import { AssetsFacet } from 'contracts/diamond/facets/AssetsFacet.sol';
 import { AuSysFacet } from 'contracts/diamond/facets/AuSysFacet.sol';
+import { AuSysAdminFacet } from 'contracts/diamond/facets/AuSysAdminFacet.sol';
+import { AuSysViewFacet } from 'contracts/diamond/facets/AuSysViewFacet.sol';
 import { BridgeFacet } from 'contracts/diamond/facets/BridgeFacet.sol';
 import { CLOBLogisticsFacet } from 'contracts/diamond/facets/CLOBLogisticsFacet.sol';
 import { RWYStakingFacet } from 'contracts/diamond/facets/RWYStakingFacet.sol';
 import { OperatorFacet } from 'contracts/diamond/facets/OperatorFacet.sol';
+import { ERC1155ReceiverFacet } from 'contracts/diamond/facets/ERC1155ReceiverFacet.sol';
 import { DiamondStorage } from 'contracts/diamond/libraries/DiamondStorage.sol';
 
 import { ERC20Mock } from './ERC20Mock.sol';
@@ -35,10 +38,13 @@ abstract contract DiamondTestBase is Test {
     NodesFacet public nodesFacet;
     AssetsFacet public assetsFacet;
     AuSysFacet public auSysFacet;
+    AuSysAdminFacet public auSysAdminFacet;
+    AuSysViewFacet public auSysViewFacet;
     BridgeFacet public bridgeFacet;
     CLOBLogisticsFacet public clobLogisticsFacet;
     RWYStakingFacet public rwyStakingFacet;
     OperatorFacet public operatorFacet;
+    ERC1155ReceiverFacet public erc1155ReceiverFacet;
 
     // Mock tokens
     ERC20Mock public payToken;
@@ -98,10 +104,13 @@ abstract contract DiamondTestBase is Test {
         nodesFacet = new NodesFacet();
         assetsFacet = new AssetsFacet();
         auSysFacet = new AuSysFacet();
+        auSysAdminFacet = new AuSysAdminFacet();
+        auSysViewFacet = new AuSysViewFacet();
         bridgeFacet = new BridgeFacet();
         clobLogisticsFacet = new CLOBLogisticsFacet();
         rwyStakingFacet = new RWYStakingFacet();
         operatorFacet = new OperatorFacet();
+        erc1155ReceiverFacet = new ERC1155ReceiverFacet();
 
         // Deploy Diamond
         diamond = new Diamond(owner, address(diamondCutFacet));
@@ -119,9 +128,18 @@ abstract contract DiamondTestBase is Test {
         
         // Add AssetsFacet
         _addFacet(address(assetsFacet), _getAssetsSelectors());
+
+        // Add ERC1155ReceiverFacet
+        _addFacet(address(erc1155ReceiverFacet), _getERC1155ReceiverSelectors());
         
         // Add AuSysFacet
         _addFacet(address(auSysFacet), _getAuSysSelectors());
+
+        // Add AuSysAdminFacet
+        _addFacet(address(auSysAdminFacet), _getAuSysAdminSelectors());
+
+        // Add AuSysViewFacet
+        _addFacet(address(auSysViewFacet), _getAuSysViewSelectors());
         
         // Add BridgeFacet
         _addFacet(address(bridgeFacet), _getBridgeSelectors());
@@ -145,13 +163,92 @@ abstract contract DiamondTestBase is Test {
             action: IDiamondCut.FacetCutAction.Add,
             functionSelectors: selectors
         });
+        DiamondCutFacet(address(diamond)).scheduleDiamondCut(cut, address(0), '');
+        vm.warp(block.timestamp + DiamondCutFacet(address(diamond)).getDiamondCutTimelock());
+        IDiamondCut(address(diamond)).diamondCut(cut, address(0), '');
+    }
+
+    function _upsertFacet(address facetAddress, bytes4[] memory selectors) internal {
+        if (selectors.length == 0) return;
+
+        bytes4[] memory addSelectors = new bytes4[](selectors.length);
+        bytes4[] memory replaceSelectors = new bytes4[](selectors.length);
+        uint256 addCount;
+        uint256 replaceCount;
+
+        for (uint256 i = 0; i < selectors.length; i++) {
+            address existingFacet = IDiamondLoupe(address(diamond)).facetAddress(selectors[i]);
+            if (existingFacet == address(0)) {
+                addSelectors[addCount++] = selectors[i];
+            } else if (existingFacet != facetAddress) {
+                replaceSelectors[replaceCount++] = selectors[i];
+            }
+        }
+
+        uint256 cutCount = (addCount > 0 ? 1 : 0) + (replaceCount > 0 ? 1 : 0);
+        if (cutCount == 0) return;
+
+        IDiamondCut.FacetCut[] memory cut = new IDiamondCut.FacetCut[](cutCount);
+        uint256 cutIndex;
+
+        if (addCount > 0) {
+            bytes4[] memory trimmedAdds = new bytes4[](addCount);
+            for (uint256 i = 0; i < addCount; i++) {
+                trimmedAdds[i] = addSelectors[i];
+            }
+            cut[cutIndex++] = IDiamondCut.FacetCut({
+                facetAddress: facetAddress,
+                action: IDiamondCut.FacetCutAction.Add,
+                functionSelectors: trimmedAdds
+            });
+        }
+
+        if (replaceCount > 0) {
+            bytes4[] memory trimmedReplacements = new bytes4[](replaceCount);
+            for (uint256 i = 0; i < replaceCount; i++) {
+                trimmedReplacements[i] = replaceSelectors[i];
+            }
+            cut[cutIndex] = IDiamondCut.FacetCut({
+                facetAddress: facetAddress,
+                action: IDiamondCut.FacetCutAction.Replace,
+                functionSelectors: trimmedReplacements
+            });
+        }
+
+        DiamondCutFacet(address(diamond)).scheduleDiamondCut(cut, address(0), '');
+        vm.warp(block.timestamp + DiamondCutFacet(address(diamond)).getDiamondCutTimelock());
         IDiamondCut(address(diamond)).diamondCut(cut, address(0), '');
     }
 
     function _initializeFacets() internal {
-        AuSysFacet(address(diamond)).setPayToken(address(payToken));
+        // M-05: Initialize reentrancy guard status
+        _initReentrancyGuard();
+        AuSysAdminFacet(address(diamond)).setPayToken(address(payToken));
         BridgeFacet(address(diamond)).setQuoteTokenAddress(address(quoteToken));
+        // The Diamond itself IS the ERC1155 (AssetsFacet) — point auraAssetAddress at itself.
+        NodesFacet(address(diamond)).setAuraAssetAddress(address(diamond));
+        NodesFacet(address(diamond)).setNodeRegistrar(nodeOperator, true);
+        NodesFacet(address(diamond)).setNodeRegistrar(user1, true);
+        NodesFacet(address(diamond)).setNodeRegistrar(user2, true);
         testNodeHash = _registerTestNode(nodeOperator);
+    }
+
+    /// @dev Initialize the namespaced reentrancy guard status in AppStorage
+    function _initReentrancyGuard() internal {
+        // Use a small init contract to set reentrancyStatus = 1 via delegatecall
+        ReentrancyInit initContract = new ReentrancyInit();
+        IDiamondCut.FacetCut[] memory cut = new IDiamondCut.FacetCut[](0);
+        DiamondCutFacet(address(diamond)).scheduleDiamondCut(
+            cut,
+            address(initContract),
+            abi.encodeWithSelector(ReentrancyInit.init.selector)
+        );
+        vm.warp(block.timestamp + DiamondCutFacet(address(diamond)).getDiamondCutTimelock());
+        IDiamondCut(address(diamond)).diamondCut(
+            cut,
+            address(initContract),
+            abi.encodeWithSelector(ReentrancyInit.init.selector)
+        );
     }
 
     // ============================================================================
@@ -231,15 +328,17 @@ abstract contract DiamondTestBase is Test {
     }
 
     function _getOwnershipSelectors() internal pure returns (bytes4[] memory) {
-        bytes4[] memory selectors = new bytes4[](3);
+        bytes4[] memory selectors = new bytes4[](5);
         selectors[0] = bytes4(keccak256('owner()'));
         selectors[1] = bytes4(keccak256('transferOwnership(address)'));
         selectors[2] = bytes4(keccak256('acceptOwnership()'));
+        selectors[3] = bytes4(keccak256('renounceOwnership()'));
+        selectors[4] = bytes4(keccak256('cancelRenounceOwnership()'));
         return selectors;
     }
 
     function _getNodesSelectors() internal pure returns (bytes4[] memory) {
-        bytes4[] memory selectors = new bytes4[](12);
+        bytes4[] memory selectors = new bytes4[](23);
         selectors[0] = NodesFacet.registerNode.selector;
         selectors[1] = NodesFacet.updateNode.selector;
         selectors[2] = NodesFacet.deactivateNode.selector;
@@ -252,11 +351,22 @@ abstract contract DiamondTestBase is Test {
         selectors[9] = NodesFacet.nodeHandoff.selector;
         selectors[10] = NodesFacet.reduceCapacityForOrder.selector;
         selectors[11] = NodesFacet.addNodeItem.selector;
+        selectors[12] = NodesFacet.setNodeRegistrar.selector;
+        selectors[13] = NodesFacet.hasNodeRole.selector;
+        selectors[14] = NodesFacet.getAllowedNodeRegistrars.selector;
+        selectors[15] = NodesFacet.getNodeTokenBalance.selector;
+        selectors[16] = NodesFacet.creditNodeTokens.selector;
+        selectors[17] = NodesFacet.debitNodeTokens.selector;
+        selectors[18] = NodesFacet.setMaxNodesPerRegistrar.selector;
+        selectors[19] = NodesFacet.transferTokensBetweenNodes.selector;
+        selectors[20] = NodesFacet.getNodeInventory.selector;
+        selectors[21] = NodesFacet.verifyTokenAccounting.selector;
+        selectors[22] = NodesFacet.setAuraAssetAddress.selector;
         return selectors;
     }
 
     function _getAssetsSelectors() internal pure returns (bytes4[] memory) {
-        bytes4[] memory selectors = new bytes4[](18);
+        bytes4[] memory selectors = new bytes4[](27);
         // ERC1155 core
         selectors[0] = AssetsFacet.balanceOf.selector;
         selectors[1] = AssetsFacet.balanceOfBatch.selector;
@@ -278,45 +388,103 @@ abstract contract DiamondTestBase is Test {
         selectors[15] = AssetsFacet.removeSupportedClass.selector;
         selectors[16] = AssetsFacet.mintBatch.selector;
         selectors[17] = AssetsFacet.getTotalCustodyAmount.selector;
+        selectors[18] = AssetsFacet.nodeMintForNode.selector;
+        selectors[19] = AssetsFacet.redeemFromNode.selector;
+        selectors[20] = AssetsFacet.getNodeCustodyInfo.selector;
+        selectors[21] = AssetsFacet.getNodeSellableAmount.selector;
+        selectors[22] = AssetsFacet.getOwnerNodeSellableBalances.selector;
+        selectors[23] = AssetsFacet.addSupportedAsset.selector;
+        selectors[24] = AssetsFacet.removeSupportedAsset.selector;
+        selectors[25] = AssetsFacet.getSupportedAssets.selector;
+        selectors[26] = AssetsFacet.getSupportedClasses.selector;
         return selectors;
     }
 
     function _getAuSysSelectors() internal pure returns (bytes4[] memory) {
+        bytes4[] memory selectors = new bytes4[](12);
+        selectors[0] = AuSysFacet.createAuSysOrder.selector;
+        selectors[1] = AuSysFacet.createJourney.selector;
+        selectors[2] = AuSysFacet.createOrderJourney.selector;
+        selectors[3] = AuSysFacet.assignDriverToJourney.selector;
+        selectors[4] = AuSysFacet.packageSign.selector;
+        selectors[5] = AuSysFacet.handOn.selector;
+        selectors[6] = AuSysFacet.pruneExpiredOffers.selector;
+        selectors[7] = AuSysFacet.acceptP2POffer.selector;
+        selectors[8] = AuSysFacet.acceptP2POfferWithPickupNode.selector;
+        selectors[9] = AuSysFacet.cancelP2POffer.selector;
+        selectors[10] = AuSysFacet.selectTokenDestination.selector;
+        selectors[11] = AuSysFacet.handOff.selector;
+        return selectors;
+    }
+
+    function _getAuSysAdminSelectors() internal pure returns (bytes4[] memory) {
         bytes4[] memory selectors = new bytes4[](15);
-        selectors[0] = AuSysFacet.setPayToken.selector;
-        selectors[1] = AuSysFacet.getPayToken.selector;
-        selectors[2] = AuSysFacet.setAuSysAdmin.selector;
-        selectors[3] = AuSysFacet.revokeAuSysAdmin.selector;
-        selectors[4] = AuSysFacet.setDriver.selector;
-        selectors[5] = AuSysFacet.setDispatcher.selector;
-        selectors[6] = AuSysFacet.hasAuSysRole.selector;
-        selectors[7] = AuSysFacet.createAuSysOrder.selector;
-        selectors[8] = AuSysFacet.getAuSysOrder.selector;
-        selectors[9] = AuSysFacet.createJourney.selector;
-        selectors[10] = AuSysFacet.createOrderJourney.selector;
-        selectors[11] = AuSysFacet.getJourney.selector;
-        selectors[12] = AuSysFacet.assignDriverToJourney.selector;
-        selectors[13] = AuSysFacet.packageSign.selector;
-        selectors[14] = AuSysFacet.handOn.selector;
+        selectors[0] = AuSysAdminFacet.setPayToken.selector;
+        selectors[1] = AuSysAdminFacet.setAuSysAdmin.selector;
+        selectors[2] = AuSysAdminFacet.revokeAuSysAdmin.selector;
+        selectors[3] = AuSysAdminFacet.setDriver.selector;
+        selectors[4] = AuSysAdminFacet.setDispatcher.selector;
+        selectors[5] = AuSysAdminFacet.setTrustedP2PSigner.selector;
+        selectors[6] = AuSysAdminFacet.correctOrderTokenQuantity.selector;
+        selectors[7] = AuSysAdminFacet.adminRecoverEscrow.selector;
+        selectors[8] = AuSysAdminFacet.setTreasuryFeeBps.selector;
+        selectors[9] = AuSysAdminFacet.setNodeFeeBps.selector;
+        selectors[10] = AuSysAdminFacet.claimTreasuryFees.selector;
+        selectors[11] = AuSysAdminFacet.emergencyCancelJourney.selector;
+        selectors[12] = AuSysAdminFacet.setERC1155WhitelistEnabled.selector;
+        selectors[13] = AuSysAdminFacet.setAcceptedTokenContract.selector;
+        selectors[14] = AuSysAdminFacet.initAuSysFees.selector;
+        return selectors;
+    }
+
+    function _getERC1155ReceiverSelectors() internal pure returns (bytes4[] memory) {
+        bytes4[] memory selectors = new bytes4[](2);
+        selectors[0] = ERC1155ReceiverFacet.onERC1155Received.selector;
+        selectors[1] = ERC1155ReceiverFacet.onERC1155BatchReceived.selector;
+        return selectors;
+    }
+
+    function _getAuSysViewSelectors() internal pure returns (bytes4[] memory) {
+        bytes4[] memory selectors = new bytes4[](10);
+        selectors[0] = AuSysViewFacet.getPayToken.selector;
+        selectors[1] = AuSysViewFacet.hasAuSysRole.selector;
+        selectors[2] = AuSysViewFacet.getAllowedDrivers.selector;
+        selectors[3] = AuSysViewFacet.getAuSysOrder.selector;
+        selectors[4] = AuSysViewFacet.domainSeparator.selector;
+        selectors[5] = AuSysViewFacet.getOpenP2POffers.selector;
+        selectors[6] = AuSysViewFacet.getUserP2POffers.selector;
+        selectors[7] = AuSysViewFacet.getJourney.selector;
+        selectors[8] = AuSysViewFacet.getDriverJourneyCount.selector;
+        selectors[9] = AuSysViewFacet.getPendingTokenDestinations.selector;
         return selectors;
     }
 
     function _getBridgeSelectors() internal pure returns (bytes4[] memory) {
-        bytes4[] memory selectors = new bytes4[](9);
+        bytes4[] memory selectors = new bytes4[](19);
         selectors[0] = BridgeFacet.createUnifiedOrder.selector;
-        selectors[1] = BridgeFacet.getUnifiedOrder.selector;
-        selectors[2] = BridgeFacet.getBuyerOrders.selector;
-        selectors[3] = BridgeFacet.getSellerOrders.selector;
-        selectors[4] = BridgeFacet.setBountyPercentage.selector;
-        selectors[5] = BridgeFacet.setProtocolFeePercentage.selector;
-        selectors[6] = BridgeFacet.updateClobAddress.selector;
-        selectors[7] = BridgeFacet.updateAusysAddress.selector;
-        selectors[8] = BridgeFacet.setQuoteTokenAddress.selector;
+        selectors[1] = BridgeFacet.bridgeTradeToLogistics.selector;
+        selectors[2] = BridgeFacet.createLogisticsOrder.selector;
+        selectors[3] = BridgeFacet.assignJourneyDriver.selector;
+        selectors[4] = BridgeFacet.updateJourneyStatus.selector;
+        selectors[5] = BridgeFacet.settleOrder.selector;
+        selectors[6] = BridgeFacet.cancelUnifiedOrder.selector;
+        selectors[7] = BridgeFacet.getUnifiedOrder.selector;
+        selectors[8] = BridgeFacet.getTotalUnifiedOrders.selector;
+        selectors[9] = BridgeFacet.getBuyerOrders.selector;
+        selectors[10] = BridgeFacet.getSellerOrders.selector;
+        selectors[11] = BridgeFacet.getUnifiedOrderFromClobOrder.selector;
+        selectors[12] = BridgeFacet.getUnifiedOrderFromClobTrade.selector;
+        selectors[13] = BridgeFacet.setFeeRecipient.selector;
+        selectors[14] = BridgeFacet.setBountyPercentage.selector;
+        selectors[15] = BridgeFacet.setProtocolFeePercentage.selector;
+        selectors[16] = BridgeFacet.updateClobAddress.selector;
+        selectors[17] = BridgeFacet.updateAusysAddress.selector;
+        selectors[18] = BridgeFacet.setQuoteTokenAddress.selector;
         return selectors;
     }
 
     function _getCLOBLogisticsSelectors() internal pure returns (bytes4[] memory) {
-        bytes4[] memory selectors = new bytes4[](12);
+        bytes4[] memory selectors = new bytes4[](13);
         selectors[0] = CLOBLogisticsFacet.registerDriver.selector;
         selectors[1] = CLOBLogisticsFacet.setDriverAvailability.selector;
         selectors[2] = CLOBLogisticsFacet.updateDriverLocation.selector;
@@ -329,6 +497,7 @@ abstract contract DiamondTestBase is Test {
         selectors[9] = CLOBLogisticsFacet.disputeOrder.selector;
         selectors[10] = CLOBLogisticsFacet.cancelLogisticsOrder.selector;
         selectors[11] = CLOBLogisticsFacet.getLogisticsOrder.selector;
+        selectors[12] = CLOBLogisticsFacet.setLogisticsCreatorAuthorization.selector;
         return selectors;
     }
 
@@ -370,5 +539,13 @@ abstract contract DiamondTestBase is Test {
         selectors[6] = OperatorFacet.getOperatorSuccessfulOps.selector;
         selectors[7] = OperatorFacet.getOperatorTotalValueProcessed.selector;
         return selectors;
+    }
+}
+
+/// @dev Init contract to set reentrancyStatus = 1 (_NOT_ENTERED) in AppStorage
+contract ReentrancyInit {
+    function init() external {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        s.reentrancyStatus = 1;
     }
 }

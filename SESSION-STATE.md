@@ -22,6 +22,7 @@ _Last updated: 2026-03-03 09:20 AM (Europe/London)_
 
 - Vercel UI smoke test — needs OKX wallet manually connected
 - P2PFullFlow broadcast on Base Sepolia — needs wallet keys to broadcast
+- Asset catalog sync work is approved to proceed in-place even with unrelated local workspace state; preserve existing edits and avoid reverting unrelated changes.
 
 ### Nothing blocking
 

@@ -9,16 +9,19 @@ import { ethers } from 'ethers';
 import { INodeAssetService, NodeAsset } from '@/domain/node';
 import { Asset } from '@/domain/shared';
 import { DiamondContext } from './diamond-context';
-// NEXT_PUBLIC_CLOB_ADDRESS no longer needed - CLOB is internal to Diamond
+import { PinataSDK } from 'pinata';
+import { getIpfsGroupId } from '@/chain-constants';
 
 /**
  * Diamond-based implementation of INodeAssetService
  */
 export class DiamondNodeAssetService implements INodeAssetService {
   private context: DiamondContext;
+  private pinata: PinataSDK | null = null;
 
-  constructor(context: DiamondContext) {
+  constructor(context: DiamondContext, pinata?: PinataSDK) {
     this.context = context;
+    this.pinata = pinata || null;
   }
 
   /**
@@ -89,7 +92,6 @@ export class DiamondNodeAssetService implements INodeAssetService {
     amount: number,
   ): Promise<void> {
     const diamond = this.context.getDiamond();
-    const diamondAddress = this.context.getDiamondAddress();
 
     // Convert to bytes32 format for Diamond operations
     const initialNodeHash = this.toBytes32NodeHash(nodeHashOrAddress);
@@ -132,31 +134,107 @@ export class DiamondNodeAssetService implements INodeAssetService {
       );
       const tokenId = BigInt(ethers.keccak256(encodedAsset));
 
-      // Step 1: Mint tokens to the node owner's wallet (they are the custodian)
-      // The node owner holds the tokens directly and must approve Diamond for CLOB trading
-      const mintTx = await diamond.nodeMint(
-        nodeOwnerWallet, // Mint to node owner's wallet - they are the custodian
-        contractAsset,
+      // Use the unified node minting path so the contract updates node inventory
+      // and supported-asset metadata through a single accounting flow.
+      const mintTx = await diamond.addNodeItem(
+        nodeHash,
+        nodeOwnerWallet,
         amount,
+        contractAsset,
         asset.assetClass,
         '0x',
       );
-      const mintReceipt = await mintTx.wait();
+      await mintTx.wait();
 
-      // Note: No need to call creditNodeTokens - tokens are in the owner's wallet
-      // The node owner will need to approve Diamond for CLOB trading
+      // Register (or update capacity for) the tokenId in the node's asset metadata
+      // registry so the node dashboard can display it. The nodeAssets mapping is
+      // populated by NodesFacet.addSupportedAsset; addNodeItem does not call it.
+      try {
+        const diamondAddress = await diamond.getAddress();
+        const existingAssets = await diamond.getNodeAssets(nodeHash);
+        const alreadyRegistered = existingAssets.some(
+          (a: any) => a.tokenId.toString() === tokenId.toString(),
+        );
 
-      // Step 3: Add/update supported asset with capacity (price is 0, set via CLOB orders)
-      const addAssetTx = await diamond.addSupportedAsset(
-        nodeHash,
-        diamondAddress,
-        tokenId,
-        0n, // Price is 0 - actual price set when placing sell orders on CLOB
-        amount,
-      );
-      await addAssetTx.wait();
+        if (!alreadyRegistered) {
+          // First mint of this tokenId for this node — register it
+          const registerTx = await diamond.addSupportedAsset(
+            nodeHash,
+            diamondAddress,
+            tokenId,
+            0n, // price = 0 initially; set separately via updateAssetPrice
+            BigInt(amount),
+          );
+          await registerTx.wait();
+        } else {
+          // TokenId already registered — increment the stored capacity
+          const updatedTokens: string[] = [];
+          const updatedTokenIds: bigint[] = [];
+          const updatedPrices: bigint[] = [];
+          const updatedCapacities: bigint[] = [];
 
-      // Step 4: Ensure CLOB is approved for trading
+          for (const a of existingAssets) {
+            updatedTokens.push(a.token);
+            updatedTokenIds.push(BigInt(a.tokenId));
+            updatedPrices.push(BigInt(a.price));
+            updatedCapacities.push(
+              a.tokenId.toString() === tokenId.toString()
+                ? BigInt(a.capacity) + BigInt(amount)
+                : BigInt(a.capacity),
+            );
+          }
+
+          const updateTx = await diamond.updateSupportedAssets(
+            nodeHash,
+            updatedTokens,
+            updatedTokenIds,
+            updatedPrices,
+            updatedCapacities,
+          );
+          await updateTx.wait();
+        }
+      } catch (registryErr) {
+        // Non-fatal: tokens are minted and custody is correct.
+        // Dashboard may not reflect the new asset until manually registered.
+        console.warn(
+          '[DiamondNodeAssetService] Asset registry update failed (non-fatal):',
+          registryErr,
+        );
+      }
+
+      // Upload metadata to IPFS/Pinata so node dashboard can resolve it.
+      // Mirrors the old uploadMetadataToIPFS() from node-asset.service.ts
+      if (this.pinata) {
+        try {
+          const assetHash = ethers.keccak256(encodedAsset);
+          const chainId = this.context.getChainId();
+          const groupId = getIpfsGroupId(chainId);
+          const metadataJson = {
+            tokenId: tokenId.toString(),
+            hash: assetHash,
+            asset: contractAsset,
+            className: asset.assetClass,
+          };
+
+          await this.pinata.upload.public
+            .json(metadataJson)
+            .group(groupId)
+            .name(`${tokenId}.json`)
+            .keyvalues({
+              tokenId: tokenId.toString(),
+              className: asset.assetClass || '',
+              hash: assetHash,
+            });
+        } catch (ipfsErr) {
+          // Non-fatal — on-chain data is the source of truth
+          console.warn(
+            '[DiamondNodeAssetService] IPFS metadata upload failed (non-fatal):',
+            ipfsErr,
+          );
+        }
+      }
+
+      // Ensure CLOB is approved for trading
       await this.ensureClobApproval(nodeHash);
     } catch (error: any) {
       console.error('[DiamondNodeAssetService] Error minting asset:', error);

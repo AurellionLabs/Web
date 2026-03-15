@@ -1,4 +1,5 @@
-// @ts-nocheck - Script with outdated contract types
+// @ts-nocheck - Script with chain constants defined inline
+
 /**
  * Script to add supported asset classes and default assets to the AuraAsset contract
  * This should be run after deployment if asset classes were not added during deployment
@@ -7,6 +8,13 @@
 import { ethers } from 'hardhat';
 import { PinataSDK } from 'pinata';
 import * as dotenv from 'dotenv';
+import { getIpfsGroupId } from '../chain-constants';
+import {
+  buildSupportedAssetMetadataPayload,
+  getSupportedAssetClasses,
+  loadSupportedAssetCatalog,
+  toSupportedAssetContractAsset,
+} from './lib/supported-assets';
 
 dotenv.config();
 
@@ -15,6 +23,8 @@ const AURUM_NODE_MANAGER_ADDRESS = '0xc50F6505BcBb00Af8f1086d9121525695Bf09D30';
 
 async function main() {
   const [deployer] = await ethers.getSigners();
+  const catalog = loadSupportedAssetCatalog();
+  const defaultClasses = getSupportedAssetClasses(catalog);
   console.log('Adding asset classes with account:', deployer.address);
   console.log(
     'Account balance:',
@@ -40,7 +50,6 @@ async function main() {
 
   // Add default classes for testing
   console.log('\n=== Adding Supported Classes ===');
-  const defaultClasses = ['GOAT', 'SHEEP', 'COW', 'CHICKEN', 'DUCK'];
 
   for (const className of defaultClasses) {
     try {
@@ -57,71 +66,70 @@ async function main() {
     }
   }
 
-  // Add default AUGOAT asset with attributes
-  console.log('\n=== Adding Default Asset (AUGOAT) ===');
-  const defaultAsset = {
-    name: 'AUGOAT',
-    assetClass: 'GOAT',
-    attributes: [
-      {
-        name: 'weight',
-        values: ['S', 'M', 'L'],
-        description: 'A goats weight either S = 20 KG, M = 30 KG, L = 40KG',
-      },
-      {
-        name: 'sex',
-        values: ['M', 'F'],
-        description: 'Gender of the goat',
-      },
-    ],
-  };
-
-  try {
-    console.log('Adding supported asset AUGOAT...');
-    const addAssetTx = await auraAsset.addSupportedAsset(defaultAsset as any);
-    await addAssetTx.wait();
-    console.log('✓ Added default asset: AUGOAT');
-
-    // Get the hash/tokenId for the asset
-    const hash = await auraAsset.ipfsID(0);
-    console.log('Asset hash/tokenId:', hash.toString());
-
-    // Upload metadata to IPFS via Pinata
-    if (process.env.PINATA_JWT) {
-      console.log('\n=== Uploading to IPFS ===');
-      const pinata = new PinataSDK({
+  const pinata = process.env.PINATA_JWT
+    ? new PinataSDK({
         pinataJwt: process.env.PINATA_JWT,
         pinataGateway: 'orange-electronic-flyingfish-697.mypinata.cloud',
-      });
+      })
+    : null;
+  const chainId = Number(process.env.CHAIN_ID || 84532);
+  const groupId = pinata ? getIpfsGroupId(chainId) : null;
 
-      const metadataJson = {
-        tokenId: hash.toString(),
-        hash: hash.toString(),
-        asset: defaultAsset,
-        className: defaultAsset.assetClass,
-      };
+  console.log('\n=== Adding Supported Assets ===');
+  for (const entry of catalog) {
+    const defaultAsset = toSupportedAssetContractAsset(entry);
+    const metadataJson = buildSupportedAssetMetadataPayload(entry);
 
-      const metadataBase64 = Buffer.from(JSON.stringify(metadataJson)).toString(
-        'base64',
-      );
+    try {
+      console.log(`Adding supported asset ${entry.name}...`);
+      const addAssetTx = await auraAsset.addSupportedAsset(defaultAsset as any);
+      await addAssetTx.wait();
+      console.log(`✓ Added supported asset: ${entry.name}`);
+    } catch (e: any) {
+      if (e.message.includes('already') || e.message.includes('exists')) {
+        console.log(`⚠ Asset ${entry.name} already exists`);
+      } else {
+        console.log(`✗ Failed to add ${entry.name}:`, e.message);
+      }
+    }
+
+    if (!pinata || !groupId) {
+      continue;
+    }
+
+    try {
+      const existingMetadata = await pinata.files.public
+        .list()
+        .group(groupId)
+        .keyvalues({ tokenId: metadataJson.tokenId })
+        .all();
+
+      if (existingMetadata.length > 0) {
+        console.log(
+          `⚠ Metadata for ${entry.name} already exists on Pinata (${metadataJson.tokenId})`,
+        );
+        continue;
+      }
+
       const upload = await pinata.upload.public
-        .base64(metadataBase64)
-        .name(`${hash}.json`)
+        .json(metadataJson)
+        .group(groupId)
+        .name(`${metadataJson.tokenId}.json`)
         .keyvalues({
-          tokenId: hash.toString(),
-          className: defaultAsset.assetClass,
+          tokenId: metadataJson.tokenId,
+          className: metadataJson.className,
+          hash: metadataJson.hash,
+          assetName: entry.name,
         });
 
-      console.log('✓ Uploaded to IPFS:', upload);
-    } else {
-      console.log('⚠ PINATA_JWT not set, skipping IPFS upload');
+      console.log(`✓ Uploaded metadata for ${entry.name}:`, upload.cid);
+    } catch (e: any) {
+      console.log(`✗ Failed to upload metadata for ${entry.name}:`, e.message);
     }
-  } catch (e: any) {
-    if (e.message.includes('already') || e.message.includes('exists')) {
-      console.log('⚠ Asset AUGOAT already exists');
-    } else {
-      console.log('✗ Failed to add AUGOAT:', e.message);
-    }
+  }
+
+  if (!pinata) {
+    console.log('⚠ PINATA_JWT not set, skipping IPFS upload');
   }
 
   // Add AuraAsset token to AurumNodeManager if not already added

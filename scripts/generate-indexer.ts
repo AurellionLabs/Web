@@ -86,6 +86,15 @@ const EXCLUDED_EVENTS = new Set<string>([
   'EmergencyActionExecuted',
   'EmergencyActionInitiated',
   'EmergencyWithdrawal',
+  // Admin/config events — not queried by frontend, re-enable when dashboards need them
+  'NodeRegistrarUpdated',
+  'JourneyDriverAssigned',
+  'NodeFeeBpsUpdated',
+  'TokenDestinationPending',
+  'TokenDestinationSelected',
+  'TreasuryFeeAccrued',
+  'TreasuryFeeBpsUpdated',
+  'TreasuryFeeClaimed',
 ]);
 
 // ============================================================================

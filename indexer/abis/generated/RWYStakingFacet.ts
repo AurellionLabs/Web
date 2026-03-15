@@ -1,5 +1,5 @@
 // Auto-generated from RWYStakingFacet.sol - DO NOT EDIT
-// Generated at: 2026-03-03T07:50:03.651Z
+// Generated at: 2026-03-10T19:30:30.101Z
 
 export const RWYStakingFacetABI = [
   {
@@ -1411,6 +1411,11 @@ export const RWYStakingFacetABI = [
         name: 'amount',
         type: 'uint256',
       },
+      {
+        internalType: 'uint256',
+        name: 'minStakeAmount',
+        type: 'uint256',
+      },
     ],
     name: 'stake',
     outputs: [],
@@ -1493,6 +1498,11 @@ export const RWYStakingFacetABI = [
       {
         internalType: 'uint256',
         name: 'amount',
+        type: 'uint256',
+      },
+      {
+        internalType: 'uint256',
+        name: 'minReceiveAmount',
         type: 'uint256',
       },
     ],

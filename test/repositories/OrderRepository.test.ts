@@ -13,6 +13,7 @@ vi.mock('@/infrastructure/repositories/shared/graph', () => ({
 }));
 
 vi.mock('@/chain-constants', () => ({
+  getIndexerUrl: () => 'http://localhost:42069',
   NEXT_PUBLIC_AUSYS_SUBGRAPH_URL: 'https://indexer.test/graphql',
   NEXT_PUBLIC_DIAMOND_ADDRESS: '0xDiamond',
 }));
@@ -108,9 +109,19 @@ function makeP2PAcceptedEvent(overrides: Record<string, any> = {}) {
 }
 
 // Empty responses
+//
+// EMPTY_UNIFIED_SINGLE: for queries that return a single collection
+// (getBuyerOrders, getSellerOrders) — no aliases, raw table name.
 const EMPTY_UNIFIED = { diamondUnifiedOrderCreatedEventss: { items: [] } };
 const EMPTY_LOGISTICS = {
   diamondLogisticsOrderCreatedEventss: { items: [] },
+};
+// EMPTY_UNIFIED_ALL: for GET_ALL_UNIFIED_ORDER_EVENTS which uses GQL aliases.
+const EMPTY_UNIFIED_ALL = {
+  created: { items: [] },
+  logistics: { items: [] },
+  journeyUpdates: { items: [] },
+  settled: { items: [] },
 };
 const EMPTY_P2P_CREATED = { diamondP2POfferCreatedEventss: { items: [] } };
 const EMPTY_P2P_ACCEPTED = { diamondP2POfferAcceptedEventss: { items: [] } };
@@ -263,6 +274,7 @@ describe('OrderRepository', () => {
         .mockResolvedValueOnce({
           diamondP2POfferCreatedEventss: { items: [p2pCreated] },
         })
+        .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // all accepted events
         .mockResolvedValueOnce(EMPTY_STATUS)
         .mockResolvedValueOnce(EMPTY_JOURNEYS_BY_ORDER)
         .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS);
@@ -290,6 +302,7 @@ describe('OrderRepository', () => {
         .mockResolvedValueOnce({
           diamondP2POfferCreatedEventss: { items: [p2pCreatedByOther] },
         })
+        .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // all accepted events
         .mockResolvedValueOnce(EMPTY_STATUS)
         .mockResolvedValueOnce(EMPTY_JOURNEYS_BY_ORDER)
         .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS);
@@ -306,6 +319,7 @@ describe('OrderRepository', () => {
         .mockResolvedValueOnce(EMPTY_P2P_CREATED)
         .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED)
         .mockResolvedValueOnce(EMPTY_P2P_CREATED)
+        .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // all accepted events
         .mockResolvedValueOnce(EMPTY_STATUS)
         .mockResolvedValueOnce(EMPTY_JOURNEYS_BY_ORDER)
         .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS);
@@ -319,6 +333,7 @@ describe('OrderRepository', () => {
         .mockResolvedValueOnce(EMPTY_P2P_CREATED)
         .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED)
         .mockResolvedValueOnce(EMPTY_P2P_CREATED)
+        .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // all accepted events
         .mockResolvedValueOnce(EMPTY_STATUS)
         .mockResolvedValueOnce(EMPTY_JOURNEYS_BY_ORDER)
         .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS);
@@ -362,6 +377,7 @@ describe('OrderRepository', () => {
         .mockResolvedValueOnce({
           diamondP2POfferCreatedEventss: { items: [created] },
         })
+        .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // all accepted events
         .mockResolvedValueOnce(EMPTY_STATUS)
         .mockResolvedValueOnce(EMPTY_JOURNEYS_BY_ORDER)
         .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS);
@@ -375,22 +391,103 @@ describe('OrderRepository', () => {
   });
 
   // =====================================================================
-  // getNodeOrders (legacy — uses journeyIds matching, kept for coverage)
+  // getNodeOrders
+  // Filters CLOB orders by the `node` field on LogisticsOrderCreated events.
+  // Uses GET_ALL_UNIFIED_ORDER_EVENTS (GQL aliases: created/logistics/...).
   // =====================================================================
   describe('getNodeOrders', () => {
-    it('should return empty array when no orders match the node', async () => {
-      graphqlRequestMock
-        .mockResolvedValueOnce(EMPTY_UNIFIED)
-        .mockResolvedValueOnce(EMPTY_LOGISTICS);
+    const NODE_ADDR = '0xabc123nodeaddress';
 
-      const orders = await repo.getNodeOrders('0xSomeNode');
+    it('should return empty array when no orders match the node', async () => {
+      graphqlRequestMock.mockResolvedValueOnce(EMPTY_UNIFIED_ALL);
+
+      const orders = await repo.getNodeOrders(NODE_ADDR);
+      expect(orders).toEqual([]);
+      // Only 1 graphql call (unified query, no separate logistics call)
+      expect(graphqlRequestMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return orders linked to the node via logistics.node field', async () => {
+      const orderEvt = {
+        id: 'evt-1',
+        unified_order_id: '0xOrder1',
+        clob_order_id: '0xClob1',
+        buyer: '0xBuyer',
+        seller: '0xSeller',
+        token: '0xToken',
+        token_id: '1',
+        quantity: '10',
+        price: '1000',
+        block_number: '100',
+        block_timestamp: '1700000000',
+        transaction_hash: '0xTx1',
+      };
+      const logEvt = {
+        id: 'log-1',
+        unified_order_id: '0xOrder1',
+        ausys_order_id: '0xAusys1',
+        journey_ids: '0xJourney1',
+        bounty: '0',
+        node: NODE_ADDR, // matches the queried node address
+        block_number: '110',
+        block_timestamp: '1700010000',
+        transaction_hash: '0xTxLog1',
+      };
+
+      graphqlRequestMock.mockResolvedValueOnce({
+        created: { items: [orderEvt] },
+        logistics: { items: [logEvt] },
+        journeyUpdates: { items: [] },
+        settled: { items: [] },
+      });
+
+      const orders = await repo.getNodeOrders(NODE_ADDR);
+      expect(orders.length).toBe(1);
+      expect(orders[0].id.toLowerCase()).toBe('0xorder1');
+    });
+
+    it('should NOT return orders linked to a different node', async () => {
+      const orderEvt = {
+        id: 'evt-2',
+        unified_order_id: '0xOrder2',
+        clob_order_id: '0xClob2',
+        buyer: '0xBuyer',
+        seller: '0xSeller',
+        token: '0xToken',
+        token_id: '1',
+        quantity: '5',
+        price: '500',
+        block_number: '200',
+        block_timestamp: '1700020000',
+        transaction_hash: '0xTx2',
+      };
+      const logEvt = {
+        id: 'log-2',
+        unified_order_id: '0xOrder2',
+        ausys_order_id: '0xAusys2',
+        journey_ids: '0xJourney2',
+        bounty: '0',
+        node: '0xOtherNode', // different node
+        block_number: '210',
+        block_timestamp: '1700020100',
+        transaction_hash: '0xTxLog2',
+      };
+
+      graphqlRequestMock.mockResolvedValueOnce({
+        created: { items: [orderEvt] },
+        logistics: { items: [logEvt] },
+        journeyUpdates: { items: [] },
+        settled: { items: [] },
+      });
+
+      const orders = await repo.getNodeOrders(NODE_ADDR);
       expect(orders).toEqual([]);
     });
 
     it('should handle GraphQL errors gracefully', async () => {
       graphqlRequestMock.mockRejectedValue(new Error('Network error'));
 
-      const orders = await repo.getNodeOrders('0xSomeNode');
+      const orders = await repo.getNodeOrders(NODE_ADDR);
       expect(orders).toEqual([]);
     });
   });

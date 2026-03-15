@@ -1,10 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useWallet } from './useWallet';
 import { useDiamond } from '@/app/providers/diamond.provider';
 import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
-import { NEXT_PUBLIC_INDEXER_URL } from '@/chain-constants';
+import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
+import {
+  GET_MINTED_ASSET_CLASS_BY_TOKEN_IDS,
+  type MintedAssetEventsResponse,
+} from '@/infrastructure/shared/graph-queries';
 
 /**
  * Represents a user's holding of a tokenized asset
@@ -21,8 +25,10 @@ export interface UserHolding {
     values: string[];
     description: string;
   }>;
-  // Node where the physical asset is stored (for redemption)
+  // Node wallet/node hash used by redemption flows
   originNode?: string;
+  originCustodianAddress?: string;
+  originNodeHash?: string;
 }
 
 /**
@@ -141,7 +147,7 @@ export function useUserHoldings(): UseUserHoldingsReturn {
           };
         };
         const assetsResponse = (await graphqlRequest<AssetsResponse>(
-          NEXT_PUBLIC_INDEXER_URL,
+          getCurrentIndexerUrl(),
           GET_ALL_SUPPORTED_ASSETS,
           { limit: PAGE, after },
         )) as AssetsResponse;
@@ -179,20 +185,57 @@ export function useUserHoldings(): UseUserHoldingsReturn {
       const balances = await balanceOfBatch(address, tokenIds);
 
       // Step 3: Filter to only holdings with balance > 0
-      const userHoldings: UserHolding[] = [];
+      const heldTokenIds: string[] = [];
+      const heldBalances: bigint[] = [];
       for (let i = 0; i < uniqueTokenIds.length; i++) {
-        const balance = balances[i];
-        if (balance > 0n) {
-          userHoldings.push({
-            tokenId: uniqueTokenIds[i],
-            balance: balance,
-            name: '',
-            assetClass: '',
-            className: '',
-            originNode: '',
-          });
+        if (balances[i] > 0n) {
+          heldTokenIds.push(uniqueTokenIds[i]);
+          heldBalances.push(balances[i]);
         }
       }
+
+      // Step 4: Enrich with asset name/class from MintedAsset events
+      const assetMetaMap = new Map<
+        string,
+        { name: string; assetClass: string }
+      >();
+      if (heldTokenIds.length > 0) {
+        try {
+          const mintedResp = await graphqlRequest<MintedAssetEventsResponse>(
+            getCurrentIndexerUrl(),
+            GET_MINTED_ASSET_CLASS_BY_TOKEN_IDS,
+            { tokenIds: heldTokenIds, limit: 500 },
+          );
+          const mintedItems = mintedResp.diamondMintedAssetEventss?.items || [];
+          for (const item of mintedItems) {
+            // First event per tokenId wins (latest is first due to desc order)
+            if (!assetMetaMap.has(item.token_id)) {
+              assetMetaMap.set(item.token_id, {
+                name: item.name || '',
+                assetClass: item.asset_class || '',
+              });
+            }
+          }
+        } catch (metaErr) {
+          // Non-fatal — holdings still usable without names
+          console.warn(
+            '[useUserHoldings] Failed to fetch asset metadata:',
+            metaErr,
+          );
+        }
+      }
+
+      const userHoldings: UserHolding[] = heldTokenIds.map((tid, i) => {
+        const meta = assetMetaMap.get(tid);
+        return {
+          tokenId: tid,
+          balance: heldBalances[i],
+          name: meta?.name || '',
+          assetClass: meta?.assetClass || '',
+          className: meta?.assetClass || '',
+          originNode: '',
+        };
+      });
       setState({ status: 'success', holdings: userHoldings });
     } catch (err) {
       const message =
@@ -217,15 +260,31 @@ export function useUserHoldings(): UseUserHoldingsReturn {
     [holdings],
   );
 
+  const prevHoldingsRef = useRef<UserHolding[]>(holdings);
+  if (holdings !== prevHoldingsRef.current) {
+    const hasChanged =
+      holdings.length !== prevHoldingsRef.current.length ||
+      holdings.some(
+        (h, i) =>
+          i >= prevHoldingsRef.current.length ||
+          h.tokenId !== prevHoldingsRef.current[i]?.tokenId ||
+          h.balance !== prevHoldingsRef.current[i]?.balance,
+      );
+    if (hasChanged) {
+      prevHoldingsRef.current = holdings;
+    }
+  }
+  const stableHoldings = prevHoldingsRef.current;
+
   return useMemo(
     () => ({
-      holdings,
+      holdings: stableHoldings,
       isLoading,
       error,
       refetch: fetchHoldings,
       getHoldingByTokenId,
     }),
-    [holdings, isLoading, error, fetchHoldings, getHoldingByTokenId],
+    [stableHoldings, isLoading, error, fetchHoldings, getHoldingByTokenId],
   );
 }
 

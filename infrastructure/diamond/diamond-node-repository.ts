@@ -23,25 +23,34 @@ import {
   hashToAssets,
   tokenIdToAssets,
 } from '@/infrastructure/repositories/shared/ipfs';
-import { NEXT_PUBLIC_INDEXER_URL } from '@/chain-constants';
+import { getIpfsGroupId } from '@/chain-constants';
+import {
+  fetchAssetByTokenIdFromMetadataApi,
+  fetchAssetRecordsByHashFromMetadataApi,
+} from '@/infrastructure/repositories/shared/platform-metadata-api';
+import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
+import { getCache, type AssetMetadata } from '@/infrastructure/cache';
 import {
   GET_LOGISTICS_ORDER_CREATED_EVENTS,
   GET_ALL_UNIFIED_ORDER_EVENTS,
   GET_SUPPORTED_ASSET_ADDED_EVENTS,
   GET_P2P_OFFERS_BY_CREATOR,
   GET_P2P_OFFERS_ACCEPTED_BY_USER,
+  GET_ALL_P2P_OFFER_ACCEPTED_EVENTS,
   GET_P2P_OFFER_DETAILS_BY_ORDER_IDS,
   GET_AUSYS_ORDER_STATUS_UPDATES,
   GET_JOURNEYS_BY_ORDER,
   GET_JOURNEY_STATUS_UPDATES_ALL,
 } from '@/infrastructure/shared/graph-queries';
 import type {
+  AllP2POfferAcceptedEventsResponse,
   P2POffersByCreatorResponse,
   P2POffersAcceptedByUserResponse,
   P2POfferDetailsResponse,
   AuSysOrderStatusUpdatesResponse,
   JourneysByOrderResponse,
   JourneyStatusUpdatesAllResponse,
+  UnifiedOrderEventsResponse,
 } from '@/infrastructure/shared/graph-queries';
 import {
   aggregateUnifiedOrders,
@@ -67,16 +76,8 @@ interface LogisticsEventsResponse {
   diamondLogisticsOrderCreatedEventss: GraphQLResponse<LogisticsOrderCreatedEvent>;
 }
 
-interface UnifiedOrderEventsResponse {
-  diamondUnifiedOrderCreatedEventss: GraphQLResponse<UnifiedOrderCreatedEvent>;
-}
-
 interface AssetEventsResponse {
   diamondSupportedAssetAddedEventss: GraphQLResponse<SupportedAssetAddedEvent>;
-}
-
-interface UnifiedOrderEventsResponse {
-  diamondUnifiedOrderCreatedEventss: GraphQLResponse<UnifiedOrderCreatedEvent>;
 }
 
 function aggregatedUnifiedOrderToDomain(
@@ -122,21 +123,20 @@ function mapOrderStatus(status: AggregatedUnifiedOrder['status']): OrderStatus {
  */
 export class DiamondNodeRepository implements NodeRepository {
   private context: DiamondContext;
-  private graphQLEndpoint: string;
+  private get graphQLEndpoint() {
+    return getCurrentIndexerUrl();
+  }
   private pinata: PinataSDK | null = null;
-  private metadataCache = new Map<
-    string,
-    { name: string; class: string; fileHash: string }
-  >();
-  private inFlightMetadata = new Map<
-    string,
-    Promise<{ name: string; class: string; fileHash: string }>
-  >();
 
   constructor(context: DiamondContext, pinata?: PinataSDK) {
     this.context = context;
-    this.graphQLEndpoint = NEXT_PUBLIC_INDEXER_URL;
     this.pinata = pinata || null;
+  }
+
+  private toBytes32NodeHash(nodeAddress: string): string {
+    return nodeAddress.startsWith('0x') && nodeAddress.length === 66
+      ? nodeAddress
+      : ethers.zeroPadValue(nodeAddress, 32);
   }
 
   private isPinataRateLimitError(error: unknown): boolean {
@@ -193,79 +193,179 @@ export class DiamondNodeRepository implements NodeRepository {
     return results;
   }
 
+  private async getOwnerNodeSellableAmount(
+    owner: string,
+    tokenId: bigint,
+    nodeHash: string,
+  ): Promise<bigint> {
+    const diamond = this.context.getDiamond();
+
+    try {
+      const [nodeHashes, amounts] = await diamond.getOwnerNodeSellableBalances(
+        owner,
+        tokenId,
+      );
+      const targetHash = nodeHash.toLowerCase();
+      const matchIndex = (nodeHashes as string[]).findIndex(
+        (hash) => hash.toLowerCase() === targetHash,
+      );
+      if (matchIndex >= 0) {
+        return BigInt(amounts[matchIndex].toString());
+      }
+      return 0n;
+    } catch (bulkError) {
+      console.warn(
+        '[DiamondNodeRepository] getOwnerNodeSellableBalances failed, falling back to per-node query:',
+        bulkError,
+      );
+      try {
+        const amount = await diamond.getNodeSellableAmount(
+          owner,
+          tokenId,
+          nodeHash,
+        );
+        return BigInt(amount.toString());
+      } catch (singleError) {
+        console.error(
+          '[DiamondNodeRepository] Failed to query node sellable amount:',
+          singleError,
+        );
+        return 0n;
+      }
+    }
+  }
+
   /**
    * Fetch asset metadata from IPFS by tokenId
    */
+  /**
+   * Fallback: fetch asset metadata from indexer MintedAsset events
+   * when IPFS/Pinata has no data for a tokenId
+   */
+  private async fetchMetadataFromIndexer(
+    tokenId: string,
+  ): Promise<{ name: string; class: string; fileHash: string }> {
+    try {
+      const { graphqlRequest } = await import(
+        '@/infrastructure/repositories/shared/graph'
+      );
+      const { getCurrentIndexerUrl } = await import(
+        '@/infrastructure/config/indexer-endpoint'
+      );
+      const { GET_MINTED_ASSET_CLASS_BY_TOKEN_IDS } = await import(
+        '@/infrastructure/shared/graph-queries'
+      );
+
+      type MintedResp = {
+        diamondMintedAssetEventss?: {
+          items: Array<{
+            token_id: string;
+            name: string;
+            asset_class: string;
+          }>;
+        };
+      };
+
+      const resp = await graphqlRequest<MintedResp>(
+        getCurrentIndexerUrl(),
+        GET_MINTED_ASSET_CLASS_BY_TOKEN_IDS,
+        { tokenIds: [tokenId], limit: 1 },
+      );
+
+      const item = resp.diamondMintedAssetEventss?.items?.[0];
+      if (item) {
+        return {
+          name: item.name || '',
+          class: item.asset_class || '',
+          fileHash: '',
+        };
+      }
+    } catch (err) {
+      console.warn(
+        '[DiamondNodeRepository] Indexer fallback also failed for tokenId:',
+        tokenId,
+        err,
+      );
+    }
+    return { name: '', class: '', fileHash: '' };
+  }
+
   private async fetchAssetMetadata(
     tokenId: string,
   ): Promise<{ name: string; class: string; fileHash: string }> {
-    const cached = this.metadataCache.get(tokenId);
-    if (cached) return cached;
-    const inFlight = this.inFlightMetadata.get(tokenId);
-    if (inFlight) return inFlight;
+    // Try Redis cache first
+    const cache = getCache();
+    const cached = await cache.getIpfsMetadata(tokenId);
+    if (cached) {
+      return {
+        name: cached.name || '',
+        class: cached.class || '',
+        fileHash: cached.cid || '',
+      };
+    }
 
-    const lookupPromise = (async (): Promise<{
-      name: string;
-      class: string;
-      fileHash: string;
-    }> => {
-      if (!this.pinata) {
-        console.warn(
-          '[DiamondNodeRepository] Pinata not available for metadata fetch',
-        );
-        return { name: '', class: '', fileHash: '' };
-      }
-
-      try {
-        const list = await this.withPinataRetry(() =>
-          this.pinata!.files.public.list().keyvalues({ tokenId }).all(),
-        );
-
-        if (!list || list.length === 0) {
-          console.warn(
-            '[DiamondNodeRepository] No IPFS files found for tokenId:',
-            tokenId,
-          );
-          return { name: '', class: '', fileHash: '' };
-        }
-
-        const item = list[0];
-        const cid = item.cid;
-
-        const { data } = await this.withPinataRetry<any>(() =>
-          this.pinata!.gateways.public.get(cid),
-        );
-        const json = typeof data === 'string' ? JSON.parse(data) : data;
-
-        // Extract class from multiple possible fields
-        const assetClass =
-          (json.className as string) ||
-          (json.class as string) ||
-          (json.assetClass as string) ||
-          (json.asset?.assetClass as string) ||
-          '';
-
-        const result = {
-          name: (json.name as string) || (json.asset?.name as string) || '',
-          class: assetClass,
-          fileHash: cid,
+    if (!this.pinata) {
+      const { asset, cid } = await fetchAssetByTokenIdFromMetadataApi(tokenId);
+      if (asset) {
+        return {
+          name: asset.name,
+          class: asset.assetClass,
+          fileHash: cid || '',
         };
-        this.metadataCache.set(tokenId, result);
-        return result;
-      } catch (error) {
-        console.error(
-          `[DiamondNodeRepository] Failed to fetch IPFS metadata for token ${tokenId}:`,
-          error,
-        );
-        return { name: '', class: '', fileHash: '' };
       }
-    })();
+      return this.fetchMetadataFromIndexer(tokenId);
+    }
 
-    this.inFlightMetadata.set(tokenId, lookupPromise);
     try {
-      return await lookupPromise;
-    } finally {
-      this.inFlightMetadata.delete(tokenId);
+      const list = await this.withPinataRetry(() =>
+        this.pinata!.files.public.list().keyvalues({ tokenId }).all(),
+      );
+
+      if (!list || list.length === 0) {
+        console.warn(
+          '[DiamondNodeRepository] No IPFS files found for tokenId:',
+          tokenId,
+        );
+        // Fallback: try indexer MintedAsset events for metadata
+        return this.fetchMetadataFromIndexer(tokenId);
+      }
+
+      const item = list[0];
+      const cid = item.cid;
+
+      const { data } = await this.withPinataRetry<any>(() =>
+        this.pinata!.gateways.public.get(cid),
+      );
+      const json = typeof data === 'string' ? JSON.parse(data) : data;
+
+      // Extract class from multiple possible fields
+      const assetClass =
+        (json.className as string) ||
+        (json.class as string) ||
+        (json.assetClass as string) ||
+        (json.asset?.assetClass as string) ||
+        '';
+
+      const result = {
+        name: (json.name as string) || (json.asset?.name as string) || '',
+        class: assetClass,
+        fileHash: cid,
+      };
+
+      // Cache in Redis (permanent - immutable metadata)
+      await cache.setIpfsMetadata(tokenId, {
+        name: result.name,
+        class: result.class,
+        cid: result.fileHash,
+      });
+
+      return result;
+    } catch (error) {
+      console.error(
+        `[DiamondNodeRepository] Failed to fetch IPFS metadata for token ${tokenId}:`,
+        error,
+      );
+      return { name: '', class: '', fileHash: '' };
     }
   }
 
@@ -279,10 +379,7 @@ export class DiamondNodeRepository implements NodeRepository {
 
       // In Diamond, nodes are identified by bytes32 hash
       // For compatibility, we treat the address as a hash or query by owner
-      const nodeHash =
-        nodeAddress.startsWith('0x') && nodeAddress.length === 66
-          ? nodeAddress // Already a bytes32 hash
-          : ethers.zeroPadValue(nodeAddress, 32); // Convert address to bytes32
+      const nodeHash = this.toBytes32NodeHash(nodeAddress);
 
       const nodeData = await diamond.getNode(nodeHash);
 
@@ -290,14 +387,33 @@ export class DiamondNodeRepository implements NodeRepository {
         return null;
       }
 
-      // Get node assets from Diamond
+      // Use live on-chain tokenNodeCustodyAmounts as capacity source of truth.
+      // nodeAssets.capacity is set at mint time and never decrements on sales or
+      // redemptions — using it as a floor permanently overstates capacity after any
+      // settled order. Live custody is authoritative.
       const nodeAssets = await diamond.getNodeAssets(nodeHash);
-      const assets: NodeAsset[] = nodeAssets.map((asset: any) => ({
-        token: asset.token,
-        tokenId: asset.tokenId.toString(),
-        price: BigInt(asset.price),
-        capacity: Number(asset.capacity),
-      }));
+      const assets: NodeAsset[] = await Promise.all(
+        nodeAssets.map(async (asset: any) => {
+          const tokenId = BigInt(asset.tokenId.toString());
+          const custodyAmount = await diamond.getNodeCustodyInfo(
+            tokenId,
+            nodeHash,
+          );
+          // Live custody IS the capacity — don't use registeredCapacity as floor.
+          // If custody somehow reads 0 for a newly-minted token (race before first
+          // settlement), fall back to registeredCapacity only in that case.
+          const registeredCapacity = BigInt(asset.capacity.toString());
+          const effectiveCapacity =
+            custodyAmount > 0n ? custodyAmount : registeredCapacity;
+
+          return {
+            token: asset.token,
+            tokenId: asset.tokenId.toString(),
+            price: BigInt(asset.price),
+            capacity: Number(effectiveCapacity),
+          };
+        }),
+      );
 
       return {
         address: nodeAddress,
@@ -358,13 +474,13 @@ export class DiamondNodeRepository implements NodeRepository {
    * Get tokenized assets for a node
    *
    * Strategy:
-   * 1. Get the node's inventory from Diamond (which tokens are credited to this node)
+   * 1. Get the node's inventory from Diamond (which tokens are configured on this node)
    * 2. Query raw events from indexer for asset metadata
-   * 3. Fetch actual ERC1155 balances from on-chain (source of truth)
+   * 3. Fetch node sellable amounts from on-chain (source of truth for sell actions)
    *
-   * Note: The 'amount' field now reflects the ACTUAL ERC1155 balance of the
-   * node owner, which correctly accounts for tokens escrowed in active orders.
-   * 'capacity' is retained as the registered maximum.
+   * Note: The 'amount' field reflects owner-node sellable balance.
+   * Custody remains a separate metric and is only used to keep operational
+   * capacity from displaying below node-held custody.
    */
   async getNodeAssets(nodeAddress: string): Promise<TokenizedAsset[]> {
     try {
@@ -375,54 +491,41 @@ export class DiamondNodeRepository implements NodeRepository {
         return [];
       }
 
-      // Step 2: Query raw events to get asset details
-      // In the pure dumb indexer, we query diamondSupportedAssetAddedEventss
-      // for all assets and filter by nodeHash
-      const response = await graphqlRequest<AssetEventsResponse>(
-        this.graphQLEndpoint,
-        GET_SUPPORTED_ASSET_ADDED_EVENTS,
-        { limit: 1000 },
-      );
-
-      const allAssets = response.diamondSupportedAssetAddedEventss?.items || [];
-
-      // Step 3: Get the node owner address for ERC1155 balance lookups
-      const nodeOwner = node.owner;
       const diamond = this.context.getDiamond();
+      const nodeHash = this.toBytes32NodeHash(nodeAddress);
 
-      // Step 4: Fetch IPFS metadata and actual ERC1155 balances for each asset
+      // Fetch IPFS metadata and use node sellable balances as primary quantity.
       const assetsWithMetadata = await this.mapWithConcurrency(
         node.assets,
         3,
-        async (nodeAsset) => {
-          // Find matching raw event for this asset on this node
-          const rawEvent = allAssets.find(
-            (e) =>
-              e.node_hash?.toLowerCase() === nodeAddress.toLowerCase() &&
-              e.token_id === nodeAsset.tokenId,
+        async (nodeAsset: {
+          token: string;
+          tokenId: bigint | { toString(): string };
+          price: bigint | { toString(): string };
+          capacity: bigint | { toString(): string };
+        }) => {
+          const tokenId = nodeAsset.tokenId.toString();
+          const tokenIdBigInt = BigInt(tokenId);
+          // Fetch IPFS metadata
+          const metadata = await this.fetchAssetMetadata(tokenId);
+          const sellableAmount = await this.getOwnerNodeSellableAmount(
+            node.owner,
+            tokenIdBigInt,
+            nodeHash,
+          );
+          const custodyAmount = await diamond.getNodeCustodyInfo(
+            tokenIdBigInt,
+            nodeHash,
           );
 
-          // Fetch IPFS metadata
-          const metadata = await this.fetchAssetMetadata(nodeAsset.tokenId);
-
-          // Fetch actual ERC1155 balance of the node owner (source of truth).
-          // This naturally excludes tokens escrowed in the Diamond for active orders.
-          let actualBalance: string;
-          try {
-            const bal = await diamond.balanceOf(nodeOwner, nodeAsset.tokenId);
-            actualBalance = bal.toString();
-          } catch (e) {
-            console.warn(
-              '[DiamondNodeRepository] balanceOf failed for token',
-              nodeAsset.tokenId,
-              '— falling back to capacity',
-            );
-            actualBalance = nodeAsset.capacity.toString();
-          }
+          // Live custody is source of truth — registeredCapacity never decrements
+          const registeredCapacity = BigInt(nodeAsset.capacity.toString());
+          const effectiveCapacity =
+            custodyAmount > 0n ? custodyAmount : registeredCapacity;
 
           return {
-            id: nodeAsset.tokenId,
-            amount: actualBalance,
+            id: tokenId,
+            amount: sellableAmount.toString(),
             name: metadata.name,
             class: metadata.class || 'Unknown',
             fileHash: metadata.fileHash,
@@ -433,7 +536,7 @@ export class DiamondNodeRepository implements NodeRepository {
               location: { lat: '0', lng: '0' },
             },
             price: nodeAsset.price.toString(),
-            capacity: nodeAsset.capacity.toString(),
+            capacity: effectiveCapacity.toString(),
           };
         },
       );
@@ -506,35 +609,59 @@ export class DiamondNodeRepository implements NodeRepository {
     const owner = ownerAddress?.toLowerCase();
 
     try {
-      // 1. Fetch CLOB orders + logistics data
-      const [orderResponse, logisticsResponse] = await Promise.all([
-        graphqlRequest<UnifiedOrderEventsResponse>(
-          this.graphQLEndpoint,
-          GET_ALL_UNIFIED_ORDER_EVENTS,
-          { limit: 500 },
-        ),
-        graphqlRequest<LogisticsEventsResponse>(
-          this.graphQLEndpoint,
-          GET_LOGISTICS_ORDER_CREATED_EVENTS,
-          { limit: 500 },
-        ),
-      ]);
+      // 0. Fetch the set of token IDs this specific node supports.
+      //    Used below to filter old-format P2P orders that lack a per-node-hash
+      //    link (the AuSysOrderCreated event only stored wallet addresses, not
+      //    bytes32 node hashes). Cross-referencing by token_id correctly scopes
+      //    orders to nodes that actually hold the relevant inventory.
+      const supportedAssetsResp = await graphqlRequest<AssetEventsResponse>(
+        this.graphQLEndpoint,
+        GET_SUPPORTED_ASSET_ADDED_EVENTS,
+        { limit: 1000 },
+      );
+      const nodeTokenIds = new Set(
+        (supportedAssetsResp.diamondSupportedAssetAddedEventss?.items || [])
+          .filter((a) => a.node_hash?.toLowerCase() === hash)
+          .map((a) => a.token_id?.toLowerCase()),
+      );
 
-      const logisticsItems =
-        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items || [];
+      // 1. Fetch CLOB orders + logistics data via the unified query.
+      //    GET_ALL_UNIFIED_ORDER_EVENTS uses GQL aliases: created / logistics /
+      //    journeyUpdates / settled — NOT diamondUnifiedOrderCreatedEventss.
+      const orderResponse = await graphqlRequest<UnifiedOrderEventsResponse>(
+        this.graphQLEndpoint,
+        GET_ALL_UNIFIED_ORDER_EVENTS,
+        { limit: 500 },
+      );
 
-      // Find order IDs linked to this node via the logistics `node` field
+      const logisticsItems = orderResponse.logistics?.items || [];
+
+      // Derive the 20-byte address from the bytes32 node hash once, reused
+      // throughout this method. LogisticsOrderCreated emits `address node`
+      // (20-byte, 42 chars), but selectedNodeAddress is bytes32 (66 chars).
+      // Both formats must be checked wherever we compare against indexed data.
+      const nodeAddr20 =
+        hash.length === 66
+          ? ('0x' + hash.slice(-40)).toLowerCase()
+          : hash.toLowerCase();
+
+      // Find order IDs linked to this node via the logistics `node` field.
+      // Check both the bytes32 hash and the derived 20-byte address so new
+      // BridgeFacet orders (address node) match correctly.
       const nodeLinkedOrderIds = new Set(
         logisticsItems
-          .filter((l) => l.node?.toLowerCase() === hash)
+          .filter((l) => {
+            const n = l.node?.toLowerCase();
+            return n === hash || n === nodeAddr20;
+          })
           .map((l) => l.unified_order_id.toLowerCase()),
       );
 
       const allAggregated = aggregateUnifiedOrders({
-        created: orderResponse.diamondUnifiedOrderCreatedEventss?.items || [],
+        created: orderResponse.created?.items || [],
         logistics: logisticsItems,
-        journeyUpdates: [],
-        settled: [],
+        journeyUpdates: orderResponse.journeyUpdates?.items || [],
+        settled: orderResponse.settled?.items || [],
       });
 
       // Build logistics lookup for order → logistics data
@@ -542,13 +669,12 @@ export class DiamondNodeRepository implements NodeRepository {
         logisticsItems.map((l) => [l.unified_order_id.toLowerCase(), l]),
       );
 
-      // Filter CLOB: linked via logistics node field, OR seller/buyer matches owner wallet
+      // Filter CLOB orders strictly by logistics node linkage for this node.
+      // Owner-level matching causes the same order set to appear under every
+      // node owned by the same wallet.
       const clobOrders = allAggregated.filter((order) => {
         const oid = order.unifiedOrderId.toLowerCase();
-        if (nodeLinkedOrderIds.has(oid)) return true;
-        if (owner && order.seller.toLowerCase() === owner) return true;
-        if (owner && order.buyer.toLowerCase() === owner) return true;
-        return false;
+        return nodeLinkedOrderIds.has(oid);
       });
 
       // 2. Fetch P2P orders where the node OWNER is creator or acceptor
@@ -566,6 +692,7 @@ export class DiamondNodeRepository implements NodeRepository {
         p2pCreatedResp,
         p2pAcceptedResp,
         allP2PCreatedResp,
+        allAcceptedResp,
         statusResp,
         journeysResp,
         journeyStatusResp,
@@ -583,6 +710,11 @@ export class DiamondNodeRepository implements NodeRepository {
         graphqlRequest<P2POfferDetailsResponse>(
           this.graphQLEndpoint,
           GET_P2P_OFFER_DETAILS_BY_ORDER_IDS,
+          { limit: 500 },
+        ),
+        graphqlRequest<AllP2POfferAcceptedEventsResponse>(
+          this.graphQLEndpoint,
+          GET_ALL_P2P_OFFER_ACCEPTED_EVENTS,
           { limit: 500 },
         ),
         graphqlRequest<AuSysOrderStatusUpdatesResponse>(
@@ -606,6 +738,7 @@ export class DiamondNodeRepository implements NodeRepository {
         p2pCreatedResp.diamondP2POfferCreatedEventss?.items || [],
         p2pAcceptedResp.diamondP2POfferAcceptedEventss?.items || [],
         allP2PCreatedResp.diamondP2POfferCreatedEventss?.items || [],
+        allAcceptedResp.diamondP2POfferAcceptedEventss?.items || [],
         statusResp.diamondAuSysOrderStatusUpdatedEventss?.items || [],
         queryAddr,
         journeysResp.diamondJourneyCreatedEventss?.items || [],
@@ -625,25 +758,53 @@ export class DiamondNodeRepository implements NodeRepository {
         }
       }
 
+      // Build map of order_id -> journey sender for P2P order filtering
+      // This allows filtering P2P orders by the actual node that created the journey
+      const orderSenderMap = new Map<string, string>();
+      const journeyItems =
+        journeysResp.diamondJourneyCreatedEventss?.items || [];
+      for (const journey of journeyItems) {
+        const oid = journey.order_id?.toLowerCase();
+        if (oid && journey.sender) {
+          // Keep the first sender encountered for each order
+          if (!orderSenderMap.has(oid)) {
+            orderSenderMap.set(oid, journey.sender.toLowerCase());
+          }
+        }
+      }
+
       for (const order of p2pOrders) {
         const oid = order.id.toLowerCase();
         if (seenIds.has(oid)) continue;
 
-        // For P2P orders, only include if the specific node is referenced
-        // in the order's nodes array or seller field. This prevents the
-        // same P2P order from appearing under every node owned by the
-        // same wallet.
+        // For node dashboards, include P2P orders only when this node is
+        // explicitly linked by the order metadata or the created journey.
+        //
+        // Old AuSysOrderCreated events stored wallet addresses (not bytes32
+        // node hashes) in the `nodes` field, so we check both formats.
+        // When no explicit node link exists (pre-scoping-change orders),
+        // fall back to: is the order's token_id one this node supports?
+        // This correctly scopes orders to the node holding the inventory
+        // without leaking orders onto sibling nodes of the same wallet.
         const orderNodes = (order.nodes || []).map((n) => n.toLowerCase());
-        const isLinkedToThisNode =
-          orderNodes.includes(hash) || order.seller?.toLowerCase() === hash;
-        // If the order has no node references (common for P2P), fall back
-        // to showing it only on the first node to avoid duplicates.
-        const hasNoNodeRef =
-          orderNodes.length === 0 ||
-          orderNodes.every(
-            (n) => n === ethers.ZeroAddress.toLowerCase() || n === '',
-          );
-        if (!isLinkedToThisNode && !hasNoNodeRef) continue;
+        const journeySender = orderSenderMap.get(oid);
+        const sellerLc = order.seller?.toLowerCase();
+        const orderTokenId = order.tokenId?.toLowerCase();
+
+        const hasExplicitNodeLink =
+          orderNodes.includes(hash) ||
+          orderNodes.includes(nodeAddr20) ||
+          sellerLc === hash ||
+          sellerLc === nodeAddr20 ||
+          journeySender === hash ||
+          journeySender === nodeAddr20;
+
+        const hasTokenIdLink =
+          nodeTokenIds.size > 0 &&
+          orderTokenId != null &&
+          nodeTokenIds.has(orderTokenId);
+
+        if (!hasExplicitNodeLink && !hasTokenIdLink) continue;
 
         seenIds.add(oid);
         allOrders.push(order);
@@ -719,20 +880,32 @@ export class DiamondNodeRepository implements NodeRepository {
     fileHash: string,
   ): Promise<TokenizedAssetAttribute[]> {
     if (!this.pinata) {
-      console.warn(
-        '[DiamondNodeRepository] getAssetAttributes: Pinata not configured, returning empty array',
-      );
-      return [];
+      const records = await fetchAssetRecordsByHashFromMetadataApi(fileHash);
+      const first = records[0];
+      const attrs = first?.asset?.attributes || [];
+      return attrs.map((a) => ({
+        name: a.name,
+        value: a.values && a.values.length > 0 ? a.values[0] : '',
+        description: a.description || '',
+      }));
     }
 
     try {
+      // Get chain-specific IPFS group
+      const chainId =
+        typeof (this.context as { getChainId?: () => number }).getChainId ===
+        'function'
+          ? (this.context as { getChainId: () => number }).getChainId()
+          : 84532;
+      const groupId = getIpfsGroupId(chainId);
+
       // Prefer lookup by hash keyvalue when available; fall back to tokenId lookup if that fails
       let records: import('@/domain/platform').AssetIpfsRecord[] = [];
       if (fileHash && fileHash.length > 0) {
-        records = await hashToAssets(fileHash, this.pinata);
+        records = await hashToAssets(fileHash, this.pinata, groupId);
       }
       if ((!records || records.length === 0) && /^(\d+)$/.test(fileHash)) {
-        records = await tokenIdToAssets(fileHash, this.pinata);
+        records = await tokenIdToAssets(fileHash, this.pinata, groupId);
       }
 
       if (!records || records.length === 0) {
@@ -823,11 +996,14 @@ export class DiamondNodeRepository implements NodeRepository {
             ? newAmount.toString()
             : existingAmount.toString();
 
-        // Capacity is an on-chain per-registration limit. Sum is correct
-        // here since each registration adds capacity.
+        // Capacity is a node-level operational limit. Registrations add
+        // capacity, but it should never display below live node custody.
         const existingCapacity = BigInt(existing.capacity || '0');
         const newCapacity = BigInt(asset.capacity || '0');
-        existing.capacity = (existingCapacity + newCapacity).toString();
+        const summedCapacity = existingCapacity + newCapacity;
+        existing.capacity = (
+          summedCapacity > existingAmount ? summedCapacity : existingAmount
+        ).toString();
       } else {
         aggregated.set(asset.id, { ...asset });
       }

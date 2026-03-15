@@ -758,6 +758,7 @@ export function aggregateP2POrdersForUser(
   createdByUser: P2POfferCreatedRawEvent[],
   acceptedByUser: P2POfferAcceptedRawEvent[],
   allCreatedEvents: P2POfferCreatedRawEvent[],
+  allAcceptedEvents: P2POfferAcceptedRawEvent[],
   statusUpdates: AuSysOrderStatusUpdatedRawEvent[],
   userAddress: string,
   journeyEvents: JourneyCreatedForOrderRawEvent[] = [],
@@ -780,6 +781,14 @@ export function aggregateP2POrdersForUser(
   const createdMap = new Map<string, P2POfferCreatedRawEvent>();
   for (const ce of allCreatedEvents) {
     createdMap.set(ce.order_id.toLowerCase(), ce);
+  }
+
+  const acceptedMap = new Map<string, P2POfferAcceptedRawEvent>();
+  for (const ae of allAcceptedEvents) {
+    const oid = ae.order_id.toLowerCase();
+    if (!acceptedMap.has(oid)) {
+      acceptedMap.set(oid, ae);
+    }
   }
 
   // Build lookup: order_id → journey IDs
@@ -852,10 +861,13 @@ export function aggregateP2POrdersForUser(
     seenOrderIds.add(oid);
 
     const isBuyer = !ce.is_seller_initiated;
+    const accepted = acceptedMap.get(oid);
+    const counterparty =
+      accepted?.acceptor ||
+      ce.target_counterparty ||
+      '0x0000000000000000000000000000000000000000';
     // counterparty = target_counterparty (the other side of the trade)
-    orders.push(
-      buildOrder(ce.order_id, ce, isBuyer, 0, ce.target_counterparty),
-    );
+    orders.push(buildOrder(ce.order_id, ce, isBuyer, 0, counterparty));
   }
 
   // 2) Orders the user accepted (they are the counterparty)

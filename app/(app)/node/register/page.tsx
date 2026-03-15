@@ -42,10 +42,8 @@ import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { useNodes } from '@/app/providers/nodes.provider';
 import { ethers } from 'ethers';
-import {
-  getCurrentWalletAddress,
-  initializeProvider,
-} from '@/dapp-connectors/base-controller';
+import { initializeProvider } from '@/dapp-connectors/base-controller';
+import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { usePlatform } from '@/app/providers/platform.provider';
@@ -56,12 +54,12 @@ const formSchema = z.object({
   addressName: z.string().min(3, {
     message: 'Location name must be at least 3 characters.',
   }),
-  lat: z.string().regex(/^-?\d+\.\d+$/, {
-    message: 'Please enter a valid latitude',
-  }),
-  lng: z.string().regex(/^-?\d+\.\d+$/, {
-    message: 'Please enter a valid longitude',
-  }),
+  // lat/lng are set programmatically by the Google Places callback.
+  // We allow empty strings here so Zod passes even before a place is selected;
+  // the onSubmit guard below catches the missing-coordinates case and surfaces
+  // a user-visible error on the addressName field (which HAS a <FormMessage />).
+  lat: z.string(),
+  lng: z.string(),
   supportedAssets: z.array(z.string()).min(1, {
     message: 'Please select at least one supported asset.',
   }),
@@ -164,9 +162,13 @@ export default function NodeRegistrationPage() {
         { shouldDirty: true },
       );
     }
-  }, [form.watch('supportedAssets')]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.watch('supportedAssets')]); // form excluded: stable reference, watching specific field
 
   useEffect(() => {
+    // Only attempt MetaMask initialisation when NOT in E2E test mode;
+    // in E2E mode the RepositoryContext is already seeded with the test signer.
+    if (process.env.NEXT_PUBLIC_E2E_TEST_MODE === 'true') return;
     const init = async () => {
       try {
         await initializeProvider();
@@ -188,7 +190,20 @@ export default function NodeRegistrationPage() {
         return;
       }
 
-      const walletAddress = await getCurrentWalletAddress();
+      // Ensure lat/lng were set by the Places autocomplete.
+      // They pass Zod's regex but may still be empty if the user typed
+      // a location without selecting from the dropdown.
+      if (!values.lat || !values.lng) {
+        form.setError('addressName', {
+          type: 'manual',
+          message:
+            'Please select a location from the dropdown to set coordinates.',
+        });
+        return;
+      }
+
+      const walletAddress =
+        await RepositoryContext.getInstance().getSignerAddress();
       if (!walletAddress) {
         toast({
           title: 'Error',
@@ -224,9 +239,11 @@ export default function NodeRegistrationPage() {
       router.push('/node/overview');
     } catch (error) {
       console.error('Error registering node:', error);
+      const description =
+        error instanceof Error ? error.message : 'Failed to register node';
       toast({
         title: 'Error',
-        description: 'Failed to register node',
+        description,
         variant: 'destructive',
       });
     }
@@ -268,7 +285,12 @@ export default function NodeRegistrationPage() {
           status="pending"
         >
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form
+              onSubmit={form.handleSubmit(onSubmit, (errs) =>
+                console.error('[register] Zod errors', JSON.stringify(errs)),
+              )}
+              className="space-y-6"
+            >
               {/* Location Section */}
               <div className="space-y-4">
                 <EvaSectionMarker
@@ -440,6 +462,7 @@ export default function NodeRegistrationPage() {
                 <GreekKeyStrip color="crimson" />
                 <div className="pt-4">
                   <TrapButton
+                    type="submit"
                     variant="gold"
                     size="lg"
                     className="w-full"

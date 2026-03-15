@@ -1,5 +1,5 @@
 // Auto-generated GraphQL types - DO NOT EDIT
-// Generated at: 2026-03-03T07:50:03.657Z
+// Generated at: 2026-03-11T00:43:03.889Z
 //
 // This file provides type-safe GraphQL query helpers for Ponder tables.
 // All table names and field names are derived from the schema generator.
@@ -177,10 +177,6 @@ export const TABLE_DIAMOND_P2_P_OFFER_CREATED_EVENTS =
   'diamondP2POfferCreatedEventss' as const;
 export const TABLE_DIAMOND_SELLER_PAID_EVENTS =
   'diamondSellerPaidEventss' as const;
-export const TABLE_DIAMOND_TOKEN_DESTINATION_PENDING_EVENTS =
-  'diamondTokenDestinationPendingEventss' as const;
-export const TABLE_DIAMOND_TOKEN_DESTINATION_SELECTED_EVENTS =
-  'diamondTokenDestinationSelectedEventss' as const;
 export const TABLE_DIAMOND_APPROVAL_FOR_ALL_EVENTS =
   'diamondApprovalForAllEventss' as const;
 export const TABLE_DIAMOND_ASSET_ATTRIBUTE_ADDED_EVENTS =
@@ -287,8 +283,6 @@ export const VALID_TABLE_NAMES = [
   'diamondP2POfferCanceledEventss',
   'diamondP2POfferCreatedEventss',
   'diamondSellerPaidEventss',
-  'diamondTokenDestinationPendingEventss',
-  'diamondTokenDestinationSelectedEventss',
   'diamondApprovalForAllEventss',
   'diamondAssetAttributeAddedEventss',
   'diamondCustodyEstablishedEventss',
@@ -1227,28 +1221,6 @@ export interface diamondSellerPaidEvent {
   transaction_hash: string;
 }
 
-export interface diamondTokenDestinationPendingEvent {
-  id: string;
-  order_id: string;
-  buyer: string;
-  token_id: string;
-  quantity: string;
-  block_number: string;
-  block_timestamp: string;
-  transaction_hash: string;
-}
-
-export interface diamondTokenDestinationSelectedEvent {
-  id: string;
-  order_id: string;
-  destination: string;
-  node_id: string;
-  burned: boolean;
-  block_number: string;
-  block_timestamp: string;
-  transaction_hash: string;
-}
-
 export interface diamondApprovalForAllEvent {
   id: string;
   account: string;
@@ -1704,14 +1676,6 @@ export interface diamondP2POfferCreatedEventsResponse {
 
 export interface diamondSellerPaidEventsResponse {
   diamondSellerPaidEventss: PonderItemsResponse<diamondSellerPaidEvent>;
-}
-
-export interface diamondTokenDestinationPendingEventsResponse {
-  diamondTokenDestinationPendingEventss: PonderItemsResponse<diamondTokenDestinationPendingEvent>;
-}
-
-export interface diamondTokenDestinationSelectedEventsResponse {
-  diamondTokenDestinationSelectedEventss: PonderItemsResponse<diamondTokenDestinationSelectedEvent>;
 }
 
 export interface diamondApprovalForAllEventsResponse {
@@ -2678,28 +2642,6 @@ export const FIELDS_DIAMOND_SELLER_PAID_EVENTS = [
   'transaction_hash',
 ] as const;
 
-export const FIELDS_DIAMOND_TOKEN_DESTINATION_PENDING_EVENTS = [
-  'id',
-  'order_id',
-  'buyer',
-  'token_id',
-  'quantity',
-  'block_number',
-  'block_timestamp',
-  'transaction_hash',
-] as const;
-
-export const FIELDS_DIAMOND_TOKEN_DESTINATION_SELECTED_EVENTS = [
-  'id',
-  'order_id',
-  'destination',
-  'node_id',
-  'burned',
-  'block_number',
-  'block_timestamp',
-  'transaction_hash',
-] as const;
-
 export const FIELDS_DIAMOND_APPROVAL_FOR_ALL_EVENTS = [
   'id',
   'account',
@@ -2928,8 +2870,6 @@ export function getTableName(eventName: string): ValidTableName | undefined {
     P2POfferCanceled: 'diamondP2POfferCanceledEventss',
     P2POfferCreated: 'diamondP2POfferCreatedEventss',
     SellerPaid: 'diamondSellerPaidEventss',
-    TokenDestinationPending: 'diamondTokenDestinationPendingEventss',
-    TokenDestinationSelected: 'diamondTokenDestinationSelectedEventss',
     ApprovalForAll: 'diamondApprovalForAllEventss',
     AssetAttributeAdded: 'diamondAssetAttributeAddedEventss',
     CustodyEstablished: 'diamondCustodyEstablishedEventss',

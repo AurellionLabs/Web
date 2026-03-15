@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { useWallet } from '@/hooks/useWallet';
 import { useMainProvider } from './main.provider';
+import { useE2EAuth } from './e2e-auth.provider';
 import {
   DiamondContext,
   getDiamondContext,
@@ -164,6 +165,10 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
 
   const { connectedWallet, address, isConnected } = useWallet();
   const { connected: mainConnected } = useMainProvider();
+  const IS_E2E = process.env.NEXT_PUBLIC_E2E_TEST_MODE === 'true';
+  // E2E signer comes directly from E2EAuthProvider — do NOT go through
+  // RepositoryContext.getSigner() which requires full initialization first.
+  const { signer: e2eSigner, provider: e2eProvider } = useE2EAuth();
 
   // Track if we're in read-only mode
   const [isReadOnly, setIsReadOnly] = useState(false);
@@ -198,7 +203,16 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
       try {
         const context = getDiamondContext();
 
-        if (isConnected && connectedWallet && address) {
+        if (IS_E2E) {
+          // E2E mode: signer comes directly from E2EAuthProvider (no RepositoryContext needed).
+          // mainConnected is set by WalletConnectionE2E once E2EAuthProvider is ready.
+          if (!mainConnected || !e2eSigner || !e2eProvider) {
+            setLoading(false);
+            return; // Wait for E2EAuthProvider to finish initializing
+          }
+          await context.initializeWithSigner(e2eSigner, e2eProvider);
+          setIsReadOnly(false);
+        } else if (isConnected && connectedWallet && address) {
           // Full initialization with wallet signer
           const ethereumProvider = await connectedWallet.getEthereumProvider();
           const browserProvider = new BrowserProvider(ethereumProvider);
@@ -211,19 +225,21 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
           setIsReadOnly(true);
         }
 
-        // Create Pinata SDK for IPFS metadata fetching
+        // Pinata remains available here for metadata writes during tokenization.
         const pinata = createPinataSDK();
-        if (pinata) {
-        } else {
+        if (!pinata) {
           console.warn(
-            '[DiamondProvider] PINATA_JWT not available, IPFS metadata will not be fetched',
+            '[DiamondProvider] PINATA_JWT not available, metadata uploads will not be available',
           );
         }
 
-        // Create services with Pinata for IPFS metadata
-        const repository = new DiamondNodeRepository(context, pinata);
+        // Read-side metadata resolution now goes through our server metadata API.
+        const repository = new DiamondNodeRepository(context);
         const service = new DiamondNodeService(context);
-        const assetService = new DiamondNodeAssetService(context);
+        const assetService = new DiamondNodeAssetService(
+          context,
+          pinata || undefined,
+        );
         const p2pSvc = new DiamondP2PService(context);
         const p2pRepo = new DiamondP2PRepository(context);
 
@@ -254,6 +270,9 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     initialized,
     diamondContext,
     isReadOnly,
+    mainConnected, // re-run when E2E wallet signals ready
+    e2eSigner, // re-run when E2E signer becomes available
+    e2eProvider, // re-run when E2E provider becomes available
   ]);
 
   // Node operations

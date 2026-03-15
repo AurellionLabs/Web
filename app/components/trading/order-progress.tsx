@@ -7,6 +7,7 @@ import {
   OrderProgressStep,
   useOrderProgressSteps,
 } from '@/hooks/useUnifiedOrder';
+import { UnifiedOrderStatus } from '@/infrastructure/services/order-bridge-service';
 import {
   Check,
   Clock,
@@ -165,6 +166,7 @@ export const OrderProgressComponent: React.FC<OrderProgressComponentProps> = ({
   const mockOrder = order
     ? {
         ...order,
+        status: order.status as UnifiedOrderStatus,
         statusConfig: {
           label: order.status,
           color: '',
@@ -190,10 +192,13 @@ export const OrderProgressComponent: React.FC<OrderProgressComponentProps> = ({
         price: '',
         bounty: '',
         deliveryData: { lat: '', lng: '', name: '' },
+        matchedAt: order.matchedAt ?? 0,
+        deliveredAt: order.deliveredAt ?? 0,
+        settledAt: order.settledAt ?? 0,
       }
     : null;
 
-  const steps = useOrderProgressSteps(mockOrder as any);
+  const steps = useOrderProgressSteps(mockOrder);
 
   if (!order) {
     return (

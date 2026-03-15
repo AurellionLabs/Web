@@ -41,8 +41,9 @@ import {
   GET_EMIT_SIG_EVENTS_BY_JOURNEY,
   type EmitSigEventsByJourneyResponse,
 } from '@/infrastructure/shared/graph-queries';
-import { NEXT_PUBLIC_AUSYS_SUBGRAPH_URL } from '@/chain-constants';
+import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
+import { getJourneyRoleConflictMessage } from '@/utils/journey-role-conflicts';
 
 type TabType = 'available' | 'my-deliveries';
 
@@ -124,7 +125,7 @@ export default function DriverDashboard() {
 
             const sigResponse =
               await graphqlRequest<EmitSigEventsByJourneyResponse>(
-                NEXT_PUBLIC_AUSYS_SUBGRAPH_URL,
+                getCurrentIndexerUrl(),
                 GET_EMIT_SIG_EVENTS_BY_JOURNEY,
                 { journeyId: delivery.jobId, limit: 50 },
               );
@@ -273,20 +274,26 @@ export default function DriverDashboard() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       // Show a user-friendly message for known contract errors
-      let description = 'Failed to accept delivery. Please try again.';
-      if (msg.includes('0x48f5c3ed') || msg.includes('InvalidCaller')) {
-        description =
+      let toastTitle = 'Error';
+      let toastDescription = 'Failed to accept delivery. Please try again.';
+
+      const roleConflictMessage = getJourneyRoleConflictMessage(err);
+      if (roleConflictMessage) {
+        toastTitle = 'Role Mismatch';
+        toastDescription = roleConflictMessage;
+      } else if (msg.includes('0x48f5c3ed') || msg.includes('InvalidCaller')) {
+        toastDescription =
           'Your wallet is not authorized. Ensure you have the Driver role and try refreshing the page.';
       } else if (
         msg.includes('0xd5391167') ||
         msg.includes('DriverMaxAssignment')
       ) {
-        description =
+        toastDescription =
           'Maximum delivery assignments reached. Complete existing deliveries first.';
       }
       toast({
-        title: 'Error',
-        description,
+        title: toastTitle,
+        description: toastDescription,
         variant: 'destructive',
       });
     }
@@ -331,12 +338,19 @@ export default function DriverDashboard() {
         }
       }
     } catch (err) {
+      let toastTitle = 'Error';
+      let toastDescription =
+        err instanceof Error
+          ? err.message
+          : 'Failed to confirm pickup. Please try again.';
+      const roleConflictMessage = getJourneyRoleConflictMessage(err);
+      if (roleConflictMessage) {
+        toastTitle = 'Role Mismatch';
+        toastDescription = roleConflictMessage;
+      }
       toast({
-        title: 'Error',
-        description:
-          err instanceof Error
-            ? err.message
-            : 'Failed to confirm pickup. Please try again.',
+        title: toastTitle,
+        description: toastDescription,
         variant: 'destructive',
       });
     }
@@ -373,12 +387,21 @@ export default function DriverDashboard() {
         });
       }
     } catch (err) {
+      let toastTitle = 'Error';
+      let toastDescription =
+        err instanceof Error
+          ? err.message
+          : 'Failed to sign for delivery. Please try again.';
+
+      const roleConflictMessage = getJourneyRoleConflictMessage(err);
+      if (roleConflictMessage) {
+        toastTitle = 'Role Mismatch';
+        toastDescription = roleConflictMessage;
+      }
+
       toast({
-        title: 'Error',
-        description:
-          err instanceof Error
-            ? err.message
-            : 'Failed to sign for delivery. Please try again.',
+        title: toastTitle,
+        description: toastDescription,
         variant: 'destructive',
       });
     }
@@ -401,14 +424,30 @@ export default function DriverDashboard() {
   }
 
   if (error) {
+    const isMaxAssignments =
+      error.includes('0xd5391167') ||
+      error.includes('DriverMaxAssignment') ||
+      error.includes('Maximum delivery assignments');
+    const errorTitle = isMaxAssignments
+      ? 'Maximum Assignments Reached'
+      : 'Error Loading Deliveries';
+    const errorHint = isMaxAssignments
+      ? 'Complete or cancel existing deliveries before accepting new ones. Stuck InTransit journeys need the receiver to sign for delivery.'
+      : undefined;
+
     return (
       <div className="min-h-screen p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
           <EvaPanel label="System Error" accent="crimson" status="warning">
             <h2 className="font-mono text-lg font-bold tracking-[0.15em] uppercase text-crimson mb-2">
-              Error Loading Deliveries
+              {errorTitle}
             </h2>
             <p className="font-mono text-xs text-foreground/90 mb-4">{error}</p>
+            {errorHint && (
+              <p className="font-mono text-xs text-foreground/70 mb-4 italic">
+                {errorHint}
+              </p>
+            )}
             <TrapButton variant="crimson" onClick={() => refreshDeliveries()}>
               TRY AGAIN
             </TrapButton>

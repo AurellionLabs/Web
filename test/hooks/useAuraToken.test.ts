@@ -45,6 +45,7 @@ vi.mock('@/hooks/useWallet', () => ({
 }));
 
 vi.mock('@/chain-constants', () => ({
+  getIndexerUrl: () => 'http://localhost:42069',
   NEXT_PUBLIC_AURA_TOKEN_ADDRESS: '0xAura000000000000000000000000000000000001',
 }));
 

@@ -231,26 +231,30 @@
 /* Ticker / Marquee scroll */
 @keyframes ticker {
   0% {
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
   100% {
-    transform: translateX(-50%);
+    transform: translate3d(-50%, 0, 0);
   }
 }
 .animate-ticker {
   animation: ticker 60s linear infinite;
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 @keyframes ticker-fast {
   0% {
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
   100% {
-    transform: translateX(-50%);
+    transform: translate3d(-50%, 0, 0);
   }
 }
 .animate-ticker-fast {
   animation: ticker-fast 25s linear infinite;
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 /* EVA pulse — status indicator breathing */

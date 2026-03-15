@@ -9,6 +9,7 @@ const AUSYS_SETTLEMENT_ABI = [
 
 const ASSETS_FACET_ABI = [
   'function getCustodyInfo(uint256 tokenId, address custodian) external view returns (uint256 amount)',
+  'function getNodeCustodyInfo(uint256 tokenId, bytes32 nodeHash) external view returns (uint256 amount)',
 ];
 
 const ERC1155_ABI = [
@@ -147,12 +148,63 @@ export class SettlementService {
       signer,
     );
 
-    const tx = await contract.selectTokenDestination(
-      orderId,
-      effectiveNodeId,
-      burn,
+    let txConfirmed = false;
+    try {
+      const tx = await contract.selectTokenDestination(
+        orderId,
+        effectiveNodeId,
+        burn,
+      );
+      await tx.wait();
+      txConfirmed = true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // NoPendingDestination (0x253a5c51) — destination was already selected
+      // in a previous TX (e.g. user retried after a UI timeout). Treat as success.
+      if (msg.includes('0x253a5c51') || msg.includes('NoPendingDestination')) {
+        console.warn(
+          '[SettlementService] selectDestination: destination already selected (NoPendingDestination). Treating as success.',
+        );
+        return;
+      }
+      throw err;
+    }
+
+    if (txConfirmed) {
+      const signerAddress = await signer.getAddress();
+      await this.waitForPendingOrderClear(contract, signerAddress, orderId);
+    }
+  }
+
+  private async waitForPendingOrderClear(
+    contract: ethers.Contract,
+    buyerAddress: string,
+    orderId: string,
+  ): Promise<void> {
+    const normalizedOrderId = orderId.toLowerCase();
+
+    for (let attempt = 0; attempt < 6; attempt++) {
+      if (attempt > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+      }
+
+      const pendingOrderIds: string[] =
+        await contract.getPendingTokenDestinations(buyerAddress);
+      const stillPending = pendingOrderIds.some(
+        (pendingOrderId) => pendingOrderId.toLowerCase() === normalizedOrderId,
+      );
+
+      if (!stillPending) {
+        return;
+      }
+    }
+
+    // Transaction was confirmed on-chain but the pending list hasn't cleared
+    // within the polling window. This is a UI timing issue — the destination
+    // was successfully selected. Log and continue rather than surface as error.
+    console.warn(
+      '[SettlementService] waitForPendingOrderClear: TX confirmed but pending list not yet updated. Continuing.',
     );
-    await tx.wait();
   }
 
   // ---------------------------------------------------------------------------
@@ -173,6 +225,24 @@ export class SettlementService {
     const amount: bigint = await contract.getCustodyInfo(
       BigInt(tokenId),
       custodian,
+    );
+    return amount;
+  }
+
+  /**
+   * Queries `getNodeCustodyInfo(tokenId, nodeHash)` on the Diamond (AssetsFacet).
+   * Returns how much of the token is custodied at a specific node (not wallet).
+   */
+  async getNodeCustodyInfo(tokenId: string, nodeHash: string): Promise<bigint> {
+    const provider = this.repositoryContext.getProvider();
+    const contract = new ethers.Contract(
+      NEXT_PUBLIC_DIAMOND_ADDRESS,
+      ASSETS_FACET_ABI,
+      provider,
+    );
+    const amount: bigint = await contract.getNodeCustodyInfo(
+      BigInt(tokenId),
+      nodeHash,
     );
     return amount;
   }

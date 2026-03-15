@@ -5,7 +5,7 @@ import { DiamondStorage } from '../libraries/DiamondStorage.sol';
 import { LibDiamond } from '../libraries/LibDiamond.sol';
 import { Initializable } from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
-import { ReentrancyGuard } from '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
+import { DiamondReentrancyGuard } from '../libraries/DiamondReentrancyGuard.sol';
 
 /**
  * @dev Interface for OrderRouterFacet - SINGLE ENTRY POINT for all order operations
@@ -45,7 +45,9 @@ interface ICLOBFacet {
  * @notice Business logic facet for node registration, management, and node assets
  * @dev Combines AurumNodeManager + NodeAsset functionality
  */
-contract NodesFacet is Initializable, ReentrancyGuard {
+contract NodesFacet is Initializable, DiamondReentrancyGuard {
+    bytes32 public constant NODE_REGISTRAR_ROLE = keccak256('NODE_REGISTRAR_ROLE');
+
     // Events matching original AurumNodeManager
     event NodeRegistered(
         bytes32 indexed nodeHash,
@@ -107,6 +109,7 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         uint256 amount,
         address indexed depositor
     );
+    event NodeRegistrarUpdated(address indexed registrar, bool enabled);
 
     // Supporting document events
     event SupportingDocumentAdded(
@@ -119,6 +122,42 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         uint256 indexed timestamp,
         address indexed addedBy
     );
+
+    function _setNodeRegistrar(
+        DiamondStorage.AppStorage storage s,
+        address registrar,
+        bool enable
+    ) internal {
+        bool wasEnabled = s.nodeRegistrars[registrar];
+        if (wasEnabled == enable) {
+            return;
+        }
+
+        s.nodeRegistrars[registrar] = enable;
+
+        if (enable) {
+            s.nodeRegistrarList.push(registrar);
+            s.nodeRegistrarIndex[registrar] = s.nodeRegistrarList.length;
+            return;
+        }
+
+        uint256 indexPlusOne = s.nodeRegistrarIndex[registrar];
+        if (indexPlusOne == 0) {
+            return;
+        }
+
+        uint256 index = indexPlusOne - 1;
+        uint256 lastIndex = s.nodeRegistrarList.length - 1;
+
+        if (index != lastIndex) {
+            address movedRegistrar = s.nodeRegistrarList[lastIndex];
+            s.nodeRegistrarList[index] = movedRegistrar;
+            s.nodeRegistrarIndex[movedRegistrar] = index + 1;
+        }
+
+        s.nodeRegistrarList.pop();
+        delete s.nodeRegistrarIndex[registrar];
+    }
     event SupportingDocumentRemoved(
         bytes32 indexed nodeHash,
         string url,
@@ -126,7 +165,9 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         address indexed removedBy
     );
 
-    function initialize() public initializer {}
+    function initialize() public initializer {
+        LibDiamond.enforceIsContractOwner();
+    }
 
     // ======= ADMIN FUNCTIONS =======
 
@@ -171,6 +212,11 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         string memory _lng
     ) external returns (bytes32 nodeHash) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        require(s.nodeRegistrars[msg.sender], 'Not allowed node registrar');
+        // L-03: Enforce node cap per registrar
+        if (s.maxNodesPerRegistrar > 0) {
+            require(s.ownerNodes[msg.sender].length < s.maxNodesPerRegistrar, 'Exceeds max nodes per registrar');
+        }
 
         nodeHash = keccak256(
             abi.encodePacked(msg.sender, block.timestamp, s.totalNodes)
@@ -273,9 +319,12 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         require(s.nodes[_node].owner == msg.sender, 'Not node owner');
 
+        // Use unchecked math for gas savings - sum of uint256 array elements can't overflow
         uint256 newCapacity = 0;
-        for (uint256 i = 0; i < _quantities.length; i++) {
-            newCapacity += _quantities[i];
+        unchecked {
+            for (uint256 i = 0; i < _quantities.length; i++) {
+                newCapacity += _quantities[i];
+            }
         }
         s.nodes[_node].capacity = newCapacity;
 
@@ -433,7 +482,8 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         // Check if this address is a node owner with an active node
         // ownerNodes maps wallet address => array of node hashes they own
         bytes32[] storage ownerNodes = s.ownerNodes[_node];
-        for (uint256 i = 0; i < ownerNodes.length; i++) {
+        uint256 nodeCount = ownerNodes.length;
+        for (uint256 i = 0; i < nodeCount; i++) {
             // Cache node to avoid repeated SLOAD (saves ~3000 gas per iteration)
             DiamondStorage.Node storage nodeData = s.nodes[ownerNodes[i]];
             if (nodeData.active && nodeData.validNode) {
@@ -520,15 +570,15 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         address _quoteToken,
         uint256 _price,
         uint256 _amount
-    ) external returns (bytes32 orderId) {
+    ) external nonReentrant returns (bytes32 orderId) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         require(s.nodes[_node].owner == msg.sender, 'Not node owner');
         require(s.auraAssetAddress != address(0), 'AuraAsset not set');
         require(_amount > 0, 'Amount must be positive');
         require(s.nodeTokenBalances[_node][_tokenId] >= _amount, 'Insufficient node balance - deposit tokens first');
 
-        // Debit node's internal balance
-        s.nodeTokenBalances[_node][_tokenId] -= _amount;
+        // Debit node's internal balance (H-05: use internal helper)
+        _debitNodeTokensInternal(s, _node, _tokenId, _amount);
 
         // Route through OrderRouterFacet - SINGLE ENTRY POINT for all orders
         // This ensures consistent V2 storage usage and proper order matching
@@ -571,7 +621,7 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         uint256 _amount
     ) external {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        require(s.nodes[_node].owner == msg.sender, 'Not node owner');
+        require(msg.sender == address(this), 'Only internal Diamond calls');
         require(_amount > 0, 'Amount must be positive');
         
         // Update balance
@@ -602,6 +652,10 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         require(s.nodes[_node].owner == msg.sender, 'Not node owner');
         require(s.auraAssetAddress != address(0), 'AuraAsset not set');
         require(_amount > 0, 'Amount must be positive');
+        require(
+            s.ownerNodeSellableAmounts[msg.sender][_tokenId][_node] >= _amount,
+            'Insufficient node sellable amount'
+        );
         
         // Transfer tokens from caller to Diamond
         IERC1155(s.auraAssetAddress).safeTransferFrom(
@@ -614,6 +668,7 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         
         // Update internal balance
         s.nodeTokenBalances[_node][_tokenId] += _amount;
+        s.ownerNodeSellableAmounts[msg.sender][_tokenId][_node] -= _amount;
         
         // Track token ID if new
         if (!s.nodeHasToken[_node][_tokenId]) {
@@ -644,6 +699,7 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         
         // Update internal balance first (checks-effects-interactions)
         s.nodeTokenBalances[_node][_tokenId] -= _amount;
+        _creditOwnerNodeSellable(s, msg.sender, _tokenId, _node, _amount);
         
         // Transfer tokens from Diamond to caller
         IERC1155(s.auraAssetAddress).safeTransferFrom(
@@ -690,9 +746,27 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         emit TokensTransferredBetweenNodes(_fromNode, _toNode, _tokenId, _amount);
     }
 
+    function _creditOwnerNodeSellable(
+        DiamondStorage.AppStorage storage s,
+        address owner,
+        uint256 tokenId,
+        bytes32 nodeHash,
+        uint256 amount
+    ) internal {
+        if (owner == address(0) || nodeHash == bytes32(0) || amount == 0) return;
+
+        if (!s.ownerTokenHasSellableNode[owner][tokenId][nodeHash]) {
+            s.ownerTokenHasSellableNode[owner][tokenId][nodeHash] = true;
+            s.ownerTokenSellableNodes[owner][tokenId].push(nodeHash);
+        }
+
+        s.ownerNodeSellableAmounts[owner][tokenId][nodeHash] += amount;
+    }
+
     /**
      * @notice Debit tokens from a node (for sales/transfers out)
-     * @dev Called by node owner or internal Diamond facets when tokens are sold
+     * @dev H-05: Removed address(this) bypass — only node owner can call externally.
+     *      Internal callers use _debitNodeTokensInternal instead.
      * @param _node The node hash to debit
      * @param _tokenId The ERC1155 token ID
      * @param _amount The amount to debit
@@ -703,14 +777,19 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         uint256 _amount
     ) external {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        // Only node owner or Diamond itself (internal facet calls) can debit
-        require(
-            s.nodes[_node].owner == msg.sender || msg.sender == address(this),
-            'Not authorized'
-        );
+        require(s.nodes[_node].owner == msg.sender, 'Not authorized');
+        _debitNodeTokensInternal(s, _node, _tokenId, _amount);
+    }
+
+    /// @dev H-05: Internal helper for trusted callers — no access check.
+    function _debitNodeTokensInternal(
+        DiamondStorage.AppStorage storage s,
+        bytes32 _node,
+        uint256 _tokenId,
+        uint256 _amount
+    ) internal {
         require(_amount > 0, 'Amount must be positive');
         require(s.nodeTokenBalances[_node][_tokenId] >= _amount, 'Insufficient node balance');
-        
         s.nodeTokenBalances[_node][_tokenId] -= _amount;
     }
 
@@ -753,9 +832,10 @@ contract NodesFacet is Initializable, ReentrancyGuard {
     {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         uint256[] memory ids = s.nodeTokenIds[_node];
-        uint256[] memory bals = new uint256[](ids.length);
+        uint256 idCount = ids.length;
+        uint256[] memory bals = new uint256[](idCount);
         
-        for (uint256 i = 0; i < ids.length; i++) {
+        for (uint256 i = 0; i < idCount; i++) {
             bals[i] = s.nodeTokenBalances[_node][ids[i]];
         }
         
@@ -946,6 +1026,42 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         return s.nodeAdmins[_admin];
     }
 
+    /**
+     * @notice Enable or disable an allowed node registrar
+     */
+    function setNodeRegistrar(address registrar, bool enable) external {
+        LibDiamond.enforceIsContractOwner();
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        _setNodeRegistrar(s, registrar, enable);
+        emit NodeRegistrarUpdated(registrar, enable);
+    }
+
+    /// @notice L-03: Set maximum nodes a single registrar can create (0 = unlimited)
+    function setMaxNodesPerRegistrar(uint256 cap) external {
+        LibDiamond.enforceIsContractOwner();
+        DiamondStorage.appStorage().maxNodesPerRegistrar = cap;
+    }
+
+    /**
+     * @notice Check if an address has a node role
+     */
+    function hasNodeRole(bytes32 role, address account) external view returns (bool) {
+        if (role != NODE_REGISTRAR_ROLE) {
+            return false;
+        }
+
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        return s.nodeRegistrars[account];
+    }
+
+    /**
+     * @notice Enumerate allowed node registrars
+     */
+    function getAllowedNodeRegistrars() external view returns (address[] memory) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        return s.nodeRegistrarList;
+    }
+
     // ============================================================================
     // AUSYS INTEGRATION (from aurumNode.sol)
     // ============================================================================
@@ -1075,35 +1191,31 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         DiamondStorage.AssetDefinition memory _asset,
         string memory _className,
         bytes memory _data
-    ) external returns (uint256 tokenId) {
+    ) external nonReentrant returns (uint256 tokenId) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         require(s.nodes[_nodeHash].owner == msg.sender, 'Not node owner');
         require(s.nodes[_nodeHash].validNode, 'Invalid node');
+        require(_itemOwner != address(0), 'Invalid item owner');
 
-        // Call AssetsFacet.nodeMint via delegatecall
+        // Call AssetsFacet.nodeMintForNode via delegatecall so custody is
+        // attributed to the SPECIFIC node, not the first active node for the wallet.
+        // Using nodeMint here was the bug: it calls _getFirstActiveNode(msg.sender)
+        // which always returns node[0] regardless of which _nodeHash was passed.
         (bool success, bytes memory result) = address(this).delegatecall(
             abi.encodeWithSignature(
-                "nodeMint(address,(string,string,(string,string[],string)[]),uint256,string,bytes)",
+                "nodeMintForNode(address,(string,string,(string,string[],string)[]),uint256,string,bytes,bytes32)",
                 _itemOwner,
                 _asset,
                 _amount,
                 _className,
-                _data
+                _data,
+                _nodeHash
             )
         );
-        require(success, "nodeMint failed");
+        require(success, "nodeMintForNode failed");
 
         // Decode the returned tokenId
         (, tokenId) = abi.decode(result, (bytes32, uint256));
-
-        // Update node's internal balance
-        s.nodeTokenBalances[_nodeHash][tokenId] += _amount;
-        
-        // Track token in node's list if not already
-        if (!s.nodeHasToken[_nodeHash][tokenId]) {
-            s.nodeTokenIds[_nodeHash].push(tokenId);
-            s.nodeHasToken[_nodeHash][tokenId] = true;
-        }
 
         emit TokensMintedToNode(_nodeHash, tokenId, _amount, msg.sender);
         return tokenId;
@@ -1230,9 +1342,10 @@ contract NodesFacet is Initializable, ReentrancyGuard {
 
         // Find the document by URL
         uint256[] storage docIds = s.nodeSupportingDocumentIds[_nodeHash];
+        uint256 docCount = docIds.length;
         bool found = false;
         
-        for (uint256 i = 0; i < docIds.length; i++) {
+        for (uint256 i = 0; i < docCount; i++) {
             DiamondStorage.SupportingDocument storage doc = s.nodeSupportingDocuments[_nodeHash][docIds[i]];
             if (!doc.isRemoved && keccak256(bytes(doc.url)) == keccak256(bytes(_url))) {
                 doc.isRemoved = true;
@@ -1288,10 +1401,11 @@ contract NodesFacet is Initializable, ReentrancyGuard {
     {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         uint256[] storage docIds = s.nodeSupportingDocumentIds[_nodeHash];
+        uint256 docCount = docIds.length;
         
         // First pass: count active documents
         uint256 activeCount = 0;
-        for (uint256 i = 0; i < docIds.length; i++) {
+        for (uint256 i = 0; i < docCount; i++) {
             if (!s.nodeSupportingDocuments[_nodeHash][docIds[i]].isRemoved) {
                 activeCount++;
             }
@@ -1300,7 +1414,7 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         // Second pass: populate array
         documents = new DiamondStorage.SupportingDocument[](activeCount);
         uint256 idx = 0;
-        for (uint256 i = 0; i < docIds.length; i++) {
+        for (uint256 i = 0; i < docCount; i++) {
             DiamondStorage.SupportingDocument storage doc = s.nodeSupportingDocuments[_nodeHash][docIds[i]];
             if (!doc.isRemoved) {
                 documents[idx] = doc;
@@ -1325,10 +1439,11 @@ contract NodesFacet is Initializable, ReentrancyGuard {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         uint256[] storage docIds = s.nodeSupportingDocumentIds[_nodeHash];
         
-        total = docIds.length;
+        uint256 docCount = docIds.length;
+        total = docCount;
         active = 0;
         
-        for (uint256 i = 0; i < docIds.length; i++) {
+        for (uint256 i = 0; i < docCount; i++) {
             if (!s.nodeSupportingDocuments[_nodeHash][docIds[i]].isRemoved) {
                 active++;
             }

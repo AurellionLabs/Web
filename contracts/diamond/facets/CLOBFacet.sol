@@ -129,9 +129,13 @@ contract CLOBFacet is Initializable {
         uint256 lpFeeAmount
     );
 
-    uint8 public constant TAKER_FEE = 10;
-    uint8 public constant MAKER_FEE = 5;
-    uint8 public constant LP_FEE = 5;
+    // Fee defaults (bps) — used only on first-time init via initCLOBFees().
+    // After init, fees are read from DiamondStorage (takerFeeBps/makerFeeBps/lpFeeBps).
+    uint16 public constant DEFAULT_TAKER_FEE_BPS = 10; // 0.1%
+    uint16 public constant DEFAULT_MAKER_FEE_BPS = 5;  // 0.05%
+    uint16 public constant DEFAULT_LP_FEE_BPS = 5;     // 0.05%
+
+    error FeeBpsTooHigh();
 
     // Struct to reduce stack depth in matching functions
     struct MatchContext {
@@ -142,6 +146,44 @@ contract CLOBFacet is Initializable {
     }
 
     function initialize() public initializer {}
+
+    /**
+     * @notice One-time initialiser for CLOB fee defaults (call after upgrading Diamond).
+     * @dev Safe to call again — only sets fees if all three are currently 0 (uninitialised).
+     */
+    function initCLOBFees() external {
+        LibDiamond.enforceIsContractOwner();
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        if (s.takerFeeBps == 0 && s.makerFeeBps == 0 && s.lpFeeBps == 0) {
+            s.takerFeeBps = DEFAULT_TAKER_FEE_BPS;
+            s.makerFeeBps = DEFAULT_MAKER_FEE_BPS;
+            s.lpFeeBps = DEFAULT_LP_FEE_BPS;
+        }
+    }
+
+    /// @notice Set taker fee in bps (max 500 = 5%). onlyOwner.
+    function setCLOBTakerFeeBps(uint16 bps) external {
+        LibDiamond.enforceIsContractOwner();
+        if (bps > 500) revert FeeBpsTooHigh();
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        s.takerFeeBps = bps;
+    }
+
+    /// @notice Set maker fee in bps (max 500 = 5%). onlyOwner.
+    function setCLOBMakerFeeBps(uint16 bps) external {
+        LibDiamond.enforceIsContractOwner();
+        if (bps > 500) revert FeeBpsTooHigh();
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        s.makerFeeBps = bps;
+    }
+
+    /// @notice Set LP fee in bps (max 500 = 5%). onlyOwner.
+    function setCLOBLpFeeBps(uint16 bps) external {
+        LibDiamond.enforceIsContractOwner();
+        if (bps > 500) revert FeeBpsTooHigh();
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        s.lpFeeBps = bps;
+    }
 
     function createMarket(
         string memory _baseToken,
@@ -290,8 +332,11 @@ contract CLOBFacet is Initializable {
         uint256 buyOrderPrice = buyOrder.price;
         uint256 buyOrderFilled = buyOrder.filledAmount;
         
+        // Cache array length to avoid repeated SLOADs
+        uint256 askPriceCount = askPrices.length;
+        
         // Iterate through ask prices (already sorted ascending)
-        for (uint256 i = 0; i < askPrices.length; i++) {
+        for (uint256 i = 0; i < askPriceCount; i++) {
             if (buyOrderFilled >= buyOrderAmount) break;
             
             uint256 askPrice = askPrices[i];
@@ -403,8 +448,9 @@ contract CLOBFacet is Initializable {
         if (orderFilledAmount >= orderAmount) return;
         
         uint256 orderRemaining = orderAmount - orderFilledAmount;
-
-        for (uint256 i = 0; i < s.clobOrderIds.length && orderRemaining > 0; i++) {
+        // Cache length to avoid repeated SLOADs (saves ~3000 gas per iteration)
+        uint256 orderCount = s.clobOrderIds.length;
+        for (uint256 i = 0; i < orderCount && orderRemaining > 0; i++) {
             bytes32 matchOrderId = s.clobOrderIds[i];
             if (matchOrderId == _orderId) continue;
             
@@ -491,8 +537,9 @@ contract CLOBFacet is Initializable {
         sellOrder.status = sellOrder.filledAmount >= sellOrder.amount ? 2 : 1;
 
         // Calculate and emit fees
-        uint256 takerFee = (quoteAmount * TAKER_FEE) / 10000;
-        uint256 makerFee = (quoteAmount * MAKER_FEE) / 10000;
+        DiamondStorage.AppStorage storage _s = DiamondStorage.appStorage();
+        uint256 takerFee = (quoteAmount * _s.takerFeeBps) / 10000;
+        uint256 makerFee = (quoteAmount * _s.makerFeeBps) / 10000;
 
         emit FeesCollected(tradeId, takerFee, makerFee, 0);
         emit TradeExecuted(tradeId, buyOrder.maker, sellOrder.maker, _marketId, _fillPrice, fillAmount, quoteAmount, block.timestamp);
@@ -1011,7 +1058,9 @@ contract CLOBFacet is Initializable {
         DiamondStorage.CLOBOrder storage sellOrder = s.clobOrders[_sellOrderId];
         if (sellOrder.filledAmount >= sellOrder.amount) return;
         
-        for (uint256 i = 0; i < s.clobOrderIds.length; i++) {
+        // Cache length to avoid repeated SLOADs
+        uint256 orderCount = s.clobOrderIds.length;
+        for (uint256 i = 0; i < orderCount; i++) {
             if (sellOrder.filledAmount >= sellOrder.amount) break;
             
             bytes32 buyOrderId = s.clobOrderIds[i];
@@ -1106,7 +1155,9 @@ contract CLOBFacet is Initializable {
         DiamondStorage.CLOBOrder storage buyOrder = s.clobOrders[_buyOrderId];
         if (buyOrder.filledAmount >= buyOrder.amount) return;
         
-        for (uint256 i = 0; i < s.clobOrderIds.length; i++) {
+        // Cache length to avoid repeated SLOADs
+        uint256 orderCount = s.clobOrderIds.length;
+        for (uint256 i = 0; i < orderCount; i++) {
             if (buyOrder.filledAmount >= buyOrder.amount) break;
             
             bytes32 sellOrderId = s.clobOrderIds[i];
@@ -1206,14 +1257,17 @@ contract CLOBFacet is Initializable {
     }
 
     function _addPriceLevel(uint256[] storage prices, uint256 price) internal {
+        // Cache length to avoid repeated SLOADs in loop (~2000 gas saved)
+        uint256 len = prices.length;
+        
         // Check if price already exists
-        for (uint256 i = 0; i < prices.length; i++) {
+        for (uint256 i = 0; i < len; i++) {
             if (prices[i] == price) return;
         }
         // Add and sort (simple insertion for now)
         prices.push(price);
-        // Sort ascending
-        for (uint256 i = prices.length - 1; i > 0; i--) {
+        // Sort ascending - use cached len+1 since we just pushed
+        for (uint256 i = len; i > 0; i--) {
             if (prices[i] < prices[i - 1]) {
                 uint256 temp = prices[i];
                 prices[i] = prices[i - 1];
@@ -1257,11 +1311,14 @@ contract CLOBFacet is Initializable {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         bytes32 marketId = keccak256(abi.encodePacked(_baseToken, _baseTokenId, _quoteToken));
         
+        // Cache order count to avoid repeated SLOADs
+        uint256 orderCount = s.clobOrderIds.length;
+        
         // Count open orders
         uint256 buyCount = 0;
         uint256 sellCount = 0;
         
-        for (uint256 i = 0; i < s.clobOrderIds.length; i++) {
+        for (uint256 i = 0; i < orderCount; i++) {
             bytes32 orderId = s.clobOrderIds[i];
             DiamondStorage.CLOBOrder storage order = s.clobOrders[orderId];
             if (order.marketId == marketId && (order.status == 0 || order.status == 1)) {
@@ -1276,7 +1333,7 @@ contract CLOBFacet is Initializable {
         uint256 buyIdx = 0;
         uint256 sellIdx = 0;
         
-        for (uint256 i = 0; i < s.clobOrderIds.length; i++) {
+        for (uint256 i = 0; i < orderCount; i++) {
             bytes32 orderId = s.clobOrderIds[i];
             DiamondStorage.CLOBOrder storage order = s.clobOrders[orderId];
             if (order.marketId == marketId && (order.status == 0 || order.status == 1)) {

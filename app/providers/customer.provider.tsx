@@ -23,7 +23,18 @@ import {
   GET_EMIT_SIG_EVENTS_BY_JOURNEY,
   type EmitSigEventsByJourneyResponse,
 } from '@/infrastructure/shared/graph-queries';
-import { NEXT_PUBLIC_AUSYS_SUBGRAPH_URL } from '@/chain-constants';
+import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
+import {
+  detectJourneyRoleConflict,
+  getJourneyRoleConflictMessage,
+} from '@/utils/journey-role-conflicts';
+import {
+  extractOrderParticipants,
+  extractOrderPickupMetadata,
+  isZeroAddress,
+  normalizeAddress,
+  normalizeText,
+} from '@/utils/p2p-order-resolution';
 
 type CustomerContextType = {
   orders: OrderWithAsset[];
@@ -53,6 +64,8 @@ type CustomerContextType = {
     driverDeliverySigned: boolean;
     senderPickupSigned?: boolean;
     driverPickupSigned?: boolean;
+    roleConflict?: boolean;
+    roleConflictReason?: string;
   }>;
   /** Create a delivery journey for an accepted P2P order that has no journey */
   createP2PJourney: (
@@ -320,6 +333,17 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
 
         // Guard against premature signing before the journey enters transit.
         const journey = await ausys.getJourney(journeyId as BytesLike);
+        const roleConflict = detectJourneyRoleConflict(
+          journey.sender,
+          journey.receiver,
+          journey.driver,
+        );
+        if (roleConflict.hasConflict) {
+          throw new Error(
+            roleConflict.message ||
+              'Sender, driver, and customer must use different wallet addresses.',
+          );
+        }
         if (Number(journey.currentStatus) !== 1) {
           throw new Error(
             'You can sign for delivery only after pickup is complete and the journey is in transit.',
@@ -394,6 +418,10 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         return 'signed';
       } catch (err) {
         console.error('[CustomerProvider] signP2PDelivery error:', err);
+        // let journey role conflicts bubble up with their specific messages
+        if (getJourneyRoleConflictMessage(err)) {
+          throw err;
+        }
         setError('Failed to sign for delivery');
         handleContractError(err, 'sign P2P delivery');
         throw err;
@@ -418,11 +446,40 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         const ausys = await getAlignedAusysContract();
 
         const journey = await ausys.getJourney(journeyId as BytesLike);
-        if (Number(journey.currentStatus) === 0) {
-          // Pending pickup — not ready for handoff.
+        const roleConflict = detectJourneyRoleConflict(
+          journey.sender,
+          journey.receiver,
+          journey.driver,
+        );
+        if (roleConflict.hasConflict) {
+          throw new Error(
+            roleConflict.message ||
+              'Sender, driver, and customer must use different wallet addresses.',
+          );
+        }
+        const journeyStatus = Number(journey.currentStatus);
+
+        if (journeyStatus === 0) {
+          // Pending pickup — driver hasn't done handOn yet.
           return 'driver_not_signed';
         }
 
+        if (journeyStatus >= 2) {
+          // Journey already delivered (status 2 = JOURNEY_DELIVERED).
+          // The driver's handOff completed; calling handOff again would revert
+          // with JourneyNotInProgress. Just refresh and surface as settled.
+          setOrders((prev) =>
+            prev.map((o) =>
+              o.id === orderId
+                ? { ...o, currentStatus: OrderStatus.SETTLED }
+                : o,
+            ),
+          );
+          await loadCustomerOrders();
+          return 'settled';
+        }
+
+        // Status === 1 (JOURNEY_IN_TRANSIT) — proceed with handOff.
         const handOffTx = await ausys.handOff(journeyId as BytesLike);
         await handOffTx.wait();
 
@@ -437,6 +494,9 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         await loadCustomerOrders();
         return 'settled';
       } catch (err) {
+        if (getJourneyRoleConflictMessage(err)) {
+          throw err;
+        }
         const msg = err instanceof Error ? err.message : String(err);
         // DriverNotSigned (0x9651c947) — driver hasn't signed for delivery yet
         if (msg.includes('0x9651c947') || msg.includes('DriverNotSigned')) {
@@ -445,6 +505,22 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         // ReceiverNotSigned (0x04d27bc2) — receiver hasn't signed yet
         if (msg.includes('0x04d27bc2') || msg.includes('ReceiverNotSigned')) {
           return 'driver_not_signed';
+        }
+        // JourneyNotInProgress (0xd4d48a2a) — journey already delivered;
+        // treat as settled (driver completed handOff from their side).
+        if (
+          msg.includes('0xd4d48a2a') ||
+          msg.includes('JourneyNotInProgress')
+        ) {
+          setOrders((prev) =>
+            prev.map((o) =>
+              o.id === orderId
+                ? { ...o, currentStatus: OrderStatus.SETTLED }
+                : o,
+            ),
+          );
+          await loadCustomerOrders();
+          return 'settled';
         }
         console.error('[CustomerProvider] completeP2PHandoff error:', err);
         setError('Failed to complete handoff');
@@ -471,11 +547,18 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       driverDeliverySigned: boolean;
       senderPickupSigned?: boolean;
       driverPickupSigned?: boolean;
+      roleConflict?: boolean;
+      roleConflictReason?: string;
     }> => {
       try {
         const ausys = repoContext.getAusysContract();
         const journey = await ausys.getJourney(journeyId as BytesLike);
         const status = Number(journey.currentStatus);
+        const roleConflict = detectJourneyRoleConflict(
+          journey.sender,
+          journey.receiver,
+          journey.driver,
+        );
 
         // Definitive: Delivered means both parties signed and handOff succeeded
         if (status >= 2) {
@@ -484,6 +567,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
             driverDeliverySigned: true,
             senderPickupSigned: true,
             driverPickupSigned: true,
+            roleConflict: false,
           };
         }
 
@@ -491,7 +575,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         try {
           const sigResponse =
             await graphqlRequest<EmitSigEventsByJourneyResponse>(
-              NEXT_PUBLIC_AUSYS_SUBGRAPH_URL,
+              getCurrentIndexerUrl(),
               GET_EMIT_SIG_EVENTS_BY_JOURNEY,
               { journeyId, limit: 50 },
             );
@@ -516,6 +600,8 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
               driverDeliverySigned: false,
               senderPickupSigned,
               driverPickupSigned,
+              roleConflict: roleConflict.hasConflict,
+              roleConflictReason: roleConflict.message,
             };
           }
 
@@ -537,6 +623,8 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
               driverDeliverySigned,
               senderPickupSigned: true,
               driverPickupSigned: true,
+              roleConflict: roleConflict.hasConflict,
+              roleConflictReason: roleConflict.message,
             };
           }
         } catch (indexerErr) {
@@ -546,7 +634,12 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
           );
         }
 
-        return { buyerSigned: false, driverDeliverySigned: false };
+        return {
+          buyerSigned: false,
+          driverDeliverySigned: false,
+          roleConflict: roleConflict.hasConflict,
+          roleConflictReason: roleConflict.message,
+        };
       } catch (err) {
         console.warn('[CustomerProvider] getP2PSignatureState error:', err);
         return { buyerSigned: false, driverDeliverySigned: false };
@@ -566,72 +659,125 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         setError(null);
         // Use the Diamond contract (has createOrderJourney), not the Ausys contract
         const diamond = repoContext.getDiamondContext().getDiamond();
-        const isZeroAddress = (addr?: string | null) =>
-          !addr ||
-          addr.toLowerCase() === '0x0000000000000000000000000000000000000000';
+        const walletAddress = normalizeAddress(address);
+        if (isZeroAddress(walletAddress)) {
+          throw new Error(
+            'Cannot create delivery journey: buyer wallet is not connected.',
+          );
+        }
 
-        // Resolve canonical participants from on-chain order state.
-        // Event-derived order views can contain zero placeholders.
-        const onchainOrder = await diamond.getAuSysOrder(orderId);
-        const senderAddress = isZeroAddress(delivery.senderNodeAddress)
-          ? String(onchainOrder.seller || '')
-          : delivery.senderNodeAddress;
-        const receiverAddress = isZeroAddress(delivery.receiverAddress)
-          ? String(onchainOrder.buyer || '')
-          : delivery.receiverAddress;
+        const providedSender = normalizeAddress(delivery.senderNodeAddress);
+        const providedReceiver = normalizeAddress(delivery.receiverAddress);
+
+        const readOrderWithParticipantRetry = async () => {
+          let snapshot = await diamond.getAuSysOrder(orderId);
+          let participants = extractOrderParticipants(snapshot);
+          if (
+            isZeroAddress(participants.seller) ||
+            isZeroAddress(participants.buyer)
+          ) {
+            await new Promise((resolve) => setTimeout(resolve, 900));
+            snapshot = await diamond.getAuSysOrder(orderId);
+            participants = extractOrderParticipants(snapshot);
+          }
+          return { snapshot, participants };
+        };
+
+        const onchain = await readOrderWithParticipantRetry();
+        const canonicalSeller = onchain.participants.seller;
+        const canonicalBuyer = onchain.participants.buyer;
+
+        let senderAddress = canonicalSeller;
+        if (isZeroAddress(senderAddress) && !isZeroAddress(providedSender)) {
+          senderAddress = providedSender;
+          console.warn(
+            `[CustomerProvider] Falling back to provided senderNodeAddress because canonical seller is unresolved. fallback=${providedSender}`,
+          );
+        } else if (
+          !isZeroAddress(canonicalSeller) &&
+          !isZeroAddress(providedSender) &&
+          providedSender.toLowerCase() !== canonicalSeller.toLowerCase()
+        ) {
+          console.warn(
+            `[CustomerProvider] Ignoring mismatched senderNodeAddress. provided=${providedSender}, seller=${canonicalSeller}`,
+          );
+        }
+
+        let receiverAddress = canonicalBuyer;
+        if (
+          !isZeroAddress(canonicalBuyer) &&
+          canonicalBuyer.toLowerCase() !== walletAddress.toLowerCase()
+        ) {
+          console.warn(
+            `[CustomerProvider] Canonical buyer does not match connected wallet. buyer=${canonicalBuyer}, wallet=${walletAddress}. Falling back to wallet.`,
+          );
+          receiverAddress = walletAddress;
+        } else if (isZeroAddress(canonicalBuyer)) {
+          const receiverFallback = !isZeroAddress(providedReceiver)
+            ? providedReceiver
+            : walletAddress;
+          if (receiverFallback.toLowerCase() !== walletAddress.toLowerCase()) {
+            throw new Error(
+              'Cannot create delivery journey: receiver fallback must match connected buyer wallet.',
+            );
+          }
+          receiverAddress = receiverFallback;
+          console.warn(
+            `[CustomerProvider] Falling back to provided receiver because canonical buyer is unresolved. fallback=${receiverFallback}`,
+          );
+        } else if (
+          !isZeroAddress(providedReceiver) &&
+          providedReceiver.toLowerCase() !== canonicalBuyer.toLowerCase()
+        ) {
+          console.warn(
+            `[CustomerProvider] Ignoring mismatched receiverAddress. provided=${providedReceiver}, buyer=${canonicalBuyer}`,
+          );
+        }
 
         if (isZeroAddress(senderAddress)) {
           throw new Error(
-            'Cannot create delivery journey: seller/node sender address is unresolved.',
+            'Cannot create delivery journey: seller/node sender address is unresolved after retry.',
           );
         }
         if (isZeroAddress(receiverAddress)) {
           throw new Error(
-            'Cannot create delivery journey: receiver address is unresolved.',
+            'Cannot create delivery journey: receiver address is unresolved after retry.',
+          );
+        }
+        const roleConflict = detectJourneyRoleConflict(
+          senderAddress,
+          receiverAddress,
+        );
+        if (roleConflict.hasConflict) {
+          throw new Error(
+            roleConflict.message ||
+              'Sender, driver, and customer must use different wallet addresses.',
           );
         }
 
+        const { startLat, startLng, startName } = extractOrderPickupMetadata(
+          onchain.snapshot,
+        );
+
+        // Use delivery pickup metadata when present, otherwise canonical on-chain
+        // order metadata set during sell-offer creation from selected pickup node.
         const parcelData = {
           ...delivery.parcelData,
           startLocation: {
-            lat: String(delivery.parcelData?.startLocation?.lat || '').trim(),
-            lng: String(delivery.parcelData?.startLocation?.lng || '').trim(),
+            lat:
+              normalizeText(delivery.parcelData?.startLocation?.lat) ||
+              startLat,
+            lng:
+              normalizeText(delivery.parcelData?.startLocation?.lng) ||
+              startLng,
           },
           endLocation: {
-            lat: String(delivery.parcelData?.endLocation?.lat || '').trim(),
-            lng: String(delivery.parcelData?.endLocation?.lng || '').trim(),
+            lat: normalizeText(delivery.parcelData?.endLocation?.lat),
+            lng: normalizeText(delivery.parcelData?.endLocation?.lng),
           },
-          startName: String(delivery.parcelData?.startName || '').trim(),
-          endName: String(delivery.parcelData?.endName || '').trim(),
+          startName: normalizeText(delivery.parcelData?.startName) || startName,
+          endName: normalizeText(delivery.parcelData?.endName),
         };
-
-        // If pickup coordinates are missing, derive them from the sender's
-        // first registered node to avoid creating journeys with no pickup point.
-        if (!parcelData.startLocation.lat || !parcelData.startLocation.lng) {
-          try {
-            const senderNodes = await diamond.getOwnerNodes(senderAddress);
-            const senderNodeHash = senderNodes?.[0];
-            if (senderNodeHash) {
-              const senderNode = await diamond.getNode(senderNodeHash);
-              parcelData.startLocation.lat = String(
-                senderNode?.lat || '',
-              ).trim();
-              parcelData.startLocation.lng = String(
-                senderNode?.lng || '',
-              ).trim();
-              if (!parcelData.startName) {
-                parcelData.startName = String(
-                  senderNode?.addressName || '',
-                ).trim();
-              }
-            }
-          } catch (resolveErr) {
-            console.warn(
-              '[CustomerProvider] Failed to resolve pickup location from sender node:',
-              resolveErr,
-            );
-          }
-        }
 
         if (!parcelData.startLocation.lat || !parcelData.startLocation.lng) {
           throw new Error(
@@ -646,6 +792,11 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         if (!parcelData.endName) {
           throw new Error(
             'Cannot schedule delivery without a destination address.',
+          );
+        }
+        if (!parcelData.endLocation.lat || !parcelData.endLocation.lng) {
+          throw new Error(
+            'Cannot schedule delivery without destination coordinates. Choose a suggested address so coordinates are captured.',
           );
         }
 
@@ -672,6 +823,12 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         }, 5000);
       } catch (err) {
         console.error('[CustomerProvider] createP2PJourney error:', err);
+
+        // let journey role conflicts bubble up with their specific messages
+        if (getJourneyRoleConflictMessage(err)) {
+          throw err;
+        }
+
         setError('Failed to create delivery journey');
         handleContractError(err, 'create P2P journey');
         throw err;

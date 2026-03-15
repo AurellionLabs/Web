@@ -12,7 +12,6 @@ import { LoadingScreen } from '@/app/components/ui/loading-screen';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { useE2EAuth } from '@/app/providers/e2e-auth.provider';
 import { ethers } from 'ethers';
-import { PinataSDK } from 'pinata';
 
 export const IS_E2E_TEST_MODE =
   process.env.NEXT_PUBLIC_E2E_TEST_MODE === 'true';
@@ -46,13 +45,15 @@ async function setupRepository(
     NEXT_PUBLIC_DIAMOND_ADDRESS,
     signer,
   );
-  const pinata = new PinataSDK({
-    pinataJwt: process.env.NEXT_PUBLIC_PINATA_JWT,
-    pinataGateway: 'orange-electronic-flyingfish-697.mypinata.cloud',
-  });
 
   const repoContext = RepositoryContext.getInstance();
-  await repoContext.initialize(ausysContract, provider, signer, pinata);
+  await repoContext.initialize(
+    ausysContract,
+    provider,
+    signer,
+    undefined,
+    chainId,
+  );
   ServiceContext.getInstance().initialize(repoContext);
 }
 
@@ -197,13 +198,14 @@ function RepositoryProviderPrivy({ children }: RepositoryProviderProps) {
     if (isInitialized || !isReady || !privy.ready || !privyWallets.ready)
       return;
     initializeRepository();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isReady,
     privy.ready,
     privyWallets.ready,
     isInitialized,
     privy.authenticated,
-  ]);
+  ]); // initializeRepository excluded: stable function, runs once on initialization conditions
 
   if (!privy.ready || !privyWallets.ready) return <LoadingScreen />;
 

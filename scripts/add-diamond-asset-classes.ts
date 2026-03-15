@@ -13,9 +13,12 @@
  */
 
 import { ethers } from 'hardhat';
+import {
+  getSupportedAssetClasses,
+  loadSupportedAssetCatalog,
+} from './lib/supported-assets';
 
-// Default asset classes to add
-const DEFAULT_CLASSES = ['GOAT', 'SHEEP', 'COW', 'CHICKEN', 'DUCK'];
+const DEFAULT_CLASSES = getSupportedAssetClasses(loadSupportedAssetCatalog());
 
 async function main() {
   const [deployer] = await ethers.getSigners();

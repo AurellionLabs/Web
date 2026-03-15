@@ -311,7 +311,8 @@ contract RWYStakingFacet {
 
     function stake(
         bytes32 opportunityId,
-        uint256 amount
+        uint256 amount,
+        uint256 minStakeAmount  // Minimum stake amount user expects to have after this deposit
     ) external nonReentrant whenNotPaused opportunityExists(opportunityId) {
         RWYStorage.RWYAppStorage storage rs = RWYStorage.rwyStorage();
         RWYStorage.Opportunity storage opp = rs.opportunities[opportunityId];
@@ -320,6 +321,14 @@ contract RWYStakingFacet {
         if (block.timestamp >= opp.fundingDeadline) revert FundingDeadlinePassed();
         if (amount == 0) revert InvalidAmount();
         if (opp.stakedAmount + amount > opp.targetAmount) revert ExceedsTarget();
+
+        // Slippage protection: ensure user gets at least expected stake
+        uint256 newStakeAmount = rs.stakes[opportunityId][msg.sender].amount + amount;
+        if (minStakeAmount > 0 && newStakeAmount < minStakeAmount) revert InvalidAmount();
+
+        // Per-user cap: max 20% of target per user to prevent single point of failure
+        uint256 maxPerUser = opp.targetAmount / 5;  // 20%
+        if (newStakeAmount > maxPerUser) revert ExceedsTarget();
 
         // Transfer tokens from staker - supports both ERC20 (tokenId == 0) and ERC1155 (tokenId > 0)
         if (opp.inputTokenId == 0) {
@@ -351,7 +360,8 @@ contract RWYStakingFacet {
 
     function unstake(
         bytes32 opportunityId,
-        uint256 amount
+        uint256 amount,
+        uint256 minReceiveAmount  // Minimum tokens user expects to receive
     ) external nonReentrant opportunityExists(opportunityId) {
         RWYStorage.RWYAppStorage storage rs = RWYStorage.rwyStorage();
         RWYStorage.Opportunity storage opp = rs.opportunities[opportunityId];
@@ -363,15 +373,24 @@ contract RWYStakingFacet {
         RWYStorage.RWYStake storage userStake = rs.stakes[opportunityId][msg.sender];
         if (userStake.amount < amount) revert InsufficientStake();
 
+        // Slippage protection: ensure user receives at least expected amount
+        // This is primarily for ERC1155 where transfer might have minTFees
+        if (minReceiveAmount > 0 && amount < minReceiveAmount) revert InvalidAmount();
+
         userStake.amount -= amount;
         opp.stakedAmount -= amount;
 
         // Transfer tokens back to staker - supports both ERC20 (tokenId == 0) and ERC1155 (tokenId > 0)
+        // NOTE: ERC1155 requires the contract to have setApprovalForAll(address(this), true) on the token
         if (opp.inputTokenId == 0) {
             // ERC20 unstaking (e.g., AURA token)
             IERC20(opp.inputToken).safeTransfer(msg.sender, amount);
         } else {
-            // ERC1155 unstaking (e.g., RWA tokens)
+            // ERC1155 unstaking - check approval to fail fast with clear message
+            require(
+                IERC1155(opp.inputToken).isApprovedForAll(address(this), address(this)),
+                "RWYStaking: contract must self-approve ERC1155 tokens"
+            );
             IERC1155(opp.inputToken).safeTransferFrom(address(this), msg.sender, opp.inputTokenId, amount, "");
         }
 
@@ -423,7 +442,24 @@ contract RWYStakingFacet {
         userStake.claimed = true;
         userStake.amount = 0;
 
-        IERC1155(opp.inputToken).safeTransferFrom(address(this), msg.sender, opp.inputTokenId, amount, "");
+        // Transfer based on token type - ERC20 if tokenId == 0, ERC1155 otherwise
+        if (opp.inputTokenId == 0) {
+            IERC20(opp.inputToken).safeTransfer(msg.sender, amount);
+        } else {
+            // ERC1155 emergency claim (primary path — tokenized assets)
+            // NOTE: Requires contract to have setApprovalForAll(address(this), true) on the token
+            require(
+                IERC1155(opp.inputToken).isApprovedForAll(address(this), address(this)),
+                "RWYStaking: contract must self-approve ERC1155 tokens"
+            );
+            IERC1155(opp.inputToken).safeTransferFrom(
+                address(this),
+                msg.sender,
+                opp.inputTokenId,
+                amount,
+                ""
+            );
+        }
 
         emit CommodityUnstaked(opportunityId, msg.sender, amount);
     }
@@ -433,7 +469,11 @@ contract RWYStakingFacet {
     // ============================================================================
 
     function recordSaleProceeds(bytes32 opportunityId, uint256 proceeds) external opportunityExists(opportunityId) {
-        if (msg.sender != address(this) && msg.sender != LibDiamond.diamondStorage().contractOwner) {
+        RWYStorage.RWYAppStorage storage rwyS = RWYStorage.rwyStorage();
+        bool isAuthorized = msg.sender == address(this) ||
+            msg.sender == LibDiamond.diamondStorage().contractOwner ||
+            (rwyS.clobAddress != address(0) && msg.sender == rwyS.clobAddress);
+        if (!isAuthorized) {
             revert NotAuthorized();
         }
 
@@ -556,6 +596,10 @@ contract RWYStakingFacet {
     ) external onlyOwner opportunityExists(opportunityId) nonReentrant {
         RWYStorage.Opportunity storage opp = RWYStorage.getOpportunity(opportunityId);
         if (opp.status == RWYStorage.OpportunityStatus.COMPLETED) revert InvalidStatus();
+        
+        // Return operator collateral (same as cancelOpportunity)
+        RWYLib.returnCollateral(opp);
+        
         opp.status = RWYStorage.OpportunityStatus.CANCELLED;
         emit OpportunityCancelled(opportunityId, reason);
     }
@@ -739,6 +783,9 @@ contract RWYStakingFacet {
     function calculateExpectedProfit(bytes32 opportunityId, uint256 stakeAmount) external view returns (uint256, uint256) {
         RWYStorage.RWYAppStorage storage rs = RWYStorage.rwyStorage();
         RWYStorage.Opportunity storage opp = rs.opportunities[opportunityId];
+
+        // Guard against division by zero
+        if (stakeAmount == 0) return (0, 0);
 
         uint256 totalAfterStake = opp.stakedAmount + stakeAmount;
         uint256 userShareBps = (stakeAmount * 10000) / totalAfterStake;

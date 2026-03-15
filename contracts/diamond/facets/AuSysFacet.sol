@@ -7,28 +7,34 @@ import { OrderStatus } from '../libraries/OrderStatus.sol';
 import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
 import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import { SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import { ReentrancyGuard } from '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
-import { ECDSA } from '@openzeppelin/contracts/utils/cryptography/ECDSA.sol';
+import { DiamondReentrancyGuard } from '../libraries/DiamondReentrancyGuard.sol';
 
 /**
  * @title AuSysFacet
  * @notice Logistics and delivery management system mirroring AuSys.sol
  * @dev Handles orders, journeys, driver management, and package signatures
  */
-contract AuSysFacet is ReentrancyGuard {
+contract AuSysFacet is DiamondReentrancyGuard {
     using SafeERC20 for IERC20;
-    using ECDSA for bytes32;
 
-    uint256 public constant MAX_ORDERS = 10000;
     uint256 public constant MAX_JOURNEYS_PER_ORDER = 10;
     uint256 public constant MAX_NODES_PER_ORDER = 20;
     uint256 public constant MAX_DRIVER_JOURNEYS = 10;
 
     error ArrayLimitExceeded();
+    error ContractPaused();
+    error RecoveryTooEarly();
+    error FeeBpsTooHigh();
+    error NothingToClaim();
 
     // ============================================================================
     // EVENTS (from AuSys.sol)
     // ============================================================================
+
+    event TreasuryFeeAccrued(bytes32 indexed orderId, uint256 amount);
+    event TreasuryFeeClaimed(address indexed to, uint256 amount);
+    event TreasuryFeeBpsUpdated(uint16 oldBps, uint16 newBps);
+    event NodeFeeBpsUpdated(uint16 oldBps, uint16 newBps);
 
     event AuSysAdminSet(address indexed admin);
     event AuSysAdminRevoked(address indexed admin);
@@ -144,15 +150,21 @@ contract AuSysFacet is ReentrancyGuard {
     error JourneyNotInProgress();
     error JourneyNotPending();
     error JourneyIncomplete();
+    error JourneyNotFound();
+    error JourneyAlreadyAssigned();
     error AlreadySettled();
     error DriverNotSigned();
     error SenderNotSigned();
     error ReceiverNotSigned();
+    error DuplicateJourneyRoleAddress();
     error InvalidAddress();
     error InvalidAmount();
     error InvalidETA();
     error QuantityExceedsRequested();
     error InvalidNode();
+    error OrderNotFound();
+    error InvalidOrderStatus();
+    error InvalidJourneyRoute();
     error RewardAlreadyPaid();
     error DriverMaxAssignment();
     error InvalidCaller();
@@ -173,6 +185,9 @@ contract AuSysFacet is ReentrancyGuard {
     error NonceAlreadyUsed();
     error SignatureExpired();
     error TrustedSignerNotSet();
+    error CallerMustBeBuyer();
+    error CallerMustBeSeller();
+    error ExceedsNodeSellableAmount();
 
     // ============================================================================
     // CONSTANTS (RBAC roles from AuSys.sol)
@@ -186,16 +201,9 @@ contract AuSysFacet is ReentrancyGuard {
     // MODIFIERS
     // ============================================================================
 
-    modifier onlyOwner() {
-        LibDiamond.enforceIsContractOwner();
-        _;
-    }
-
-    modifier adminOnly() {
+    modifier whenNotPaused() {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        if (!s.ausysRoles[ADMIN_ROLE][msg.sender] && msg.sender != LibDiamond.contractOwner()) {
-            revert InvalidCaller();
-        }
+        if (s.paused) revert ContractPaused();
         _;
     }
 
@@ -227,72 +235,6 @@ contract AuSysFacet is ReentrancyGuard {
     }
 
     // ============================================================================
-    // CONFIGURATION
-    // ============================================================================
-
-    /**
-     * @notice Set the payment token for bounties and settlements
-     */
-    function setPayToken(address _payToken) external onlyOwner {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        s.payToken = _payToken;
-    }
-
-    /**
-     * @notice Get the payment token address
-     */
-    function getPayToken() external view returns (address) {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        return s.payToken;
-    }
-
-    // ============================================================================
-    // RBAC (from AuSys.sol)
-    // ============================================================================
-
-    /**
-     * @notice Set an admin (from AuSys.setAdmin)
-     */
-    function setAuSysAdmin(address admin) external onlyOwner {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        s.ausysRoles[ADMIN_ROLE][admin] = true;
-        emit AuSysAdminSet(admin);
-    }
-
-    /**
-     * @notice Revoke an admin (from AuSys.revokeAdmin)
-     */
-    function revokeAuSysAdmin(address admin) external onlyOwner {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        s.ausysRoles[ADMIN_ROLE][admin] = false;
-        emit AuSysAdminRevoked(admin);
-    }
-
-    /**
-     * @notice Enable/disable a driver (from AuSys.setDriver)
-     */
-    function setDriver(address driver, bool enable) external adminOnly {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        s.ausysRoles[DRIVER_ROLE][driver] = enable;
-    }
-
-    /**
-     * @notice Enable/disable a dispatcher (from AuSys.setDispatcher)
-     */
-    function setDispatcher(address dispatcher, bool enable) external adminOnly {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        s.ausysRoles[DISPATCHER_ROLE][dispatcher] = enable;
-    }
-
-    /**
-     * @notice Check if an address has a role (from AuSys.hasRole)
-     */
-    function hasAuSysRole(bytes32 role, address account) external view returns (bool) {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        return s.ausysRoles[role][account];
-    }
-
-    // ============================================================================
     // ORDER MANAGEMENT (from AuSys.sol)
     // ============================================================================
 
@@ -303,7 +245,7 @@ contract AuSysFacet is ReentrancyGuard {
      */
     function createAuSysOrder(
         DiamondStorage.AuSysOrder memory order
-    ) external nonReentrant returns (bytes32) {
+    ) external nonReentrant whenNotPaused returns (bytes32) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
 
         if (order.token == address(0)) {
@@ -327,9 +269,11 @@ contract AuSysFacet is ReentrancyGuard {
         }
 
         bytes32 id = _getHashedOrderId(s, msg.sender);
-        
-        // Calculate tx fee (2% from AuSys.sol)
-        uint256 txFee = (order.price * 2) / 100;
+
+        // Treasury fee always applies. Node fee only if intermediate nodes are present.
+        uint256 treasuryFee = (order.price * s.treasuryFeeBps) / 10000;
+        uint256 nodeFee = order.nodes.length > 0 ? (order.price * s.nodeFeeBps) / 10000 : 0;
+        uint256 txFee = treasuryFee + nodeFee;
 
         // Store order
         DiamondStorage.AuSysOrder storage newOrder = s.ausysOrders[id];
@@ -348,26 +292,44 @@ contract AuSysFacet is ReentrancyGuard {
         newOrder.isSellerInitiated = order.isSellerInitiated;
         newOrder.targetCounterparty = order.targetCounterparty;
         newOrder.expiresAt = order.expiresAt;
-        
+        // H-04: Snapshot fee rates at creation time
+        newOrder.snapshotTreasuryBps = s.treasuryFeeBps;
+        newOrder.snapshotNodeBps = s.nodeFeeBps;
+        // Source node — must be set by caller so debit targets the correct node
+        newOrder.sellerNode = order.sellerNode;
+
         if (order.nodes.length > MAX_NODES_PER_ORDER) revert ArrayLimitExceeded();
-        for (uint256 i = 0; i < order.nodes.length; i++) {
+        uint256 nodeCount = order.nodes.length;
+        for (uint256 i = 0; i < nodeCount; i++) {
             newOrder.nodes.push(order.nodes[i]);
         }
 
-        if (s.ausysOrderIds.length >= MAX_ORDERS) revert ArrayLimitExceeded();
+
         s.ausysOrderIds.push(id);
 
         // Escrow based on who initiated
         if (order.isSellerInitiated) {
             // Seller-initiated P2P: escrow tokens from seller
             if (order.seller == address(0)) revert InvalidAddress();
+            if (order.seller != msg.sender) revert CallerMustBeSeller();
+            if (order.token == address(this)) {
+                _debitOwnerSellableForEscrow(
+                    s,
+                    id,
+                    msg.sender,
+                    order.tokenId,
+                    order.tokenQuantity,
+                    order.sellerNode  // pin to the seller's chosen node
+                );
+            }
             IERC1155(order.token).safeTransferFrom(
-                order.seller,
+                msg.sender,
                 address(this),
                 order.tokenId,
                 order.tokenQuantity,
                 ''
             );
+            s.ausysOrderTokenEscrowed[id] = true;
             // Track as open P2P offer
             if (isP2POffer) {
                 s.openP2POfferIds.push(id);
@@ -376,7 +338,8 @@ contract AuSysFacet is ReentrancyGuard {
         } else {
             // Buyer-initiated: escrow payment from buyer (original behavior)
             if (order.buyer == address(0)) revert InvalidAddress();
-            IERC20(s.payToken).safeTransferFrom(order.buyer, address(this), order.price + txFee);
+            if (order.buyer != msg.sender) revert CallerMustBeBuyer();
+            IERC20(s.payToken).safeTransferFrom(msg.sender, address(this), order.price + txFee);
             emit FundsEscrowed(order.buyer, order.price + txFee);
             // Track as open P2P offer
             if (isP2POffer) {
@@ -417,34 +380,41 @@ contract AuSysFacet is ReentrancyGuard {
         return id;
     }
 
-    /**
-     * @notice Get an order by ID (from AuSys.getOrder)
-     */
-    function getAuSysOrder(bytes32 id) external view returns (DiamondStorage.AuSysOrder memory) {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        return s.ausysOrders[id];
-    }
-
     // ============================================================================
     // P2P OFFER MANAGEMENT
     // ============================================================================
 
     /**
      * @notice Accept a P2P offer
-     * @dev FIX 2+3: EIP-712 ECDSA signature verification with nonce replay protection.
-     *      CEI pattern: all checks first, nonce consumed before external calls.
-     *      Counterparty escrows their side and order moves to Processing.
-     * @param orderId   The order/offer to accept
-     * @param nonce     Unique per-caller nonce (must not have been used before)
-     * @param deadline  Unix timestamp after which the signature is invalid
-     * @param signature Off-chain EIP-712 signature from trustedP2PSigner
+     * @dev Counterparty escrows their side and order moves to Processing.
+     *      msg.sender is the authorization — no additional signature needed.
+     * @param orderId The order/offer to accept
      */
     function acceptP2POffer(
+        bytes32 orderId
+    ) external nonReentrant whenNotPaused {
+        _acceptP2POffer(orderId, bytes32(0), false);
+    }
+
+    /**
+     * @notice Accept a buyer-initiated P2P offer with an explicit fulfillment node
+     * @dev Persists pickup metadata (start location/name) from the selected node.
+     * @param orderId The order/offer to accept
+     * @param pickupNodeRef Selected node hash owned by the accepting seller
+     */
+    function acceptP2POfferWithPickupNode(
         bytes32 orderId,
-        uint256 nonce,
-        uint256 deadline,
-        bytes calldata signature
-    ) external nonReentrant {
+        bytes32 pickupNodeRef
+    ) external nonReentrant whenNotPaused {
+        if (pickupNodeRef == bytes32(0)) revert NodeRequired();
+        _acceptP2POffer(orderId, pickupNodeRef, true);
+    }
+
+    function _acceptP2POffer(
+        bytes32 orderId,
+        bytes32 pickupNodeRef,
+        bool enforcePickupNode
+    ) internal {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.AuSysOrder storage order = s.ausysOrders[orderId];
 
@@ -469,39 +439,26 @@ contract AuSysFacet is ReentrancyGuard {
         address creator = order.isSellerInitiated ? order.seller : order.buyer;
         if (msg.sender == creator) revert CannotAcceptOwnOffer();
 
-        // ── SIGNATURE VERIFICATION (after all business checks) ────────────
-        if (s.trustedP2PSigner == address(0)) revert TrustedSignerNotSet();
-
-        bytes32 structHash = keccak256(abi.encode(
-            keccak256("AcceptOffer(bytes32 orderId,address acceptor,uint256 nonce,uint256 deadline)"),
-            orderId,
-            msg.sender,
-            nonce,
-            deadline
-        ));
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", _domainSeparator(), structHash));
-        address recovered = ECDSA.recover(digest, signature);
-
-        if (recovered != s.trustedP2PSigner) revert InvalidSignature();
-        if (s.ausysUsedNonces[msg.sender][nonce]) revert NonceAlreadyUsed();
-        if (block.timestamp > deadline) revert SignatureExpired();
-
         // ── EFFECTS ──────────────────────────────────────────────────────────
-        // Consume nonce before any external calls (CEI)
-        s.ausysUsedNonces[msg.sender][nonce] = true;
-
         // Update status to Processing
         order.currentStatus = OrderStatus.AUSYS_PROCESSING;
 
         // Remove from open offers list
         _removeFromOpenOffers(s, orderId);
 
+        // L-08: Remove from creator's userP2POffers
+        address offerCreator = order.isSellerInitiated ? order.seller : order.buyer;
+        _removeFromUserOffers(s, offerCreator, orderId);
+
         if (order.isSellerInitiated) {
             // Seller created offer — buyer (msg.sender) accepts
             order.buyer = msg.sender;
         } else {
             // Buyer created offer — seller (msg.sender) accepts
+            if (!enforcePickupNode) revert NodeRequired();
+            _persistSelectedPickupNode(s, order, pickupNodeRef);
             order.seller = msg.sender;
+            order.sellerNode = pickupNodeRef;  // record which node the seller fulfils from
         }
 
         // ── INTERACTIONS ─────────────────────────────────────────────────────
@@ -517,17 +474,46 @@ contract AuSysFacet is ReentrancyGuard {
                 order.tokenQuantity,
                 ''
             );
+            if (order.token == address(this)) {
+                _debitOwnerSellableForEscrow(
+                    s,
+                    orderId,
+                    msg.sender,
+                    order.tokenId,
+                    order.tokenQuantity,
+                    pickupNodeRef  // pin debit to the seller's chosen node
+                );
+            }
         }
 
         emit P2POfferAccepted(orderId, msg.sender, order.isSellerInitiated);
         emit AuSysOrderStatusUpdated(orderId, 1);
     }
 
+    function _persistSelectedPickupNode(
+        DiamondStorage.AppStorage storage s,
+        DiamondStorage.AuSysOrder storage order,
+        bytes32 pickupNodeRef
+    ) internal {
+        DiamondStorage.Node storage pickupNode = s.nodes[pickupNodeRef];
+        if (pickupNode.owner != msg.sender) revert NotNodeOwner();
+        if (!pickupNode.active || !pickupNode.validNode) revert InvalidNode();
+        if (
+            bytes(pickupNode.addressName).length == 0 ||
+            bytes(pickupNode.lat).length == 0 ||
+            bytes(pickupNode.lng).length == 0
+        ) revert NodeRequired();
+
+        order.locationData.startLocation.lat = pickupNode.lat;
+        order.locationData.startLocation.lng = pickupNode.lng;
+        order.locationData.startName = pickupNode.addressName;
+    }
+
     /**
      * @notice Cancel a P2P offer (only creator, only if not yet accepted)
      * @param orderId The order/offer to cancel
      */
-    function cancelP2POffer(bytes32 orderId) external nonReentrant {
+    function cancelP2POffer(bytes32 orderId) external nonReentrant whenNotPaused {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.AuSysOrder storage order = s.ausysOrders[orderId];
 
@@ -551,6 +537,14 @@ contract AuSysFacet is ReentrancyGuard {
                 order.tokenQuantity,
                 ''
             );
+            if (order.token == address(this)) {
+                _restoreEscrowedOwnerSellable(
+                    s,
+                    orderId,
+                    order.seller,
+                    order.tokenId
+                );
+            }
         } else {
             // Refund payment to buyer
             uint256 totalRefund = order.price + order.txFee;
@@ -560,12 +554,43 @@ contract AuSysFacet is ReentrancyGuard {
 
         // Update status to Canceled
         order.currentStatus = OrderStatus.AUSYS_CANCELED;
-        
+
+        // M-01: Clear escrow flag
+        delete s.ausysOrderTokenEscrowed[orderId];
+
         // Remove from open offers list
         _removeFromOpenOffers(s, orderId);
 
+        // L-08: Remove from creator's userP2POffers
+        _removeFromUserOffers(s, creator, orderId);
+
         emit P2POfferCanceled(orderId, creator);
         emit AuSysOrderStatusUpdated(orderId, 3);
+    }
+
+    /**
+     * @notice M-02: Permissionless cleanup of expired offers from the open list
+     * @param maxIterations Maximum number of entries to scan (gas limit safety)
+     */
+    function pruneExpiredOffers(uint256 maxIterations) external {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        uint256 length = s.openP2POfferIds.length;
+        uint256 i = 0;
+        uint256 iterations = 0;
+        while (i < length && iterations < maxIterations) {
+            bytes32 id = s.openP2POfferIds[i];
+            DiamondStorage.AuSysOrder storage order = s.ausysOrders[id];
+            if (order.expiresAt != 0 && block.timestamp > order.expiresAt) {
+                order.currentStatus = OrderStatus.AUSYS_EXPIRED;
+                s.openP2POfferIds[i] = s.openP2POfferIds[length - 1];
+                s.openP2POfferIds.pop();
+                length--;
+                // don't increment i — swapped element needs checking
+            } else {
+                i++;
+            }
+            iterations++;
+        }
     }
 
     // ============================================================================
@@ -573,66 +598,54 @@ contract AuSysFacet is ReentrancyGuard {
     // ============================================================================
 
     /**
-     * @notice Set the trusted off-chain signer for P2P offer acceptance (admin only)
-     * @param signer The address whose EIP-712 signatures are accepted in acceptP2POffer
+     * @notice Set the trusted off-chain signer address (reserved for future EIP-712 flow).
+     * @dev IMPORTANT: This signer is stored but NOT yet enforced in acceptP2POffer.
+     *      acceptP2POffer currently relies solely on msg.sender authorization.
+     *      Full EIP-712 signature verification is planned for a future upgrade.
+     *      Auditors: this field is intentionally inert in v1 — see roadmap docs.
+     * @param signer The address to designate as trusted signer for future enforcement
      */
-    function setTrustedP2PSigner(address signer) external adminOnly {
-        if (signer == address(0)) revert InvalidAddress();
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        s.trustedP2PSigner = signer;
-    }
-
-    /**
-     * @notice Return the EIP-712 domain separator for this contract
-     */
-    function domainSeparator() external view returns (bytes32) {
-        return _domainSeparator();
-    }
-
-    /// @dev EIP-712 domain separator bound to chainId + address(this)
-    function _domainSeparator() internal view returns (bytes32) {
-        return keccak256(abi.encode(
-            keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-            keccak256("Aurellion"),
-            keccak256("1"),
-            block.chainid,
-            address(this)
-        ));
-    }
-
-    /**
-     * @notice Get all open P2P offers
-     * @return Array of order IDs that are open P2P offers
-     */
-    function getOpenP2POffers() external view returns (bytes32[] memory) {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        return s.openP2POfferIds;
-    }
-
-    /**
-     * @notice Get P2P offers created by a specific user
-     * @param user The user address
-     * @return Array of order IDs created by the user
-     */
-    function getUserP2POffers(address user) external view returns (bytes32[] memory) {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        return s.userP2POffers[user];
-    }
-
     /**
      * @dev Remove an order from the open P2P offers list
-     * @notice Optimized: cache storage array to memory to avoid repeated SLOADs
+     * @notice M-06: Read directly from storage — avoids copying full array to memory
      */
     function _removeFromOpenOffers(DiamondStorage.AppStorage storage s, bytes32 orderId) internal {
-        // Cache to memory to avoid repeated SLOADs in loop (gas optimization)
-        bytes32[] memory offerIds = s.openP2POfferIds;
-        uint256 length = offerIds.length;
+        uint256 length = s.openP2POfferIds.length;
+        for (uint256 i = 0; i < length; i++) {
+            if (s.openP2POfferIds[i] == orderId) {
+                s.openP2POfferIds[i] = s.openP2POfferIds[length - 1];
+                s.openP2POfferIds.pop();
+                return;
+            }
+        }
+    }
+
+    /**
+     * @dev L-08: Remove an order from a user's P2P offers list (swap-and-pop)
+     */
+    function _removeFromUserOffers(DiamondStorage.AppStorage storage s, address user, bytes32 orderId) internal {
+        bytes32[] storage offers = s.userP2POffers[user];
+        uint256 length = offers.length;
+        for (uint256 i = 0; i < length; i++) {
+            if (offers[i] == orderId) {
+                offers[i] = offers[length - 1];
+                offers.pop();
+                return;
+            }
+        }
+    }
+
+    /**
+     * @dev Remove a journey from driver's active list (swap-and-pop)
+     */
+    function _removeDriverJourney(DiamondStorage.AppStorage storage s, address driver, bytes32 journeyId) internal {
+        bytes32[] storage journeys = s.driverToJourneyIds[driver];
+        uint256 length = journeys.length;
         
         for (uint256 i = 0; i < length; i++) {
-            if (offerIds[i] == orderId) {
-                // Swap with last element and pop (use cached memory value to avoid extra SLOAD)
-                s.openP2POfferIds[i] = offerIds[length - 1];
-                s.openP2POfferIds.pop();
+            if (journeys[i] == journeyId) {
+                journeys[i] = journeys[length - 1];
+                journeys.pop();
                 break;
             }
         }
@@ -651,13 +664,12 @@ contract AuSysFacet is ReentrancyGuard {
         DiamondStorage.ParcelData memory _data,
         uint256 bounty,
         uint256 ETA
-    ) external nonReentrant {
+    ) external nonReentrant whenNotPaused {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
 
-        if (msg.sender != receiver && !s.ausysRoles[ADMIN_ROLE][msg.sender]) {
-            revert InvalidCaller();
-        }
+        if (msg.sender != receiver) revert CallerMustBeBuyer();
         if (sender == address(0) || receiver == address(0)) revert InvalidAddress();
+        if (sender == receiver) revert DuplicateJourneyRoleAddress();
         if (bounty == 0) revert InvalidAmount();
         if (ETA <= block.timestamp) revert InvalidETA();
         if (s.payToken == address(0)) revert PayTokenNotSet();
@@ -677,7 +689,7 @@ contract AuSysFacet is ReentrancyGuard {
         journey.ETA = ETA;
 
         // Escrow bounty from receiver
-        IERC20(s.payToken).safeTransferFrom(receiver, address(this), bounty);
+        IERC20(s.payToken).safeTransferFrom(msg.sender, address(this), bounty);
         emit FundsEscrowed(receiver, bounty);
         emit JourneyCreated(
             journeyId,
@@ -708,20 +720,30 @@ contract AuSysFacet is ReentrancyGuard {
         uint256 ETA,
         uint256 tokenQuantity,
         uint256 assetId
-    ) external {
+    ) external nonReentrant whenNotPaused {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.AuSysOrder storage O = s.ausysOrders[orderId];
+
+        if (O.id == bytes32(0)) revert OrderNotFound();
 
         // Validate receiver is valid node or buyer
         bool isValidNode = _isValidNode(s, receiver);
         bool isBuyer = receiver == O.buyer;
         if (!isValidNode && !isBuyer) revert InvalidNode();
 
-        if (msg.sender != O.buyer && msg.sender != O.seller && !s.ausysRoles[ADMIN_ROLE][msg.sender]) {
-            revert InvalidCaller();
+        if (msg.sender != O.buyer) revert CallerMustBeBuyer();
+        if (O.currentStatus != OrderStatus.AUSYS_CREATED && O.currentStatus != OrderStatus.AUSYS_PROCESSING) {
+            revert InvalidOrderStatus();
         }
+        if (O.expiresAt != 0 && block.timestamp > O.expiresAt) revert OfferExpired();
+        if (sender != O.seller) revert InvalidJourneyRoute();
+        if (sender == address(0) || receiver == address(0)) revert InvalidAddress();
+        if (sender == receiver) revert DuplicateJourneyRoleAddress();
         if (ETA <= block.timestamp) revert InvalidETA();
+        if (bounty == 0) revert InvalidAmount();
         if (tokenQuantity == 0) revert InvalidAmount();
+        if (tokenQuantity != O.tokenQuantity) revert QuantityExceedsRequested();
+        if (assetId != O.tokenId) revert InvalidAmount();
         if (s.payToken == address(0)) revert PayTokenNotSet();
 
         bytes32 journeyId = _getHashedJourneyId(s);
@@ -739,19 +761,12 @@ contract AuSysFacet is ReentrancyGuard {
         journey.ETA = ETA;
 
         // Escrow bounty from buyer
-        IERC20(s.payToken).safeTransferFrom(O.buyer, address(this), bounty);
+        IERC20(s.payToken).safeTransferFrom(msg.sender, address(this), bounty);
         emit FundsEscrowed(O.buyer, bounty);
 
         if (O.journeyIds.length >= MAX_JOURNEYS_PER_ORDER) revert ArrayLimitExceeded();
         O.journeyIds.push(journeyId);
         s.journeyToAusysOrderId[journeyId] = orderId;
-
-        // Set token quantity only if not already set (P2P orders set it at creation).
-        // For non-P2P orders the quantity is already set during createAuSysOrder,
-        // so we should never blindly accumulate here.
-        if (O.tokenQuantity == 0) {
-            O.tokenQuantity = tokenQuantity;
-        }
 
         emit JourneyCreated(
             journeyId,
@@ -770,14 +785,6 @@ contract AuSysFacet is ReentrancyGuard {
         );
     }
 
-    /**
-     * @notice Get a journey by ID (from AuSys.getjourney)
-     */
-    function getJourney(bytes32 id) external view returns (DiamondStorage.AuSysJourney memory) {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        return s.ausysJourneys[id];
-    }
-
     // ============================================================================
     // DRIVER ASSIGNMENT (from AuSys.sol)
     // ============================================================================
@@ -785,26 +792,33 @@ contract AuSysFacet is ReentrancyGuard {
     /**
      * @notice Assign a driver to a journey (from AuSys.assignDriverToJourneyId)
      */
-    function assignDriverToJourney(address driver, bytes32 journeyId) external {
+    function assignDriverToJourney(address driver, bytes32 journeyId) external whenNotPaused {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        DiamondStorage.AuSysJourney storage J = s.ausysJourneys[journeyId];
+
+        if (J.journeyId == bytes32(0)) revert JourneyNotFound();
 
         // Require driver to be registered
         if (!s.ausysRoles[DRIVER_ROLE][driver]) revert InvalidCaller();
+        if (driver == J.sender || driver == J.receiver || J.sender == J.receiver) {
+            revert DuplicateJourneyRoleAddress();
+        }
 
         // Only driver, dispatcher, or journey sender can assign
         bool callerAuthorized = (
             msg.sender == driver ||
             s.ausysRoles[DISPATCHER_ROLE][msg.sender] ||
-            msg.sender == s.ausysJourneys[journeyId].sender
+            msg.sender == J.sender
         );
         if (!callerAuthorized) revert InvalidCaller();
+        if (J.currentStatus != OrderStatus.JOURNEY_PENDING) revert JourneyNotPending();
+        if (J.driver != address(0)) revert JourneyAlreadyAssigned();
 
         if (s.driverToJourneyIds[driver].length >= MAX_DRIVER_JOURNEYS) revert DriverMaxAssignment();
 
         s.driverToJourneyIds[driver].push(journeyId);
-        s.ausysJourneys[journeyId].driver = driver;
+        J.driver = driver;
 
-        DiamondStorage.AuSysJourney storage J = s.ausysJourneys[journeyId];
         emit DriverAssigned(
             journeyId,
             driver,
@@ -828,7 +842,7 @@ contract AuSysFacet is ReentrancyGuard {
     /**
      * @notice Sign for package pickup/delivery (from AuSys.packageSign)
      */
-    function packageSign(bytes32 id) external customerDriverCheck(id) {
+    function packageSign(bytes32 id) external customerDriverCheck(id) whenNotPaused {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.AuSysJourney storage J = s.ausysJourneys[id];
 
@@ -844,6 +858,9 @@ contract AuSysFacet is ReentrancyGuard {
                 s.driverPickupSigned[J.driver][id] = true;
             } else if (J.currentStatus == OrderStatus.JOURNEY_IN_TRANSIT) {
                 s.driverDeliverySigned[J.driver][id] = true;
+            } else {
+                // Journey is in a terminal state (Delivered/Canceled) — signing is meaningless
+                revert JourneyNotInProgress();
             }
             emit EmitSig(J.driver, id);
         }
@@ -853,7 +870,7 @@ contract AuSysFacet is ReentrancyGuard {
      * @notice Hand on - pickup confirmation (from AuSys.handOn)
      * @dev Requires driver and sender signatures. Transitions to InTransit.
      */
-    function handOn(bytes32 id) external customerDriverCheck(id) isPending(id) nonReentrant returns (bool) {
+    function handOn(bytes32 id) external customerDriverCheck(id) isPending(id) nonReentrant whenNotPaused returns (bool) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.AuSysJourney storage J = s.ausysJourneys[id];
 
@@ -893,7 +910,17 @@ contract AuSysFacet is ReentrancyGuard {
 
             // Transfer tokens from seller to escrow if this is first journey
             // Skip if seller-initiated P2P (tokens already escrowed at offer creation)
-            if (J.sender == O.seller && !O.isSellerInitiated) {
+            if (J.sender == O.seller && !O.isSellerInitiated && !s.ausysOrderTokenEscrowed[orderId]) {
+                if (O.token == address(this)) {
+                    _debitOwnerSellableForEscrow(
+                        s,
+                        orderId,
+                        O.seller,
+                        O.tokenId,
+                        O.tokenQuantity,
+                        O.sellerNode  // pin to seller's recorded node
+                    );
+                }
                 IERC1155(O.token).safeTransferFrom(
                     O.seller,
                     address(this),
@@ -901,6 +928,7 @@ contract AuSysFacet is ReentrancyGuard {
                     O.tokenQuantity,
                     ''
                 );
+                s.ausysOrderTokenEscrowed[orderId] = true;
             }
         }
 
@@ -912,7 +940,7 @@ contract AuSysFacet is ReentrancyGuard {
      * @dev Requires driver delivery signature and receiver signature. 
      *      Pays driver bounty and settles order if final delivery.
      */
-    function handOff(bytes32 id) external isInProgress(id) customerDriverCheck(id) nonReentrant returns (bool) {
+    function handOff(bytes32 id) external isInProgress(id) customerDriverCheck(id) nonReentrant whenNotPaused returns (bool) {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.AuSysJourney storage J = s.ausysJourneys[id];
         bytes32 orderId = s.journeyToAusysOrderId[id];
@@ -927,6 +955,10 @@ contract AuSysFacet is ReentrancyGuard {
 
         J.currentStatus = OrderStatus.JOURNEY_DELIVERED;
         J.journeyEnd = block.timestamp;
+
+        // Remove journey from driver's active list (swap-and-pop)
+        _removeDriverJourney(s, J.driver, id);
+
         emit AuSysJourneyStatusUpdated(
             id,
             OrderStatus.JOURNEY_DELIVERED,
@@ -945,7 +977,9 @@ contract AuSysFacet is ReentrancyGuard {
             J.parcelData.endName
         );
 
-        // Pay driver bounty
+        // Pay driver bounty.
+        // NOTE: State (JOURNEY_DELIVERED, journeyEnd, driver removal) is fully updated above
+        // before any external calls below. Reentrancy is additionally guarded by nonReentrant.
         _generateReward(s, id);
 
         // Settle order if this is final delivery to buyer
@@ -963,18 +997,24 @@ contract AuSysFacet is ReentrancyGuard {
     // INTERNAL HELPERS
     // ============================================================================
 
+    /// @dev IDs are unique (counter + prevrandao + sender + timestamp) but NOT secret.
+    /// Validators have weak influence over prevrandao post-merge.
+    /// Do not use these IDs where unpredictability is required.
     function _getHashedJourneyId(DiamondStorage.AppStorage storage s) internal returns (bytes32) {
-        return keccak256(abi.encode(++s.ausysJourneyIdCounter));
+        return keccak256(abi.encodePacked(++s.ausysJourneyIdCounter, block.prevrandao, msg.sender, block.timestamp));
     }
 
-    /// @dev FIX 4: prevrandao + creator + timestamp added for order ID entropy
+    /// @dev IDs are unique (counter + prevrandao + creator + timestamp) but NOT secret.
+    /// Validators have weak influence over prevrandao post-merge.
+    /// Do not use these IDs where unpredictability is required.
     function _getHashedOrderId(DiamondStorage.AppStorage storage s, address creator) internal returns (bytes32) {
         return keccak256(abi.encodePacked(++s.ausysOrderIdCounter, block.prevrandao, creator, block.timestamp));
     }
 
     function _isValidNode(DiamondStorage.AppStorage storage s, address nodeOwner) internal view returns (bool) {
         bytes32[] storage ownerNodes = s.ownerNodes[nodeOwner];
-        for (uint256 i = 0; i < ownerNodes.length; i++) {
+        uint256 nodeCount = ownerNodes.length;
+        for (uint256 i = 0; i < nodeCount; i++) {
             // Cache node to avoid repeated SLOAD (saves ~3000 gas per iteration)
             DiamondStorage.Node storage nodeData = s.nodes[ownerNodes[i]];
             if (nodeData.active && nodeData.validNode) {
@@ -1001,6 +1041,8 @@ contract AuSysFacet is ReentrancyGuard {
         emit AuSysOrderStatusUpdated(orderId, OrderStatus.AUSYS_SETTLED);
 
         // Hold tokens in escrow — buyer chooses destination via selectTokenDestination
+        // NOTE: seller's node custody was already released at escrow creation
+        // (_debitOwnerSellableForEscrow) — no custody change needed here.
         s.pendingTokenDestination[orderId] = true;
         s.pendingTokenBuyer[orderId] = O.buyer;
         s.ausysOrderSettledAt[orderId] = block.timestamp;
@@ -1010,16 +1052,27 @@ contract AuSysFacet is ReentrancyGuard {
         IERC20(s.payToken).safeTransfer(O.seller, O.price);
         emit SellerPaid(O.seller, O.price);
 
-        // Distribute tx fees to nodes
-        if (O.nodes.length > 0) {
-            uint256 nodeCount = O.nodes.length;
-            uint256 nodeReward = O.txFee / nodeCount;
-            uint256 remainder = O.txFee - (nodeReward * nodeCount);
+        // ── FEE DISTRIBUTION ────────────────────────────────────────────────
+        // H-04: Use snapshot fees from order creation (fallback to current for legacy orders)
+        uint16 tBps = O.snapshotTreasuryBps > 0 ? O.snapshotTreasuryBps : s.treasuryFeeBps;
+        uint256 treasuryPortion = (O.price * tBps) / 10000;
+        if (treasuryPortion > 0) {
+            s.treasuryAccrued += treasuryPortion;
+            emit TreasuryFeeAccrued(orderId, treasuryPortion);
+        }
 
-            for (uint256 i = 0; i < nodeCount; i++) {
-                uint256 amount = nodeReward + (i == 0 ? remainder : 0);
-                IERC20(s.payToken).safeTransfer(O.nodes[i], amount);
-                emit NodeFeeDistributed(O.nodes[i], amount);
+        // Node fee: only distributed when intermediate nodes were part of the order
+        if (O.nodes.length > 0) {
+            uint256 nodePortion = O.txFee > treasuryPortion ? O.txFee - treasuryPortion : 0;
+            if (nodePortion > 0) {
+                uint256 nodeCount = O.nodes.length;
+                uint256 nodeReward = nodePortion / nodeCount;
+                uint256 remainder = nodePortion % nodeCount;
+                for (uint256 i = 0; i < nodeCount; i++) {
+                    uint256 amount = nodeReward + (i == 0 ? remainder : 0);
+                    IERC20(s.payToken).safeTransfer(O.nodes[i], amount);
+                    emit NodeFeeDistributed(O.nodes[i], amount);
+                }
             }
         }
 
@@ -1040,7 +1093,7 @@ contract AuSysFacet is ReentrancyGuard {
         bytes32 orderId,
         bytes32 nodeId,
         bool burn
-    ) external nonReentrant {
+    ) external nonReentrant whenNotPaused {
         DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
         DiamondStorage.AuSysOrder storage O = s.ausysOrders[orderId];
 
@@ -1052,117 +1105,188 @@ contract AuSysFacet is ReentrancyGuard {
 
         if (burn) {
             IERC1155(O.token).safeTransferFrom(address(this), address(0xdead), O.tokenId, O.tokenQuantity, '');
+            // Seller custody was already released at settlement (_settleOrder).
+            // Only the global tokenCustodyAmount needs to drop now — token is destroyed.
+            if (O.token == address(this)) {
+                uint256 tId = O.tokenId;
+                uint256 qty = O.tokenQuantity;
+                s.tokenCustodyAmount[tId] = s.tokenCustodyAmount[tId] >= qty
+                    ? s.tokenCustodyAmount[tId] - qty
+                    : 0;
+            }
             emit TokenDestinationSelected(orderId, address(0xdead), bytes32(0), true);
         } else {
             if (nodeId == bytes32(0)) revert NodeRequired();
             DiamondStorage.Node storage node = s.nodes[nodeId];
             if (!node.active || !node.validNode) revert InvalidNode();
             if (node.owner != msg.sender) revert NotNodeOwner();
+            if (O.token == address(this)) {
+                _creditOwnerNodeSellable(s, node.owner, O.tokenId, nodeId, O.tokenQuantity);
+                // Seller custody was already released at settlement (_settleOrder).
+                // Just attribute custody to the buyer's chosen node.
+                _attributeCustodyToNode(s, node.owner, O.tokenId, nodeId, O.tokenQuantity);
+            }
             IERC1155(O.token).safeTransferFrom(address(this), node.owner, O.tokenId, O.tokenQuantity, '');
             emit TokenDestinationSelected(orderId, node.owner, nodeId, false);
         }
     }
 
     /**
-     * @notice Admin recovery of escrowed tokens when buyer has not selected a destination
-     * @param orderId The order with stuck escrow
-     * @param to The address to send the recovered tokens to
+     * @notice Release custody attributed to the seller's nodes using the per-order escrow snapshot.
+     * @dev    Called from selectTokenDestination. The escrow snapshot records exactly which nodes
+     *         contributed to the escrow and how much, so we can precisely decrement
+     *         tokenNodeCustodyAmounts per node without guessing.
+     * @param  decrementTotal  If true (burn path) also decrement the global tokenCustodyAmount.
+     *                         If false (send-to-node path) custody is transferred, not released,
+     *                         so the global total is unchanged.
      */
-    function adminRecoverEscrow(bytes32 orderId, address to) external adminOnly nonReentrant {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        DiamondStorage.AuSysOrder storage O = s.ausysOrders[orderId];
+    function _releaseCustodyFromEscrowSnapshot(
+        DiamondStorage.AppStorage storage s,
+        bytes32 orderId,
+        address seller,
+        uint256 tokenId,
+        uint256 quantity,
+        bool decrementTotal
+    ) internal {
+        // Seller wallet-level custody
+        if (s.tokenCustodianAmounts[tokenId][seller] >= quantity) {
+            s.tokenCustodianAmounts[tokenId][seller] -= quantity;
+        } else {
+            s.tokenCustodianAmounts[tokenId][seller] = 0;
+        }
 
-        if (!s.pendingTokenDestination[orderId]) revert NoPendingDestination();
-        require(block.timestamp > s.ausysOrderSettledAt[orderId] + 30 days, "Too early: 30-day lock active");
-
-        s.pendingTokenDestination[orderId] = false;
-        delete s.pendingTokenBuyer[orderId];
-
-        IERC1155(O.token).safeTransferFrom(address(this), to, O.tokenId, O.tokenQuantity, '');
-        emit TokenDestinationSelected(orderId, to, bytes32(0), false);
-    }
-
-    /**
-     * @notice Get all pending token destination orders for a buyer
-     * @param buyer The buyer address to query
-     * @return Array of order IDs awaiting destination selection
-     * @dev Optimized: uses single-pass with count-first approach, caching storage reads
-     */
-    function getPendingTokenDestinations(address buyer) external view returns (bytes32[] memory) {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        uint256 totalOrders = s.ausysOrderIds.length;
-
-        // Single pass: build result directly without counting first
-        // Use temporary storage for matches to avoid stack too deep
-        bytes32[] memory tempResults = new bytes32[](totalOrders);
-        uint256 resultCount = 0;
-
-        for (uint256 i = 0; i < totalOrders; i++) {
-            bytes32 oid = s.ausysOrderIds[i];
-            // Cache storage reads to avoid repeated SLOADs (saves ~2000 gas per iteration)
-            if (s.pendingTokenDestination[oid] && s.pendingTokenBuyer[oid] == buyer) {
-                tempResults[resultCount++] = oid;
+        // Per-node custody using the escrow snapshot (populated by _debitOwnerSellableForEscrow)
+        bytes32[] storage escrowNodes = s.ausysOrderEscrowNodes[orderId];
+        uint256 nodeCount = escrowNodes.length;
+        for (uint256 i = 0; i < nodeCount; i++) {
+            bytes32 nodeHash = escrowNodes[i];
+            uint256 debit = s.ausysOrderEscrowNodeDebits[orderId][nodeHash];
+            if (debit == 0) continue;
+            if (s.tokenNodeCustodyAmounts[tokenId][nodeHash] >= debit) {
+                s.tokenNodeCustodyAmounts[tokenId][nodeHash] -= debit;
+            } else {
+                s.tokenNodeCustodyAmounts[tokenId][nodeHash] = 0;
             }
         }
 
-        // Resize result to exact size
-        bytes32[] memory result = new bytes32[](resultCount);
-        for (uint256 i = 0; i < resultCount; i++) {
-            result[i] = tempResults[i];
+        // Global total — only decrement on burn (custody destroyed, not transferred)
+        if (decrementTotal) {
+            if (s.tokenCustodyAmount[tokenId] >= quantity) {
+                s.tokenCustodyAmount[tokenId] -= quantity;
+            } else {
+                s.tokenCustodyAmount[tokenId] = 0;
+            }
         }
-        return result;
     }
 
-    // ============================================================================
-    // ADMIN DATA REPAIR
-    // ============================================================================
-
     /**
-     * @notice Correct a corrupted order tokenQuantity (admin only)
-     * @dev Used to fix orders where quantity was accidentally doubled.
-     *      Emits OrderQuantityCorrected for audit trail.
-     * @param orderId The order to correct
-     * @param correctQuantity The correct token quantity
+     * @notice Attribute custody to a buyer's node after P2P settlement.
+     * @dev    Mirrors what _nodeMintInternal does at mint time: credits both the wallet-level
+     *         custodian map and the per-node custody map. This keeps the custody ledger accurate
+     *         for secondary holders who want to redeem from their own node later.
      */
-    function correctOrderTokenQuantity(
+    function _attributeCustodyToNode(
+        DiamondStorage.AppStorage storage s,
+        address nodeOwner,
+        uint256 tokenId,
+        bytes32 nodeHash,
+        uint256 quantity
+    ) internal {
+        s.tokenCustodianAmounts[tokenId][nodeOwner] += quantity;
+        s.tokenNodeCustodyAmounts[tokenId][nodeHash] += quantity;
+        // tokenCustodyAmount (global total) is unchanged: custody transferred, not created.
+    }
+
+    function _creditOwnerNodeSellable(
+        DiamondStorage.AppStorage storage s,
+        address owner,
+        uint256 tokenId,
+        bytes32 nodeHash,
+        uint256 amount
+    ) internal {
+        if (owner == address(0) || nodeHash == bytes32(0) || amount == 0) return;
+
+        if (!s.ownerTokenHasSellableNode[owner][tokenId][nodeHash]) {
+            s.ownerTokenHasSellableNode[owner][tokenId][nodeHash] = true;
+            s.ownerTokenSellableNodes[owner][tokenId].push(nodeHash);
+        }
+
+        s.ownerNodeSellableAmounts[owner][tokenId][nodeHash] += amount;
+    }
+
+    function _debitOwnerSellableForEscrow(
+        DiamondStorage.AppStorage storage s,
         bytes32 orderId,
-        uint256 correctQuantity
-    ) external adminOnly {
-        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
-        DiamondStorage.AuSysOrder storage O = s.ausysOrders[orderId];
-        if (O.id == bytes32(0)) revert OfferNotFound();
-        require(correctQuantity > 0, "Quantity must be positive");
+        address owner,
+        uint256 tokenId,
+        uint256 amount,
+        bytes32 pinNode  // if non-zero, debit ONLY this node (no cross-node spill)
+    ) internal {
+        uint256 remaining = amount;
 
-        uint256 oldQuantity = O.tokenQuantity;
-        O.tokenQuantity = correctQuantity;
+        if (pinNode != bytes32(0)) {
+            // Pinned mode: debit exclusively from the seller's specified node.
+            // Prevents silently draining a different node when the operator has multiple.
+            uint256 nodeAmount = s.ownerNodeSellableAmounts[owner][tokenId][pinNode];
+            if (nodeAmount < amount) revert ExceedsNodeSellableAmount();
+            s.ownerNodeSellableAmounts[owner][tokenId][pinNode] -= amount;
+            remaining = 0;
 
-        emit AuSysOrderStatusUpdated(orderId, O.currentStatus);
-        emit OrderQuantityCorrected(orderId, oldQuantity, correctQuantity);
+            if (!s.ausysOrderEscrowNodeSeen[orderId][pinNode]) {
+                s.ausysOrderEscrowNodeSeen[orderId][pinNode] = true;
+                s.ausysOrderEscrowNodes[orderId].push(pinNode);
+            }
+            s.ausysOrderEscrowNodeDebits[orderId][pinNode] += amount;
+        } else {
+            // Legacy/fallback: spread across tracked nodes in registration order.
+            // Only used for non-node (external token) orders or legacy callers.
+            bytes32[] storage trackedNodes = s.ownerTokenSellableNodes[owner][tokenId];
+            for (uint256 i = 0; i < trackedNodes.length && remaining > 0; i++) {
+                bytes32 nodeHash = trackedNodes[i];
+                uint256 nodeAmount = s.ownerNodeSellableAmounts[owner][tokenId][nodeHash];
+                if (nodeAmount == 0) continue;
+
+                uint256 debited = nodeAmount > remaining ? remaining : nodeAmount;
+                s.ownerNodeSellableAmounts[owner][tokenId][nodeHash] -= debited;
+                remaining -= debited;
+
+                if (!s.ausysOrderEscrowNodeSeen[orderId][nodeHash]) {
+                    s.ausysOrderEscrowNodeSeen[orderId][nodeHash] = true;
+                    s.ausysOrderEscrowNodes[orderId].push(nodeHash);
+                }
+                s.ausysOrderEscrowNodeDebits[orderId][nodeHash] += debited;
+            }
+            if (remaining > 0) revert ExceedsNodeSellableAmount();
+        }
+
+        // Node custody drops at escrow creation — the physical asset is now committed
+        // to a buyer and is no longer freely available on the node.
+        // decrementTotal=false: ERC1155 still exists (locked in Diamond), global
+        // tokenCustodyAmount only drops if/when the buyer burns the token later.
+        _releaseCustodyFromEscrowSnapshot(s, orderId, owner, tokenId, amount, false);
+    }
+
+    function _restoreEscrowedOwnerSellable(
+        DiamondStorage.AppStorage storage s,
+        bytes32 orderId,
+        address owner,
+        uint256 tokenId
+    ) internal {
+        bytes32[] storage escrowNodes = s.ausysOrderEscrowNodes[orderId];
+        uint256 nodeCount = escrowNodes.length;
+
+        for (uint256 i = 0; i < nodeCount; i++) {
+            bytes32 nodeHash = escrowNodes[i];
+            uint256 amount = s.ausysOrderEscrowNodeDebits[orderId][nodeHash];
+            if (amount == 0) continue;
+            // Restore sellable balance
+            _creditOwnerNodeSellable(s, owner, tokenId, nodeHash, amount);
+            // Restore node custody — was decremented at escrow creation, must unwind on cancel
+            _attributeCustodyToNode(s, owner, tokenId, nodeHash, amount);
+            s.ausysOrderEscrowNodeDebits[orderId][nodeHash] = 0;
+        }
     }
 
     event OrderQuantityCorrected(bytes32 indexed orderId, uint256 oldQuantity, uint256 newQuantity);
-
-    // ============================================================================
-    // ERC1155 RECEIVER (required for holding tokens)
-    // ============================================================================
-
-    function onERC1155Received(
-        address,
-        address,
-        uint256,
-        uint256,
-        bytes calldata
-    ) external pure returns (bytes4) {
-        return this.onERC1155Received.selector;
-    }
-
-    function onERC1155BatchReceived(
-        address,
-        address,
-        uint256[] calldata,
-        uint256[] calldata,
-        bytes calldata
-    ) external pure returns (bytes4) {
-        return this.onERC1155BatchReceived.selector;
-    }
 }
+// sellerNode pin retrigger

@@ -1,5 +1,5 @@
 // Auto-generated from BridgeFacet.sol - DO NOT EDIT
-// Generated at: 2026-03-03T07:50:03.651Z
+// Generated at: 2026-03-10T19:30:30.101Z
 
 export const BridgeFacetABI = [
   {
@@ -31,7 +31,17 @@ export const BridgeFacetABI = [
   },
   {
     inputs: [],
+    name: 'InvalidDriver',
+    type: 'error',
+  },
+  {
+    inputs: [],
     name: 'InvalidInitialization',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'InvalidJourneyTransition',
     type: 'error',
   },
   {
@@ -46,12 +56,27 @@ export const BridgeFacetABI = [
   },
   {
     inputs: [],
+    name: 'InvalidToken',
+    type: 'error',
+  },
+  {
+    inputs: [],
     name: 'InvalidTrade',
     type: 'error',
   },
   {
     inputs: [],
+    name: 'JourneyNotFound',
+    type: 'error',
+  },
+  {
+    inputs: [],
     name: 'NotInitializing',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'OrderExpired',
     type: 'error',
   },
   {
@@ -68,6 +93,11 @@ export const BridgeFacetABI = [
       },
     ],
     name: 'SafeERC20FailedOperation',
+    type: 'error',
+  },
+  {
+    inputs: [],
+    name: 'SellerMismatch',
     type: 'error',
   },
   {
@@ -181,6 +211,31 @@ export const BridgeFacetABI = [
       },
     ],
     name: 'Initialized',
+    type: 'event',
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'unifiedOrderId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'bytes32',
+        name: 'journeyId',
+        type: 'bytes32',
+      },
+      {
+        indexed: true,
+        internalType: 'address',
+        name: 'driver',
+        type: 'address',
+      },
+    ],
+    name: 'JourneyDriverAssigned',
     type: 'event',
   },
   {
@@ -410,6 +465,24 @@ export const BridgeFacetABI = [
     inputs: [
       {
         internalType: 'bytes32',
+        name: '_journeyId',
+        type: 'bytes32',
+      },
+      {
+        internalType: 'address',
+        name: '_driver',
+        type: 'address',
+      },
+    ],
+    name: 'assignJourneyDriver',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
+        internalType: 'bytes32',
         name: '_unifiedOrderId',
         type: 'bytes32',
       },
@@ -501,6 +574,11 @@ export const BridgeFacetABI = [
       {
         internalType: 'uint256',
         name: '_quantity',
+        type: 'uint256',
+      },
+      {
+        internalType: 'uint256',
+        name: '_expiresAt',
         type: 'uint256',
       },
       {
@@ -934,6 +1012,11 @@ export const BridgeFacetEvents = [
     name: 'Initialized',
     signature: 'Initialized(uint64)',
     signatureHash: '0xc7f505b2',
+  },
+  {
+    name: 'JourneyDriverAssigned',
+    signature: 'JourneyDriverAssigned(bytes32,bytes32,address)',
+    signatureHash: '0xd5aac137',
   },
   {
     name: 'JourneyStatusUpdated',

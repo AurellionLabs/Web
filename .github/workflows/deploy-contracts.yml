@@ -2,6 +2,7 @@ name: Deploy Contracts
 
 permissions:
   contents: write
+  actions: write
 
 on:
   # Auto-deploy testnet on dev branch only — main deploys are manual (workflow_dispatch)
@@ -10,6 +11,10 @@ on:
     paths:
       - 'contracts/diamond/facets/**'
       - 'scripts/deploy.config.ts'
+      - 'scripts/unified-deploy.ts'
+      - 'scripts/sync-supported-assets.ts'
+      - 'scripts/lib/supported-assets*.ts'
+      - 'supported-assets/**'
 
   workflow_dispatch:
     inputs:
@@ -75,27 +80,27 @@ jobs:
 
       - name: Build on-chain manifest
         env:
-          BASE_TEST_RPC_URL: https://base-sepolia.infura.io/v3/30d0943a6329474e8b08a1ce7ab66892
+          BASE_TEST_RPC_URL: https://lb.drpc.live/base-sepolia/AlCxy0Sf_0uwk16xDiJkYx08AntCBacR8bS5ehXRfUMv
           SEP_PRIVATE_KEY: ${{ secrets.SEP_PRIVATE_KEY }}
           PROD_PRIVATE_KEY: ${{ secrets.PROD_PRIVATE_KEY }}
           ARB_RPC_URL: ${{ secrets.ARB_RPC_URL }}
           BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
           HYPE_RPC_URL: ${{ secrets.HYPE_RPC_URL }}
           SEP_RPC_URL: ${{ secrets.SEP_RPC_URL }}
-          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          PRIVATE_KEY: ${{ secrets.SEP_PRIVATE_KEY }}
         run: bunx --bun hardhat run scripts/build-manifest.ts --network ${{ github.event.inputs.network || 'baseSepolia' }}
 
       - name: Detect facet changes
         id: changes
         env:
-          BASE_TEST_RPC_URL: https://base-sepolia.infura.io/v3/30d0943a6329474e8b08a1ce7ab66892
+          BASE_TEST_RPC_URL: https://lb.drpc.live/base-sepolia/AlCxy0Sf_0uwk16xDiJkYx08AntCBacR8bS5ehXRfUMv
           SEP_PRIVATE_KEY: ${{ secrets.SEP_PRIVATE_KEY }}
           PROD_PRIVATE_KEY: ${{ secrets.PROD_PRIVATE_KEY }}
           ARB_RPC_URL: ${{ secrets.ARB_RPC_URL }}
           BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
           HYPE_RPC_URL: ${{ secrets.HYPE_RPC_URL }}
           SEP_RPC_URL: ${{ secrets.SEP_RPC_URL }}
-          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          PRIVATE_KEY: ${{ secrets.SEP_PRIVATE_KEY }}
         run: |
           CHANGES=$(bunx --bun hardhat run scripts/detect-facet-changes.ts --network ${{ github.event.inputs.network || 'baseSepolia' }})
           echo "changes_json=$CHANGES" >> "$GITHUB_OUTPUT"
@@ -131,9 +136,7 @@ jobs:
 # ---------------------------------------------------------------------------
   deploy:
     needs: detect
-    if: >-
-      needs.detect.outputs.has_changes == 'true'
-      || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
     runs-on: ubuntu-latest
 
     # Manual approval gate for main branch
@@ -168,15 +171,14 @@ jobs:
       - name: Deploy mode (manual)
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.mode != ''
         env:
-          BASE_TEST_RPC_URL: https://base-sepolia.infura.io/v3/30d0943a6329474e8b08a1ce7ab66892
+          BASE_TEST_RPC_URL: https://lb.drpc.live/base-sepolia/AlCxy0Sf_0uwk16xDiJkYx08AntCBacR8bS5ehXRfUMv
           SEP_RPC_URL: ${{ secrets.SEP_RPC_URL }}
           SEP_PRIVATE_KEY: ${{ secrets.SEP_PRIVATE_KEY }}
           PROD_PRIVATE_KEY: ${{ secrets.PROD_PRIVATE_KEY }}
           ARB_RPC_URL: ${{ secrets.ARB_RPC_URL }}
           BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
           HYPE_RPC_URL: ${{ secrets.HYPE_RPC_URL }}
-          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
-          BASESCAN_API_KEY: ${{ secrets.BASESCAN_API_KEY }}
+          PRIVATE_KEY: ${{ secrets.SEP_PRIVATE_KEY }}
           ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
           DEPLOY_MODE: ${{ github.event.inputs.mode }}
         run: |
@@ -191,15 +193,14 @@ jobs:
       - name: Deploy changed facets
         if: github.event_name != 'workflow_dispatch' || github.event.inputs.mode == ''
         env:
-          BASE_TEST_RPC_URL: https://base-sepolia.infura.io/v3/30d0943a6329474e8b08a1ce7ab66892
+          BASE_TEST_RPC_URL: https://lb.drpc.live/base-sepolia/AlCxy0Sf_0uwk16xDiJkYx08AntCBacR8bS5ehXRfUMv
           SEP_PRIVATE_KEY: ${{ secrets.SEP_PRIVATE_KEY }}
           PROD_PRIVATE_KEY: ${{ secrets.PROD_PRIVATE_KEY }}
           ARB_RPC_URL: ${{ secrets.ARB_RPC_URL }}
           BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
           HYPE_RPC_URL: ${{ secrets.HYPE_RPC_URL }}
           SEP_RPC_URL: ${{ secrets.SEP_RPC_URL }}
-          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
-          BASESCAN_API_KEY: ${{ secrets.BASESCAN_API_KEY }}
+          PRIVATE_KEY: ${{ secrets.SEP_PRIVATE_KEY }}
         run: |
           FACETS="${{ needs.detect.outputs.new_facets }},${{ needs.detect.outputs.changed_facets }}"
           # Remove leading/trailing commas and deduplicate
@@ -226,41 +227,164 @@ jobs:
       # ------------------------------------------------------------------
       - name: Rebuild manifest
         env:
-          BASE_TEST_RPC_URL: https://base-sepolia.infura.io/v3/30d0943a6329474e8b08a1ce7ab66892
+          BASE_TEST_RPC_URL: https://lb.drpc.live/base-sepolia/AlCxy0Sf_0uwk16xDiJkYx08AntCBacR8bS5ehXRfUMv
           SEP_PRIVATE_KEY: ${{ secrets.SEP_PRIVATE_KEY }}
           PROD_PRIVATE_KEY: ${{ secrets.PROD_PRIVATE_KEY }}
           ARB_RPC_URL: ${{ secrets.ARB_RPC_URL }}
           BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
           HYPE_RPC_URL: ${{ secrets.HYPE_RPC_URL }}
           SEP_RPC_URL: ${{ secrets.SEP_RPC_URL }}
-          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          PRIVATE_KEY: ${{ secrets.SEP_PRIVATE_KEY }}
         run: bunx --bun hardhat run scripts/build-manifest.ts --network ${{ github.event.inputs.network || 'baseSepolia' }}
 
-      - name: Commit updated manifest
+      - name: Sync supported asset catalog
+        env:
+          BASE_TEST_RPC_URL: https://lb.drpc.live/base-sepolia/AlCxy0Sf_0uwk16xDiJkYx08AntCBacR8bS5ehXRfUMv
+          SEP_PRIVATE_KEY: ${{ secrets.SEP_PRIVATE_KEY }}
+          PROD_PRIVATE_KEY: ${{ secrets.PROD_PRIVATE_KEY }}
+          ARB_RPC_URL: ${{ secrets.ARB_RPC_URL }}
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+          HYPE_RPC_URL: ${{ secrets.HYPE_RPC_URL }}
+          SEP_RPC_URL: ${{ secrets.SEP_RPC_URL }}
+          PRIVATE_KEY: ${{ secrets.SEP_PRIVATE_KEY }}
+          PINATA_JWT: ${{ secrets.PINATA_JWT }}
+        run: |
+          NETWORK=${{ github.event.inputs.network || 'baseSepolia' }}
+          HARDHAT_NETWORK="$NETWORK" bun scripts/sync-supported-assets.ts --write
+
+      - name: Detect persisted deployment changes
+        id: persist_changes
+        env:
+          DEPLOY_MODE: ${{ github.event.inputs.mode }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+
+          TRACKED_FILES=(
+            deployments/manifest.json
+            chain-constants.ts
+            indexer/diamond-constants.ts
+          )
+
+          : > .deploy-sync-files
+          CONFIG_CHANGED=false
+
+          for file in "${TRACKED_FILES[@]}"; do
+            if ! git diff --quiet -- "$file"; then
+              echo "$file" >> .deploy-sync-files
+              echo "Will persist $file"
+
+              if [ "$file" != "deployments/manifest.json" ]; then
+                CONFIG_CHANGED=true
+              fi
+            fi
+          done
+
+          if [ ! -s .deploy-sync-files ]; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "should_refresh_indexer=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          SHOULD_REFRESH_INDEXER=false
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$CONFIG_CHANGED" = "true" ]; then
+            case "$DEPLOY_MODE" in
+              diamond|diamond-v2|all)
+                SHOULD_REFRESH_INDEXER=true
+                ;;
+            esac
+          fi
+
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          echo "should_refresh_indexer=$SHOULD_REFRESH_INDEXER" >> "$GITHUB_OUTPUT"
+
+      - name: Persist deployment files
+        if: steps.persist_changes.outputs.has_changes == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Check if manifest actually changed
-          git diff --quiet deployments/manifest.json && echo "No manifest changes" && exit 0
-          # Use GitHub Contents API — works with contents:write even on protected branches.
-          # git push fails on protected branches; the API route does not.
-          FILE_SHA=$(gh api "repos/${{ github.repository }}/contents/deployments/manifest.json" \
-            --jq '.sha' 2>/dev/null || echo "")
-          CONTENT=$(base64 -w0 deployments/manifest.json)
-          if [ -n "$FILE_SHA" ]; then
-            gh api "repos/${{ github.repository }}/contents/deployments/manifest.json" \
-              --method PUT \
-              --field message="chore: update deployments/manifest.json [skip ci]" \
-              --field content="$CONTENT" \
-              --field sha="$FILE_SHA" \
-              --field branch="${{ github.ref_name }}"
-          else
-            gh api "repos/${{ github.repository }}/contents/deployments/manifest.json" \
-              --method PUT \
-              --field message="chore: update deployments/manifest.json [skip ci]" \
-              --field content="$CONTENT" \
-              --field branch="${{ github.ref_name }}"
-          fi
+          set -euo pipefail
+
+          REPO="${{ github.repository }}"
+          BRANCH="${{ github.ref_name }}"
+          FILE_LIST=".deploy-sync-files"
+          MAX_RETRIES=5
+          RETRY_DELAY=2
+
+          for attempt in $(seq 1 $MAX_RETRIES); do
+            echo "Attempt $attempt of $MAX_RETRIES to persist deployment files..."
+
+            BASE_SHA=$(gh api "repos/$REPO/git/ref/heads/$BRANCH" --jq '.object.sha')
+            BASE_TREE=$(gh api "repos/$REPO/git/commits/$BASE_SHA" --jq '.tree.sha')
+
+            TREE_ENTRIES='[]'
+            while IFS= read -r file; do
+              [ -z "$file" ] && continue
+              ENTRY=$(jq -n \
+                --arg path "$file" \
+                --rawfile content "$file" \
+                '{path:$path, mode:"100644", type:"blob", content:$content}')
+              TREE_ENTRIES=$(jq -c --argjson entry "$ENTRY" '. + [$entry]' <<<"$TREE_ENTRIES")
+            done < "$FILE_LIST"
+
+            TREE_PAYLOAD=$(jq -n \
+              --arg base_tree "$BASE_TREE" \
+              --argjson tree "$TREE_ENTRIES" \
+              '{base_tree:$base_tree, tree:$tree}')
+            NEW_TREE_SHA=$(gh api "repos/$REPO/git/trees" --method POST --input - --jq '.sha' <<<"$TREE_PAYLOAD")
+
+            COMMIT_PAYLOAD=$(jq -n \
+              --arg message "chore: sync deploy artifacts [skip ci]" \
+              --arg tree "$NEW_TREE_SHA" \
+              --arg parent "$BASE_SHA" \
+              '{message:$message, tree:$tree, parents:[$parent]}')
+            NEW_COMMIT_SHA=$(gh api "repos/$REPO/git/commits" --method POST --input - --jq '.sha' <<<"$COMMIT_PAYLOAD")
+
+            REF_UPDATE_PAYLOAD=$(jq -n --arg sha "$NEW_COMMIT_SHA" '{sha:$sha, force:false}')
+
+            set +e
+            RESPONSE=$(printf '%s' "$REF_UPDATE_PAYLOAD" | \
+              gh api "repos/$REPO/git/refs/heads/$BRANCH" --method PATCH --input - 2>&1)
+            EXIT_CODE=$?
+            set -e
+
+            if [ $EXIT_CODE -eq 0 ]; then
+              echo "✅ Persisted deployment files:"
+              cat "$FILE_LIST"
+              exit 0
+            fi
+
+            if [[ "$RESPONSE" == *"409"* || "$RESPONSE" == *"Reference update failed"* ]]; then
+              echo "⚠️  Branch moved while updating files, retrying in ${RETRY_DELAY}s..."
+              sleep $RETRY_DELAY
+              RETRY_DELAY=$((RETRY_DELAY * 2))
+            else
+              echo "❌ Failed to persist deployment files: $RESPONSE"
+              exit 1
+            fi
+          done
+
+          echo "❌ Failed to persist deployment files after $MAX_RETRIES attempts"
+          exit 1
+
+      - name: Trigger indexer redeploy
+        if: steps.persist_changes.outputs.should_refresh_indexer == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          BRANCH="${{ github.ref_name }}"
+          DISPATCH_PAYLOAD=$(jq -n \
+            --arg branch "$BRANCH" \
+            '{ref:$branch, inputs:{branch:$branch}}')
+
+          printf '%s' "$DISPATCH_PAYLOAD" | \
+            gh api "repos/${{ github.repository }}/actions/workflows/deploy-indexer.yml/dispatches" \
+              --method POST \
+              --input -
+
+          echo "Triggered deploy-indexer.yml for $BRANCH after Diamond config changes."
 
       - name: Upload deployment artifacts
         uses: actions/upload-artifact@v4

@@ -42,6 +42,7 @@ import { formatUnits } from 'ethers';
 import {
   DeliveryDetailsDialog,
   DeliveryFormData,
+  PickupNodeOption,
 } from '@/app/components/p2p/delivery-details-dialog';
 import { P2POrderFlow } from '@/app/components/p2p/p2p-order-flow';
 import { SettlementDestinationModal } from '@/app/components/settlement/SettlementDestinationModal';
@@ -49,6 +50,7 @@ import { useCustomer } from '@/app/providers/customer.provider';
 import { useSettlementDestination } from '@/hooks/useSettlementDestination';
 import { useToast } from '@/hooks/use-toast';
 import { OrderStatus } from '@/domain/orders/order';
+import { getJourneyRoleConflictMessage } from '@/utils/journey-role-conflicts';
 
 /**
  * P2P Market Offers Page
@@ -72,6 +74,9 @@ export default function P2PMarketOffersPage() {
   const {
     p2pRepository,
     p2pService,
+    getOwnedNodes,
+    getNode,
+    getNodeAssets,
     initialized: diamondInitialized,
   } = useDiamond();
   const { getAssetByTokenId, supportedAssets } = usePlatform();
@@ -97,10 +102,14 @@ export default function P2PMarketOffersPage() {
   // Delivery dialog state
   const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<P2POffer | null>(null);
+  const [pickupNodeOptions, setPickupNodeOptions] = useState<
+    PickupNodeOption[]
+  >([]);
 
   // P2P order flow state
   const {
     orders,
+    refreshOrders,
     signP2PDelivery,
     completeP2PHandoff,
     getP2PSignatureState,
@@ -310,9 +319,113 @@ export default function P2PMarketOffersPage() {
     );
   };
 
+  const normalizeTokenRef = (value: string): string => {
+    const normalized = String(value || '').trim();
+    if (!normalized) return '';
+    try {
+      return BigInt(normalized).toString(10);
+    } catch {
+      return normalized.toLowerCase();
+    }
+  };
+
+  const resolveOfferPickupNodes = useCallback(
+    async (offer: P2POffer): Promise<PickupNodeOption[]> => {
+      const ownedNodeRefs = await getOwnedNodes();
+      if (!ownedNodeRefs.length) {
+        throw new Error('You do not own any nodes to fulfill this buy order.');
+      }
+
+      const requiredTokenRef = normalizeTokenRef(offer.tokenId);
+      const requiredQuantity = BigInt(offer.quantity.toString());
+
+      const candidateResults = await Promise.all(
+        ownedNodeRefs.map(async (nodeRef) => {
+          const [node, assets] = await Promise.all([
+            getNode(nodeRef),
+            getNodeAssets(nodeRef),
+          ]);
+
+          if (!node) return { kind: 'skip' } as const;
+
+          const matchingAsset = assets.find((asset) => {
+            const assetRef = normalizeTokenRef(
+              String((asset as { id?: string }).id || ''),
+            );
+            return assetRef === requiredTokenRef;
+          });
+
+          if (!matchingAsset) return { kind: 'skip' } as const;
+
+          let balance = 0n;
+          try {
+            balance = BigInt(String(matchingAsset.amount || '0'));
+          } catch {
+            balance = 0n;
+          }
+          if (balance < requiredQuantity) return { kind: 'skip' } as const;
+
+          const startName = String(node.location?.addressName || '').trim();
+          const startLat = String(node.location?.location?.lat || '').trim();
+          const startLng = String(node.location?.location?.lng || '').trim();
+
+          if (!startName || !startLat || !startLng) {
+            return { kind: 'missing_metadata' } as const;
+          }
+
+          const pickupNodeRef = String(node.address || nodeRef).trim();
+          const senderNodeAddress = String(node.owner || address || '').trim();
+          if (!pickupNodeRef || !senderNodeAddress) {
+            return { kind: 'skip' } as const;
+          }
+
+          return {
+            kind: 'eligible',
+            option: {
+              pickupNodeRef,
+              senderNodeAddress,
+              label: startName,
+              startName,
+              startLocation: {
+                lat: startLat,
+                lng: startLng,
+              },
+              inventoryLabel: `${balance.toString()} available`,
+            },
+          } as const;
+        }),
+      );
+
+      const eligibleOptions: PickupNodeOption[] = [];
+      for (const result of candidateResults) {
+        if (result.kind === 'eligible') {
+          eligibleOptions.push(result.option);
+        }
+      }
+      eligibleOptions.sort((a, b) => a.label.localeCompare(b.label));
+
+      if (eligibleOptions.length > 0) {
+        return eligibleOptions;
+      }
+
+      if (
+        candidateResults.some((result) => result.kind === 'missing_metadata')
+      ) {
+        throw new Error(
+          'At least one eligible node is missing pickup location metadata. Update node address and coordinates before fulfilling this order.',
+        );
+      }
+
+      throw new Error(
+        'No owned node has enough inventory to fulfill this order quantity.',
+      );
+    },
+    [address, getNode, getNodeAssets, getOwnedNodes],
+  );
+
   // Accept flow:
   // - seller-initiated offer => buyer enters destination via dialog
-  // - buy offer => use buyer-provided destination stored on the offer
+  // - customer-initiated buy offer => seller picks fulfillment node first
   const handleAcceptOffer = useCallback(
     async (offerId: string) => {
       const offer = offers.find((o) => o.id === offerId);
@@ -320,6 +433,7 @@ export default function P2PMarketOffersPage() {
       if (!p2pService || !address) return;
 
       if (offer.isSellerInitiated) {
+        setPickupNodeOptions([]);
         setSelectedOffer(offer);
         setDeliveryDialogOpen(true);
         return;
@@ -335,85 +449,104 @@ export default function P2PMarketOffersPage() {
       setProcessingOfferId(offer.id);
       setErrorMessage(null);
       try {
-        const storedLocation = offer.locationData!;
-        const delivery: P2PDeliveryDetails = {
-          senderNodeAddress:
-            offer.nodes && offer.nodes.length > 0 ? offer.nodes[0] : address,
-          receiverAddress: offer.buyer,
-          parcelData: {
-            startLocation: {
-              lat: storedLocation.startLocation?.lat || '',
-              lng: storedLocation.startLocation?.lng || '',
-            },
-            endLocation: {
-              lat: storedLocation.endLocation.lat,
-              lng: storedLocation.endLocation.lng,
-            },
-            startName: storedLocation.startName || 'Pickup Location',
-            endName: storedLocation.endName,
-          },
-          bountyWei: BigInt('500000000000000000'),
-          etaTimestamp: BigInt(Math.floor(Date.now() / 1000) + 7 * 24 * 3600),
-          tokenQuantity: BigInt(offer.quantity.toString()),
-          assetId: BigInt(offer.tokenId),
-          deliveryAddress: storedLocation.endName,
-        };
-
-        await p2pService.acceptOfferWithDelivery(offer.id, delivery);
-        await loadOffers();
+        const options = await resolveOfferPickupNodes(offer);
+        setPickupNodeOptions(options);
+        setSelectedOffer(offer);
+        setDeliveryDialogOpen(true);
       } catch (error: unknown) {
-        console.error('Error accepting buy offer with stored delivery:', error);
+        console.error('Error preparing buy offer acceptance:', error);
         const msg =
           error instanceof Error
             ? error.message
-            : 'Failed to accept offer. Please try again.';
+            : 'Failed to prepare offer acceptance. Please try again.';
         setErrorMessage(msg);
-        await loadOffers();
       } finally {
         setProcessingOfferId(null);
       }
     },
-    [offers, p2pService, address, loadOffers],
+    [offers, p2pService, address, resolveOfferPickupNodes],
   );
 
-  // Confirm accept + schedule delivery
+  // Confirm accept action:
+  // - sell offer: accept + schedule immediate journey
+  // - buy offer: accept with selected fulfillment node only
   const handleConfirmAcceptWithDelivery = useCallback(
     async (deliveryData: DeliveryFormData) => {
       if (!p2pService || !selectedOffer || !address) return;
       setProcessingOfferId(selectedOffer.id);
       setErrorMessage(null);
       try {
-        const delivery: P2PDeliveryDetails = {
-          senderNodeAddress: deliveryData.senderNodeAddress,
-          receiverAddress: address,
-          parcelData: {
-            startLocation: {
-              lat: selectedOffer.locationData?.startLocation?.lat || '',
-              lng: selectedOffer.locationData?.startLocation?.lng || '',
+        const isSellOffer = selectedOffer.isSellerInitiated;
+        if (isSellOffer) {
+          const delivery: P2PDeliveryDetails = {
+            senderNodeAddress: deliveryData.senderNodeAddress,
+            receiverAddress: address,
+            parcelData: {
+              startLocation: {
+                lat: selectedOffer.locationData?.startLocation?.lat || '',
+                lng: selectedOffer.locationData?.startLocation?.lng || '',
+              },
+              endLocation: {
+                lat: String(deliveryData.deliveryCoords?.lat ?? '').trim(),
+                lng: String(deliveryData.deliveryCoords?.lng ?? '').trim(),
+              },
+              startName: selectedOffer.locationData?.startName ?? '',
+              endName: deliveryData.deliveryAddress,
             },
-            endLocation: { lat: '', lng: '' },
-            startName:
-              selectedOffer.locationData?.startName || 'Pickup Location',
-            endName: deliveryData.deliveryAddress,
-          },
-          bountyWei: BigInt('500000000000000000'), // 0.5 USDT default bounty
-          etaTimestamp: BigInt(Math.floor(Date.now() / 1000) + 7 * 24 * 3600), // 7 days
-          tokenQuantity: BigInt(selectedOffer.quantity.toString()),
-          assetId: BigInt(selectedOffer.tokenId),
-          deliveryAddress: deliveryData.deliveryAddress,
-        };
+            bountyWei: BigInt('500000000000000000'), // 0.5 USDT default bounty
+            etaTimestamp: BigInt(Math.floor(Date.now() / 1000) + 7 * 24 * 3600), // 7 days
+            tokenQuantity: BigInt(selectedOffer.quantity.toString()),
+            assetId: BigInt(selectedOffer.tokenId),
+            deliveryAddress: deliveryData.deliveryAddress,
+          };
+          await p2pService.acceptOfferWithDelivery(selectedOffer.id, delivery);
+        } else {
+          const pickupNodeRef = String(deliveryData.pickupNodeRef || '').trim();
+          const pickupStartName = String(
+            deliveryData.pickupStartName || '',
+          ).trim();
+          const pickupStartLat = String(
+            deliveryData.pickupStartLocation?.lat || '',
+          ).trim();
+          const pickupStartLng = String(
+            deliveryData.pickupStartLocation?.lng || '',
+          ).trim();
 
-        await p2pService.acceptOfferWithDelivery(selectedOffer.id, delivery);
+          if (!pickupNodeRef) {
+            throw new Error(
+              'Select the node that will fulfill this order before continuing.',
+            );
+          }
+          if (!pickupStartName || !pickupStartLat || !pickupStartLng) {
+            throw new Error(
+              'Selected node is missing pickup metadata. Choose another node or update node details.',
+            );
+          }
+          await p2pService.acceptOfferWithPickupNode(
+            selectedOffer.id,
+            pickupNodeRef,
+          );
+        }
 
         setDeliveryDialogOpen(false);
         setSelectedOffer(null);
+        setPickupNodeOptions([]);
         await loadOffers();
+        await refreshOrders();
       } catch (error: unknown) {
         console.error('Error accepting offer with delivery:', error);
         const msg =
           error instanceof Error
             ? error.message
             : 'Failed to accept offer. Please try again.';
+        if ((error as { partialSuccess?: boolean })?.partialSuccess) {
+          await refreshOrders();
+          setDeliveryDialogOpen(false);
+          setSelectedOffer(null);
+          setPickupNodeOptions([]);
+          setScheduleDeliveryOrderId(selectedOffer.id);
+          setScheduleDeliveryDialogOpen(true);
+        }
         setErrorMessage(msg);
         await loadOffers();
         // Re-throw so the dialog can show the error too
@@ -422,7 +555,7 @@ export default function P2PMarketOffersPage() {
         setProcessingOfferId(null);
       }
     },
-    [p2pService, selectedOffer, address, loadOffers],
+    [p2pService, selectedOffer, address, loadOffers, refreshOrders],
   );
 
   // Cancel an offer
@@ -501,9 +634,18 @@ export default function P2PMarketOffersPage() {
         }
         return result;
       } catch (err) {
+        let toastTitle = 'Error';
+        let toastDescription = 'Failed to sign for delivery. Please try again.';
+
+        const roleConflictMessage = getJourneyRoleConflictMessage(err);
+        if (roleConflictMessage) {
+          toastTitle = 'Role Mismatch';
+          toastDescription = roleConflictMessage;
+        }
+
         toast({
-          title: 'Error',
-          description: 'Failed to sign for delivery. Please try again.',
+          title: toastTitle,
+          description: toastDescription,
           variant: 'destructive',
         });
         throw err;
@@ -534,9 +676,18 @@ export default function P2PMarketOffersPage() {
         }
         return result;
       } catch (err) {
+        let toastTitle = 'Error';
+        let toastDescription = 'Failed to complete handoff. Please try again.';
+
+        const roleConflictMessage = getJourneyRoleConflictMessage(err);
+        if (roleConflictMessage) {
+          toastTitle = 'Role Mismatch';
+          toastDescription = roleConflictMessage;
+        }
+
         toast({
-          title: 'Error',
-          description: 'Failed to complete handoff. Please try again.',
+          title: toastTitle,
+          description: toastDescription,
           variant: 'destructive',
         });
         throw err;
@@ -559,11 +710,7 @@ export default function P2PMarketOffersPage() {
       if (!order) return;
       try {
         setP2PActionLoading(true);
-        const senderNode =
-          deliveryData.senderNodeAddress ||
-          order.seller ||
-          order.nodes?.[0] ||
-          '';
+        const senderNode = String(order.seller || '').trim();
         const delivery: P2PDeliveryDetails = {
           senderNodeAddress: senderNode,
           receiverAddress: address,
@@ -572,8 +719,11 @@ export default function P2PMarketOffersPage() {
               lat: order.locationData?.startLocation?.lat || '',
               lng: order.locationData?.startLocation?.lng || '',
             },
-            endLocation: { lat: '', lng: '' },
-            startName: order.locationData?.startName || 'Pickup Location',
+            endLocation: {
+              lat: String(deliveryData.deliveryCoords?.lat ?? '').trim(),
+              lng: String(deliveryData.deliveryCoords?.lng ?? '').trim(),
+            },
+            startName: order.locationData?.startName ?? '',
             endName: deliveryData.deliveryAddress,
           },
           bountyWei: BigInt('500000000000000000'),
@@ -590,16 +740,25 @@ export default function P2PMarketOffersPage() {
           description: 'A delivery journey has been created for this order.',
         });
       } catch (err) {
-        const msg =
+        let toastTitle = 'Error';
+        let toastDescription =
           err instanceof Error
             ? err.message
             : 'Failed to schedule delivery. Please try again.';
+
+        const roleConflictMessage = getJourneyRoleConflictMessage(err);
+        if (roleConflictMessage) {
+          toastTitle = 'Role Mismatch';
+          toastDescription = roleConflictMessage;
+        }
+
         toast({
-          title: 'Error',
-          description: msg,
+          title: toastTitle,
+          description: toastDescription,
           variant: 'destructive',
         });
-        throw err;
+        // Do NOT re-throw — error is already shown via toast; re-throwing
+        // would propagate to the React error boundary and show a full-page crash.
       } finally {
         setP2PActionLoading(false);
       }
@@ -710,6 +869,23 @@ export default function P2PMarketOffersPage() {
     const isMine = isMyOffer(offer);
     const isProcessing = processingOfferId === offer.id;
     const assetMeta = assetMetadataMap.get(offer.tokenId);
+    const metadataClass = assetMeta?.assetClass?.trim();
+    const metadataClassKnown =
+      Boolean(metadataClass) && metadataClass?.toLowerCase() !== 'unknown';
+    const normalizedTokenId = (() => {
+      try {
+        return BigInt(offer.tokenId).toString(10);
+      } catch {
+        return offer.tokenId;
+      }
+    })();
+    const tokenClassFromMap =
+      tokenIdToClass.get(offer.tokenId) ||
+      tokenIdToClass.get(normalizedTokenId);
+    const displayAssetClass =
+      (metadataClassKnown ? metadataClass : undefined) ||
+      offer.assetClass ||
+      tokenClassFromMap;
 
     return (
       <EvaPanel
@@ -732,8 +908,8 @@ export default function P2PMarketOffersPage() {
             ) : (
               <ShoppingCart className="w-4 h-4 text-blue-400" />
             )}
-            {assetMeta?.assetClass && (
-              <EvaStatusBadge status="pending" label={assetMeta.assetClass} />
+            {displayAssetClass && (
+              <EvaStatusBadge status="pending" label={displayAssetClass} />
             )}
           </div>
           <EvaStatusBadge
@@ -1149,10 +1325,37 @@ export default function P2PMarketOffersPage() {
             if (!open) {
               setSelectedOffer(null);
               setProcessingOfferId(null);
+              setPickupNodeOptions([]);
             }
           }}
           onConfirm={handleConfirmAcceptWithDelivery}
           assetName={assetMetadataMap.get(selectedOffer.tokenId)?.name}
+          title={
+            selectedOffer.isSellerInitiated
+              ? 'Confirm & Schedule Delivery'
+              : 'Accept Buy Order'
+          }
+          subtitle={
+            selectedOffer.isSellerInitiated
+              ? 'Enter your delivery address to complete the purchase'
+              : 'Choose the node that will fulfill this order. Buyer will schedule delivery after acceptance.'
+          }
+          confirmLabel={
+            selectedOffer.isSellerInitiated
+              ? 'Accept & Schedule Delivery'
+              : 'Accept Buy Order'
+          }
+          pendingLabel={
+            selectedOffer.isSellerInitiated ? 'Scheduling...' : 'Accepting...'
+          }
+          initialDeliveryAddress={
+            selectedOffer.isSellerInitiated
+              ? undefined
+              : selectedOffer.locationData?.endName || ''
+          }
+          lockDeliveryAddress={!selectedOffer.isSellerInitiated}
+          requirePickupNodeSelection={!selectedOffer.isSellerInitiated}
+          pickupNodeOptions={pickupNodeOptions}
         />
       )}
 
@@ -1207,7 +1410,12 @@ export default function P2PMarketOffersPage() {
               onConfirm={handleConfirmScheduleDelivery}
               assetName={stuckOrder.asset?.name}
               initialDeliveryAddress={stuckOrder.locationData?.endName || ''}
-              lockDeliveryAddress={Boolean(stuckOrder.locationData?.endName)}
+              lockDeliveryAddress={Boolean(
+                stuckOrder.locationData?.endName &&
+                  stuckOrder.locationData?.endLocation?.lat &&
+                  stuckOrder.locationData?.endLocation?.lng,
+              )}
+              requirePickupNodeSelection={false}
             />
           );
         })()}

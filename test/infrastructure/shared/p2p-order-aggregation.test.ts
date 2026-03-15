@@ -114,7 +114,7 @@ const USER_ADDR = '0x1111111111111111111111111111111111111111';
 
 describe('aggregateP2POrdersForUser with journey data', () => {
   it('should return empty array when no events', () => {
-    const orders = aggregateP2POrdersForUser([], [], [], [], USER_ADDR);
+    const orders = aggregateP2POrdersForUser([], [], [], [], [], USER_ADDR);
     expect(orders).toEqual([]);
   });
 
@@ -126,6 +126,7 @@ describe('aggregateP2POrdersForUser with journey data', () => {
       created,
       [],
       created,
+      [],
       [],
       USER_ADDR,
     );
@@ -149,6 +150,7 @@ describe('aggregateP2POrdersForUser with journey data', () => {
       created,
       [],
       created,
+      [],
       [],
       USER_ADDR,
       journeys,
@@ -177,6 +179,7 @@ describe('aggregateP2POrdersForUser with journey data', () => {
       [],
       created,
       [],
+      [],
       USER_ADDR,
       journeys,
       journeyStatuses,
@@ -195,6 +198,7 @@ describe('aggregateP2POrdersForUser with journey data', () => {
       created,
       [],
       created,
+      [],
       [],
       USER_ADDR,
       [], // no journeys
@@ -233,6 +237,7 @@ describe('aggregateP2POrdersForUser with journey data', () => {
       [],
       created,
       [],
+      [],
       USER_ADDR,
       journeys,
       journeyStatuses,
@@ -267,6 +272,7 @@ describe('aggregateP2POrdersForUser with journey data', () => {
       accepted,
       created,
       [],
+      [],
       USER_ADDR,
       journeys,
       journeyStatuses,
@@ -294,6 +300,7 @@ describe('aggregateP2POrdersForUser with journey data', () => {
       accepted,
       created,
       [],
+      [],
       USER_ADDR,
     );
 
@@ -312,6 +319,7 @@ describe('aggregateP2POrdersForUser with journey data', () => {
       created,
       [],
       created,
+      [],
       statuses,
       USER_ADDR,
     );
@@ -329,6 +337,7 @@ describe('aggregateP2POrdersForUser with journey data', () => {
       created,
       [],
       created,
+      [],
       [],
       USER_ADDR,
     );
@@ -361,6 +370,7 @@ describe('aggregateP2POrdersForUser with journey data', () => {
         [],
         created,
         [],
+        [],
         USER_ADDR,
       );
 
@@ -384,6 +394,7 @@ describe('aggregateP2POrdersForUser with journey data', () => {
         [],
         created,
         [],
+        [],
         USER_ADDR,
       );
 
@@ -406,6 +417,7 @@ describe('aggregateP2POrdersForUser with journey data', () => {
         created,
         [],
         created,
+        [],
         [],
         USER_ADDR,
       );
@@ -437,6 +449,7 @@ describe('aggregateP2POrdersForUser with journey data', () => {
         accepted,
         [createdEvent],
         [],
+        [],
         USER_ADDR,
       );
 
@@ -463,6 +476,7 @@ describe('aggregateP2POrdersForUser with journey data', () => {
         [],
         accepted,
         [createdEvent],
+        [],
         [],
         USER_ADDR,
       );
@@ -494,6 +508,7 @@ describe('aggregateP2POrdersForUser with journey data', () => {
         [],
         created,
         [],
+        [],
         NODE_ADDR,
       );
 
@@ -504,5 +519,38 @@ describe('aggregateP2POrdersForUser with journey data', () => {
       // So a customer filter (order.buyer === nodeAddr) would correctly EXCLUDE this
       expect(orders[0].buyer).not.toBe(NODE_ADDR.toLowerCase());
     });
+  });
+
+  it('should use the acceptor as buyer for creator-side accepted public offers', () => {
+    const orderId = '0xpublic1';
+    const acceptor = '0x8888888888888888888888888888888888888888';
+    const created = [
+      makeCreatedEvent({
+        order_id: orderId,
+        creator: USER_ADDR,
+        is_seller_initiated: true,
+        target_counterparty: '0x0000000000000000000000000000000000000000',
+      }),
+    ];
+    const accepted = [
+      makeAcceptedEvent({
+        order_id: orderId,
+        acceptor,
+        is_seller_initiated: true,
+      }),
+    ];
+
+    const orders = aggregateP2POrdersForUser(
+      created,
+      [],
+      created,
+      accepted,
+      [],
+      USER_ADDR,
+    );
+
+    expect(orders).toHaveLength(1);
+    expect(orders[0].seller).toBe(USER_ADDR.toLowerCase());
+    expect(orders[0].buyer).toBe(acceptor.toLowerCase());
   });
 });

@@ -1,5 +1,5 @@
 // Auto-generated deployment constants for baseSepolia
-// Deployed: 2026-03-01T14:57:09.348Z
+// Deployed: 2026-03-12T13:34:35.590Z
 // Chain ID: 84532
 
 // =============================================================================
@@ -11,7 +11,7 @@ export const NEXT_PUBLIC_AUSTAKE_ADDRESS =
 export const NEXT_PUBLIC_AURA_TOKEN_ADDRESS =
   '0xe727f09fd8Eb3CaFa730493614df1528Ba69B1e6';
 export const NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS =
-  '0x725793e4Ebb067df8167D43be56b4d86A6c964F3';
+  '0x725793e4Ebb067df8167D43be56B4d86A6c964F3';
 export const NEXT_PUBLIC_AUSYS_ADDRESS =
   '0x94a61417e11C2e4FB756DBF2a0CaC7f433eaE6Aa';
 export const NEXT_PUBLIC_AURA_ASSET_ADDRESS =
@@ -35,12 +35,13 @@ export const NEXT_PUBLIC_ORDER_BRIDGE_ADDRESS =
 export const NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS = NEXT_PUBLIC_AURA_TOKEN_ADDRESS;
 
 export const NEXT_PUBLIC_AUSYS_FACET_ADDRESS =
-  '0xbA875188D8a538A7DcCdA91f3bD98c0d18b8E21f';
+  '0x24833EF24cAFa09829355E7483B127DDc0BB38ae';
 
 // Quote token decimals - changes based on which token is used
 // AURA = 18 decimals (testnet), USDC = 6 decimals (production)
 export const NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS = 18; // Change to 6 for USDC in production
-export const NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL = 'AURA'; // Change to 'USDC' for production
+export const NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL =
+  'AURA';
 
 //
 // AuraGoat is the same as AuraAsset for now (ERC1155 token contract)
@@ -54,33 +55,33 @@ export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = NEXT_PUBLIC_AURA_ASSET_ADDRESS;
 
 export const NEXT_PUBLIC_DIAMOND_ADDRESS =
   process.env.NEXT_PUBLIC_DIAMOND_ADDRESS ||
-  '0x8ed92Ff64dC6e833182a4743124FE3e48E2966A7'; // Default: Base Sepolia
+  '0x77FA5086e44B797F3C82A265ebac98937A258c8e';
 export const NEXT_PUBLIC_DIAMOND_CUT_FACET_ADDRESS =
-  '0xf20eBBF5cD6D9Be29C07aefC7A90Fb42C5Fd7770';
+  '0x2Da201653c6f97a63E68082aB7edBb27a443e359';
 export const NEXT_PUBLIC_DIAMOND_LOUPE_FACET_ADDRESS =
-  '0x63a67381E5158A5183df4C2dd2a72AfF409eAA01';
+  '0x895884d6Fe88E128a7E487131ae0aA6176F3765F';
 export const NEXT_PUBLIC_OWNERSHIP_FACET_ADDRESS =
-  '0x03fc08c2Ee451E86e798DeF0e7262556b66E13e1';
+  '0xbc5D683328a74740e1ad591D23457038fbfec867';
 export const NEXT_PUBLIC_ERC1155_RECEIVER_FACET_ADDRESS =
-  '0xFDb90E10F42b3Da93DBFaC5fEFE8D75E31775e34';
+  '0xa907400eCBdd83d03d99B0a7dB5e284A8Dadd178';
 export const NEXT_PUBLIC_NODES_FACET_ADDRESS =
-  '0xc23eB03C84626dE9228c64377f8111a97F8CaEc1';
+  '0x8d450395034B4FB648B8DED49e54682196fB29e7';
 export const NEXT_PUBLIC_ASSETS_FACET_ADDRESS =
-  '0x73755152A5002F3020Efa4bc2e0333267c22eaA8';
+  '0x91C21CbAe746a345052676AAB2A67fBcb92D0774';
 export const NEXT_PUBLIC_ORDERS_FACET_ADDRESS =
-  '0x3da9c79805af442d1EC0163843b92DF289717a15';
+  '0x4310B529AFd61969e7875dD4297dE34e7D567098';
 export const NEXT_PUBLIC_STAKING_FACET_ADDRESS =
   '0xa9E03bAB4dB2fAC44C6e4b7eB8e9D3bEfF26CcF5';
 export const NEXT_PUBLIC_BRIDGE_FACET_ADDRESS =
-  '0xd568Db774956FbB6B4C39941745A67D338Aa3ec0';
+  '0x26d420E79a97c6cb1505e379c5e69302949c086f';
 export const NEXT_PUBLIC_CLOB_FACET_ADDRESS =
-  '0x76235E5138910F7033610530d6c01082F23C9d90';
+  '0x23f8860d038bFbc4F4417C5Db6C308E2172A7972';
 // OrderRouterFacet - SINGLE ENTRY POINT for all order operations (V2 storage)
 export const NEXT_PUBLIC_ORDER_ROUTER_FACET_ADDRESS =
-  '0x2bd1D7DCd64F6705898A9E5aeD5d39c0462B08AB';
+  '0xE1b55fc184FF8DA0797e0F295CF3C84e5738D494';
 
 // Diamond deployment block (for indexer start block)
-export const DIAMOND_DEPLOY_BLOCK = 36030424;
+export const DIAMOND_DEPLOY_BLOCK = 38515909;
 
 // =============================================================================
 // RPC URLS - Read from environment variables, never hardcode API keys
@@ -94,24 +95,51 @@ export const NEXT_PUBLIC_RPC_URL_8453 =
   process.env.NEXT_PUBLIC_RPC_URL_8453 || '';
 
 // =============================================================================
-// SUBGRAPH / INDEXER URLS
-// =============================================================================
-// Ponder indexer GraphQL endpoint (custom domain with SSL)
-export const NEXT_PUBLIC_INDEXER_URL =
-  process.env.NEXT_PUBLIC_INDEXER_URL ||
-  'https://indexer.aurellionlabs.com/graphql';
-export const NEXT_PUBLIC_AUSYS_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
-export const NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
-export const NEXT_PUBLIC_AURUM_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
-export const NEXT_PUBLIC_AUSTAKE_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
-
-// =============================================================================
-// CHAIN CONFIG
+// CHAIN CONFIG (must be before indexer URLs — they depend on default chain)
 // =============================================================================
 
 export const NEXT_PUBLIC_DEFAULT_CHAIN_ID = Number(
   process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID || 84532,
 ); // Default: Base Sepolia (84532), Production: Arbitrum One (42161)
+
+// =============================================================================
+// SUBGRAPH / INDEXER URLS
+// =============================================================================
+
+// Indexer endpoints per chain
+const INDEXER_URLS: Record<number, string> = {
+  // Mainnet (Arbitrum One)
+  42161:
+    process.env.NEXT_PUBLIC_INDEXER_URL_42161 ||
+    'https://indexer.aurellionlabs.com/graphql',
+  // Testnet (Base Sepolia)
+  84532:
+    process.env.NEXT_PUBLIC_INDEXER_URL_84532 ||
+    'https://dev.indexer.aurellionlabs.com/graphql',
+};
+
+// Default / legacy static export (uses default chain)
+export const NEXT_PUBLIC_INDEXER_URL =
+  process.env.NEXT_PUBLIC_INDEXER_URL ||
+  INDEXER_URLS[NEXT_PUBLIC_DEFAULT_CHAIN_ID] ||
+  'https://indexer.aurellionlabs.com/graphql';
+
+/**
+ * Get the indexer GraphQL URL for a given chain.
+ * Falls back to the default chain's URL if the chain is unknown.
+ */
+export function getIndexerUrl(chainId?: number | null): string {
+  if (chainId && INDEXER_URLS[chainId]) {
+    return INDEXER_URLS[chainId];
+  }
+  return NEXT_PUBLIC_INDEXER_URL;
+}
+
+// Legacy aliases — kept for backward compat, prefer getIndexerUrl(chainId)
+export const NEXT_PUBLIC_AUSYS_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
+export const NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
+export const NEXT_PUBLIC_AURUM_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
+export const NEXT_PUBLIC_AUSTAKE_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
 
 // =============================================================================
 // DEPLOYMENT BLOCKS (for indexer configuration)
@@ -131,4 +159,21 @@ export const AURA_ASSET_DEPLOY_BLOCK = 36033385;
 // RWY_VAULT_DEPLOY_BLOCK removed - now part of Diamond
 
 export const NEXT_PUBLIC_RWY_STAKING_FACET_ADDRESS =
-  '0xa695B719138d91A06FA9Ec24589EA73bdCb10830';
+  '0xAaE98a6e7D17D2Db1a032dEf392cfc45eE2331f4';
+
+// =============================================================================
+// IPFS GROUP IDS - Chain-specific Pinata groups for metadata
+// =============================================================================
+
+export const IPFS_GROUP_IDS: Record<number, string> = {
+  42161: '9282bdc8-1a27-469a-b132-1e820e2433db', // Arbitrum One
+  84532: '6eae9d79-14a8-45c4-9d1c-acf2a0f9a42c', // Base Sepolia
+};
+
+export function getIpfsGroupId(chainId: number): string {
+  const groupId = IPFS_GROUP_IDS[chainId];
+  if (!groupId) {
+    throw new Error(`No IPFS group configured for chain ${chainId}`);
+  }
+  return groupId;
+}

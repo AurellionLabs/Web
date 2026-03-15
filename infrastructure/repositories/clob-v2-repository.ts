@@ -25,10 +25,10 @@ import {
   CircuitBreakerStatus,
 } from '@/domain/clob/clob';
 import {
-  NEXT_PUBLIC_AURUM_SUBGRAPH_URL,
   NEXT_PUBLIC_CLOB_V2_DIAMOND_ADDRESS,
   NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
 } from '@/chain-constants';
+import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 import { keccak256, encodePacked } from 'viem';
 
 // =============================================================================
@@ -412,12 +412,13 @@ const GET_MARKET_BY_ID_EVENTS = `
  * Uses event-sourced data from Ponder indexer.
  */
 export class CLOBV2Repository implements ICLOBRepository {
-  private graphQLEndpoint: string;
+  private get graphQLEndpoint() {
+    return getCurrentIndexerUrl();
+  }
   private diamondAddress: string;
   private quoteTokenAddress: string;
 
   constructor() {
-    this.graphQLEndpoint = NEXT_PUBLIC_AURUM_SUBGRAPH_URL;
     this.diamondAddress = NEXT_PUBLIC_CLOB_V2_DIAMOND_ADDRESS;
     this.quoteTokenAddress =
       NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS ||
@@ -1095,7 +1096,7 @@ export class CLOBV2Repository implements ICLOBRepository {
           block_timestamp: string;
         }>;
       };
-    }>(NEXT_PUBLIC_AURUM_SUBGRAPH_URL, query, { marketId });
+    }>(getCurrentIndexerUrl(), query, { marketId });
 
     const configuredItem = data.configured.items[0];
     if (!configuredItem) return null;
@@ -1179,7 +1180,7 @@ export class CLOBV2Repository implements ICLOBRepository {
         }>;
       };
       revealed: { items: Array<{ commitment_id: string; order_id: string }> };
-    }>(NEXT_PUBLIC_AURUM_SUBGRAPH_URL, query, { commitmentId });
+    }>(getCurrentIndexerUrl(), query, { commitmentId });
 
     const item = data.committed.items[0];
     if (!item) return null;
@@ -1239,7 +1240,7 @@ export class CLOBV2Repository implements ICLOBRepository {
         }>;
       };
       revealed: { items: Array<{ commitment_id: string; order_id: string }> };
-    }>(NEXT_PUBLIC_AURUM_SUBGRAPH_URL, query, {
+    }>(getCurrentIndexerUrl(), query, {
       committer: userAddress.toLowerCase(),
     });
 

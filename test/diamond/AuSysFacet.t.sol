@@ -4,14 +4,25 @@ pragma solidity ^0.8.28;
 import { Test, console2, Vm } from 'forge-std/Test.sol';
 import { DiamondTestBase } from './helpers/DiamondTestBase.sol';
 import { AuSysFacet } from 'contracts/diamond/facets/AuSysFacet.sol';
+import { DiamondCutFacet } from 'contracts/diamond/facets/DiamondCutFacet.sol';
 import { DiamondStorage } from 'contracts/diamond/libraries/DiamondStorage.sol';
+import { IDiamondCut } from 'contracts/diamond/interfaces/IDiamondCut.sol';
+import { IAuSysDiamond } from 'contracts/diamond/interfaces/IAuSysDiamond.sol';
 
 /**
  * @title AuSysFacetTest
  * @notice Tests for AuSysFacet (AuSys.sol parity)
  */
 contract AuSysFacetTest is DiamondTestBase {
-    AuSysFacet public ausys;
+    IAuSysDiamond public ausys;
+    error CallerMustBeBuyer();
+    error CallerMustBeSeller();
+    error JourneyNotFound();
+    error JourneyAlreadyAssigned();
+    error OrderNotFound();
+    error InvalidOrderStatus();
+    error InvalidJourneyRoute();
+    error OfferExpired();
 
     // Role constants (must match AuSysFacet)
     bytes32 public constant ADMIN_ROLE = keccak256('ADMIN_ROLE');
@@ -87,7 +98,8 @@ contract AuSysFacetTest is DiamondTestBase {
 
     function setUp() public override {
         super.setUp();
-        ausys = AuSysFacet(address(diamond));
+        ausys = IAuSysDiamond(address(diamond));
+        _addMissingAuSysSelectors();
 
         // Setup admin
         vm.prank(owner);
@@ -98,6 +110,17 @@ contract AuSysFacetTest is DiamondTestBase {
         ausys.setDriver(driver1, true);
         ausys.setDriver(driver2, true);
         ausys.setDispatcher(admin, true); // Admin is also a dispatcher
+        vm.stopPrank();
+    }
+
+    function _addMissingAuSysSelectors() internal {
+        bytes4[] memory sels = new bytes4[](3);
+        sels[0] = AuSysFacet.acceptP2POffer.selector;
+        sels[1] = AuSysFacet.cancelP2POffer.selector;
+        sels[2] = AuSysFacet.handOff.selector;
+
+        vm.startPrank(owner);
+        _upsertFacet(address(auSysFacet), sels);
         vm.stopPrank();
     }
 
@@ -168,6 +191,23 @@ contract AuSysFacetTest is DiamondTestBase {
         ausys.setDriver(driver1, false);
 
         assertFalse(ausys.hasAuSysRole(DRIVER_ROLE, driver1), 'Driver role should be disabled');
+    }
+
+    function test_getAllowedDrivers() public view {
+        address[] memory allowedDrivers = ausys.getAllowedDrivers();
+
+        assertEq(allowedDrivers.length, 2, 'Should expose active drivers');
+        assertEq(allowedDrivers[0], driver1, 'First driver should match setup');
+        assertEq(allowedDrivers[1], driver2, 'Second driver should match setup');
+    }
+
+    function test_getAllowedDrivers_removesDisabledDriver() public {
+        vm.prank(admin);
+        ausys.setDriver(driver1, false);
+
+        address[] memory allowedDrivers = ausys.getAllowedDrivers();
+        assertEq(allowedDrivers.length, 1, 'Disabled drivers should be removed from enumeration');
+        assertEq(allowedDrivers[0], driver2, 'Remaining driver should stay listed');
     }
 
     function test_setDriver_revertNotAdmin() public {
@@ -250,14 +290,10 @@ contract AuSysFacetTest is DiamondTestBase {
             'New York', 'Los Angeles'
         );
 
-        // createJourney escrows bounty from RECEIVER (user2)
-        // So user2 needs to approve the diamond contract
         vm.prank(user2);
         payToken.approve(address(diamond), 1000 ether);
 
-        // createJourney requires msg.sender == receiver OR msg.sender is admin
-        // Admin can create journeys on behalf of others
-        vm.startPrank(admin);
+        vm.startPrank(user2);
 
         vm.recordLogs();
         ausys.createJourney(
@@ -280,6 +316,53 @@ contract AuSysFacetTest is DiamondTestBase {
         assertEq(journey.receiver, user2, 'Receiver should match');
         assertEq(journey.bounty, 10 ether, 'Bounty should match');
         assertEq(journey.currentStatus, 0, 'Status should be Pending (0)');
+    }
+
+    function test_createJourney_revertWhenSenderEqualsReceiver() public {
+        DiamondStorage.ParcelData memory parcelData = _createParcelData(
+            '40.7128', '-74.0060',
+            '34.0522', '-118.2437',
+            'New York', 'Los Angeles'
+        );
+
+        vm.prank(user1);
+        payToken.approve(address(diamond), 1000 ether);
+
+        vm.prank(admin);
+        vm.expectRevert(AuSysFacet.CallerMustBeBuyer.selector);
+        ausys.createJourney(
+            user1,
+            user1,
+            parcelData,
+            10 ether,
+            block.timestamp + 86400
+        );
+    }
+
+    function test_createOrderJourney_revertWhenSenderEqualsReceiver() public {
+        DiamondStorage.AuSysOrder memory order = _createTestOrder();
+
+        vm.startPrank(user1);
+        payToken.approve(address(diamond), 10000 ether);
+        bytes32 orderId = ausys.createAuSysOrder(order);
+
+        DiamondStorage.ParcelData memory parcelData = _createParcelData(
+            '40.7128', '-74.0060',
+            '34.0522', '-118.2437',
+            'New York', 'Los Angeles'
+        );
+        vm.expectRevert(AuSysFacet.InvalidJourneyRoute.selector);
+        ausys.createOrderJourney(
+            orderId,
+            user1,
+            user1,
+            parcelData,
+            10 ether,
+            block.timestamp + 86400,
+            10,
+            1
+        );
+        vm.stopPrank();
     }
 
     function test_getJourney() public {
@@ -327,6 +410,79 @@ contract AuSysFacetTest is DiamondTestBase {
         // Let's check if user1 (sender) can do it - based on implementation it might be allowed
         vm.prank(user2); // user2 is neither sender nor admin
         vm.expectRevert();
+        ausys.assignDriverToJourney(driver1, journeyId);
+    }
+
+    function test_assignDriverToJourney_revertJourneyNotFound() public {
+        vm.prank(admin);
+        vm.expectRevert(JourneyNotFound.selector);
+        ausys.assignDriverToJourney(driver1, keccak256('missing'));
+    }
+
+    function test_assignDriverToJourney_revertAlreadyAssigned() public {
+        bytes32 journeyId = _createTestJourney();
+
+        vm.prank(admin);
+        ausys.assignDriverToJourney(driver1, journeyId);
+
+        vm.prank(admin);
+        vm.expectRevert(JourneyAlreadyAssigned.selector);
+        ausys.assignDriverToJourney(driver2, journeyId);
+    }
+
+    function test_assignDriverToJourney_revertWhenDriverEqualsSender() public {
+        DiamondStorage.ParcelData memory parcelData = _createParcelData(
+            '40.7128', '-74.0060',
+            '34.0522', '-118.2437',
+            'New York', 'Los Angeles'
+        );
+
+        vm.prank(user2);
+        payToken.approve(address(diamond), 1000 ether);
+
+        vm.recordLogs();
+        vm.prank(user2);
+        ausys.createJourney(
+            driver1,
+            user2,
+            parcelData,
+            10 ether,
+            block.timestamp + 86400
+        );
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        bytes32 journeyId = _extractJourneyIdFromLogs(logs);
+
+        vm.prank(admin);
+        vm.expectRevert(AuSysFacet.DuplicateJourneyRoleAddress.selector);
+        ausys.assignDriverToJourney(driver1, journeyId);
+    }
+
+    function test_assignDriverToJourney_revertWhenDriverEqualsReceiver() public {
+        DiamondStorage.ParcelData memory parcelData = _createParcelData(
+            '40.7128', '-74.0060',
+            '34.0522', '-118.2437',
+            'New York', 'Los Angeles'
+        );
+
+        vm.prank(driver1);
+        payToken.approve(address(diamond), 1000 ether);
+
+        vm.recordLogs();
+        vm.prank(driver1);
+        ausys.createJourney(
+            user1,
+            driver1,
+            parcelData,
+            10 ether,
+            block.timestamp + 86400
+        );
+
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        bytes32 journeyId = _extractJourneyIdFromLogs(logs);
+
+        vm.prank(admin);
+        vm.expectRevert(AuSysFacet.DuplicateJourneyRoleAddress.selector);
         ausys.assignDriverToJourney(driver1, journeyId);
     }
 
@@ -421,6 +577,119 @@ contract AuSysFacetTest is DiamondTestBase {
         ausys.handOn(journeyId);
     }
 
+    function test_createOrderJourney_revertOrderNotFound() public {
+        DiamondStorage.ParcelData memory parcelData = _createParcelData(
+            '40.7128', '-74.0060',
+            '34.0522', '-118.2437',
+            'Origin', 'Destination'
+        );
+
+        vm.prank(user1);
+        payToken.approve(address(diamond), 1000 ether);
+
+        vm.prank(user1);
+        vm.expectRevert(OrderNotFound.selector);
+        ausys.createOrderJourney(
+            keccak256('missing-order'),
+            user2,
+            user1,
+            parcelData,
+            10 ether,
+            block.timestamp + 86400,
+            10,
+            1
+        );
+    }
+
+    function test_createOrderJourney_revertSenderMustMatchSeller() public {
+        DiamondStorage.AuSysOrder memory order = _createTestOrder();
+
+        vm.startPrank(user1);
+        payToken.approve(address(diamond), 10000 ether);
+        bytes32 orderId = ausys.createAuSysOrder(order);
+        payToken.approve(address(diamond), 1000 ether);
+        vm.expectRevert(InvalidJourneyRoute.selector);
+        ausys.createOrderJourney(
+            orderId,
+            admin,
+            user1,
+            order.locationData,
+            10 ether,
+            block.timestamp + 86400,
+            order.tokenQuantity,
+            order.tokenId
+        );
+        vm.stopPrank();
+    }
+
+    function test_createOrderJourney_revertExpiredOrder() public {
+        DiamondStorage.AuSysOrder memory order = _createTestOrder();
+        order.seller = address(0);
+        order.targetCounterparty = user2;
+        order.expiresAt = block.timestamp + 1 hours;
+
+        vm.startPrank(user1);
+        payToken.approve(address(diamond), 10000 ether);
+        bytes32 orderId = ausys.createAuSysOrder(order);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + 1 hours + 1);
+
+        vm.prank(user1);
+        payToken.approve(address(diamond), 1000 ether);
+
+        vm.prank(user1);
+        vm.expectRevert(OfferExpired.selector);
+        ausys.createOrderJourney(
+            orderId,
+            user2,
+            user1,
+            order.locationData,
+            10 ether,
+            block.timestamp + 86400,
+            order.tokenQuantity,
+            order.tokenId
+        );
+    }
+
+    function test_getAuSysOrder_marksExpiredInView() public {
+        DiamondStorage.AuSysOrder memory order = _createTestOrder();
+        order.seller = address(0);
+        order.targetCounterparty = user2;
+        order.expiresAt = block.timestamp + 1 hours;
+
+        vm.startPrank(user1);
+        payToken.approve(address(diamond), 10000 ether);
+        bytes32 orderId = ausys.createAuSysOrder(order);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + 1 hours + 1);
+
+        DiamondStorage.AuSysOrder memory storedOrder = ausys.getAuSysOrder(orderId);
+        assertEq(storedOrder.currentStatus, 4, 'Expired offers should surface as expired in reads');
+    }
+
+    function test_getOpenP2POffers_filtersExpiredOffers() public {
+        DiamondStorage.AuSysOrder memory order = _createTestOrder();
+        order.seller = address(0);
+        order.targetCounterparty = user2;
+        order.expiresAt = block.timestamp + 1 hours;
+
+        vm.startPrank(user1);
+        payToken.approve(address(diamond), 10000 ether);
+        bytes32 orderId = ausys.createAuSysOrder(order);
+        vm.stopPrank();
+
+        bytes32[] memory offersBeforeExpiry = ausys.getOpenP2POffers();
+        assertEq(offersBeforeExpiry.length, 1, 'Offer should be visible before expiry');
+        assertEq(offersBeforeExpiry[0], orderId, 'Offer ID should match before expiry');
+
+        vm.warp(block.timestamp + 1 hours + 1);
+
+        bytes32[] memory offersAfterExpiry = ausys.getOpenP2POffers();
+        assertEq(offersAfterExpiry.length, 0, 'Expired offers should be filtered out of open offers');
+    }
+
     // ============================================================================
     // HELPER FUNCTIONS
     // ============================================================================
@@ -453,7 +722,10 @@ contract AuSysFacetTest is DiamondTestBase {
             contractualAgreement: bytes32(0),
             isSellerInitiated: false,
             targetCounterparty: address(0),
-            expiresAt: 0
+            expiresAt: 0,
+            snapshotTreasuryBps: 0,
+            snapshotNodeBps: 0,
+            sellerNode: bytes32(0)
         });
     }
 
@@ -464,12 +736,10 @@ contract AuSysFacetTest is DiamondTestBase {
             'New York', 'Los Angeles'
         );
 
-        // createJourney escrows bounty from RECEIVER (user2)
         vm.prank(user2);
         payToken.approve(address(diamond), 1000 ether);
 
-        // Admin creates the journey (has permission)
-        vm.startPrank(admin);
+        vm.startPrank(user2);
 
         vm.recordLogs();
         ausys.createJourney(
@@ -496,5 +766,37 @@ contract AuSysFacetTest is DiamondTestBase {
                 break;
             }
         }
+    }
+
+    function test_createAuSysOrder_revertCallerCannotEscrowBuyerFunds() public {
+        DiamondStorage.AuSysOrder memory order = _createTestOrder();
+
+        vm.prank(user1);
+        payToken.approve(address(diamond), 10000 ether);
+
+        vm.prank(admin);
+        vm.expectRevert(CallerMustBeBuyer.selector);
+        ausys.createAuSysOrder(order);
+    }
+
+    function test_createJourney_revertCallerMustBeReceiver() public {
+        DiamondStorage.ParcelData memory parcelData = _createParcelData(
+            '40.7128', '-74.0060',
+            '34.0522', '-118.2437',
+            'New York', 'Los Angeles'
+        );
+
+        vm.prank(user2);
+        payToken.approve(address(diamond), 1000 ether);
+
+        vm.prank(admin);
+        vm.expectRevert(CallerMustBeBuyer.selector);
+        ausys.createJourney(
+            user1,
+            user2,
+            parcelData,
+            10 ether,
+            block.timestamp + 86400
+        );
     }
 }

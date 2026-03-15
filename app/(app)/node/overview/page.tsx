@@ -19,6 +19,7 @@ import {
 import {
   PulsingHexNetwork,
   SpinningReticle,
+  projectNodesToSVG,
 } from '@/app/components/eva/eva-animations';
 import {
   RefreshCw,
@@ -63,7 +64,6 @@ export default function NodeOverviewPage() {
     router.push(`/node/dashboard?nodeId=${nodeAddress}`);
   };
 
-  // Move useMemo before conditional return - hooks must be called in same order every render
   const uniqueNodes = useMemo(() => {
     const seen = new Set<string>();
     return (nodes || []).filter((node) => {
@@ -73,6 +73,24 @@ export default function NodeOverviewPage() {
       return true;
     });
   }, [nodes]);
+
+  const topologyNodes = useMemo(
+    () =>
+      projectNodesToSVG(
+        uniqueNodes.map((n) => ({
+          lat: n.location?.location?.lat || '0',
+          lng: n.location?.location?.lng || '0',
+          label: n.address
+            ? n.address.slice(0, 6) + '...' + n.address.slice(-4)
+            : undefined,
+          status:
+            n.status === 'Active' ? ('Active' as const) : ('Inactive' as const),
+          address: n.address,
+          locationName: n.location?.addressName,
+        })),
+      ),
+    [uniqueNodes],
+  );
 
   if (loading) {
     return (
@@ -153,29 +171,9 @@ export default function NodeOverviewPage() {
 
         <EvaScanLine variant="mixed" />
 
-        {/* Stats Overview — Static cards to avoid transient mismatches */}
+        {/* Stats Overview */}
         <EvaSectionMarker section="SYSTEM STATUS" label="Node Statistics" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <EvaPanel label="Total Nodes" accent="gold">
-            <p className="font-mono text-4xl font-bold text-gold tabular-nums">
-              {totalNodes}
-            </p>
-          </EvaPanel>
-          <EvaPanel label="Active Nodes" accent="gold">
-            <p className="font-mono text-4xl font-bold text-emerald-400 tabular-nums">
-              {activeNodes}
-            </p>
-          </EvaPanel>
-          <EvaPanel label="Total Assets" accent="crimson">
-            <p className="font-mono text-4xl font-bold text-crimson tabular-nums">
-              {totalAssets}
-            </p>
-          </EvaPanel>
-        </div>
-
-        <EvaScanLine variant="gold" />
-
-        {/* HexStatCard Row — Persistent stat reference */}
+        {/* HexStatCard Row */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <HexStatCard
             label="Total Nodes"
@@ -210,7 +208,11 @@ export default function NodeOverviewPage() {
           label="Node Map"
           variant="gold"
         />
-        <PulsingHexNetwork />
+        <PulsingHexNetwork
+          nodes={topologyNodes}
+          onNodeClick={handleNodeSelect}
+          onAddNode={() => router.push('/node/register')}
+        />
 
         <HexCluster size="md" className="justify-center my-2" />
         <EvaScanLine variant="mixed" />
