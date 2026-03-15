@@ -91,7 +91,7 @@ const OrderRepositoryCtor = resolveNamedExport<OrderRepositoryCtor>(
 const AusysFactory = resolveNamedExport<AusysFactory>(
   ContractsModule,
   'Ausys__factory',
-  '@/lib/contracts/index',
+  '@/lib/contracts',
 );
 
 let diamondContextPromise: Promise<DiamondContextType> | null = null;
