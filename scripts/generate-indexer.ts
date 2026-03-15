@@ -1259,7 +1259,7 @@ function generatePonderConfig(facets: Map<string, FacetInfo>): void {
         return null;
       }
       return `    ${facet.name}: {
-      chain: 'baseSepolia',
+      chain: 'baseSepolias',
       abi: ${facet.name}ABI,
       address: ${mapping.addressConst} as \`0x\${string}\`,
       startBlock: ${mapping.blockConst},
