@@ -1,5 +1,5 @@
 // Auto-generated Ponder config - DO NOT EDIT
-// Generated at: 2026-03-10T19:30:30.105Z
+// Generated at: 2026-03-15T23:11:33.231Z
 
 import { createConfig } from 'ponder';
 
@@ -11,20 +11,22 @@ import { DiamondABI } from './abis/generated';
 import { DIAMOND_ADDRESS, DIAMOND_DEPLOY_BLOCK } from './diamond-constants';
 import {
   NEXT_PUBLIC_RPC_URL_84532,
+  NEXT_PUBLIC_RPC_URL_42161,
 } from './chain-constants';
+import * as dotenv from 'dotenv';
+dotenv.config();
 
-const BASE_SEPOLIA_CHAIN_ID = 84532;
 
 export default createConfig({
   chains: {
-    baseSepolia: {
-      id: BASE_SEPOLIA_CHAIN_ID,
-      rpc: NEXT_PUBLIC_RPC_URL_84532,
+    chain_undefined: {
+      id: Number(process.env.CHAIN_ID),
+      rpc: process.env.PONDER_RPC_URL,
     },
   },
   contracts: {
     Diamond: {
-      chain: 'baseSepolia',
+    chain: 'chain_undefined', 
       abi: DiamondABI,
       address: DIAMOND_ADDRESS,
       startBlock: DIAMOND_DEPLOY_BLOCK,
