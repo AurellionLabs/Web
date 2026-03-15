@@ -1274,7 +1274,10 @@ function generatePonderConfig(facets: Map<string, FacetInfo>): void {
     .join('\n');
 
   // Generate chain constant imports based on what external contracts we have
-  const chainConstantImports: string[] = ['NEXT_PUBLIC_RPC_URL_84532'];
+  const chainConstantImports: string[] = [
+    'NEXT_PUBLIC_RPC_URL_84532',
+    'NEXT_PUBLIC_RPC_URL_42161',
+  ];
   for (const facet of externalFacets) {
     const mapping = EXTERNAL_CONTRACT_ADDRESS_MAPPING[facet.name];
     if (mapping) {
@@ -1297,19 +1300,20 @@ import { DIAMOND_ADDRESS, DIAMOND_DEPLOY_BLOCK } from './diamond-constants';
 import {
   ${chainConstantImports.join(',\n  ')},
 } from './chain-constants';
+import * as dotenv from 'dotenv';
+dotenv.config();
 
-const BASE_SEPOLIA_CHAIN_ID = 84532;
 
 export default createConfig({
   chains: {
-    baseSepolia: {
-      id: BASE_SEPOLIA_CHAIN_ID,
-      rpc: NEXT_PUBLIC_RPC_URL_84532,
+    chain_${process.env.CHAIN_ID}: {
+      id: Number(process.env.CHAIN_ID),
+      rpc: process.env.PONDER_RPC_URL,
     },
   },
   contracts: {
     Diamond: {
-      chain: 'baseSepolia',
+    chain: 'chain_${process.env.CHAIN_ID}', 
       abi: DiamondABI,
       address: DIAMOND_ADDRESS,
       startBlock: DIAMOND_DEPLOY_BLOCK,
