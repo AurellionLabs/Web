@@ -26,6 +26,7 @@
  *   DEPLOY_LIST_CONTRACTS Set to 'true' to list all available contracts
  *   DEPLOY_DRY_RUN      Set to 'true' for dry run without deploying
  *   DEPLOY_SKIP_CONFIG  Set to 'true' to skip updating config files
+ *   DEPLOY_AUTO_WAIT_FOR_DIAMOND_CUT Set to 'true' to wait out diamond-cut timelocks in CI
  *
  * Smart Facet Upgrade (DEPLOY_ACTION=auto or omitted):
  *   When upgrading a facet, the script automatically:
@@ -129,6 +130,19 @@ interface CLIArgs {
   dryRun?: boolean;
   skipConfig?: boolean;
 }
+
+type FacetCutInput = {
+  facetAddress: string;
+  action: number;
+  functionSelectors: string[];
+};
+
+const DIAMOND_CUT_EXTENDED_ABI = [
+  'function diamondCut((address facetAddress, uint8 action, bytes4[] functionSelectors)[] _diamondCut, address _init, bytes _calldata) external',
+  'function scheduleDiamondCut((address facetAddress, uint8 action, bytes4[] functionSelectors)[] _diamondCut, address _init, bytes _calldata) external returns (bytes32 cutHash, uint256 executeAfter)',
+  'function getDiamondCutTimelock() external view returns (uint256)',
+  'function getPendingDiamondCut() external view returns (bytes32 cutHash, uint256 executeAfter)',
+] as const;
 
 // =============================================================================
 // CLI ARGUMENT PARSING
@@ -258,6 +272,101 @@ async function extractSelectorsFromContract(
     );
     return [];
   }
+}
+
+function shouldAutoWaitForDiamondCutTimelock(): boolean {
+  return process.env.DEPLOY_AUTO_WAIT_FOR_DIAMOND_CUT === 'true';
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function computeDiamondCutHash(
+  facetCuts: FacetCutInput[],
+  init: string,
+  calldata: string,
+): string {
+  const abiCoder = ethers.AbiCoder.defaultAbiCoder();
+  return ethers.keccak256(
+    abiCoder.encode(
+      [
+        'tuple(address facetAddress, uint8 action, bytes4[] functionSelectors)[]',
+        'address',
+        'bytes',
+      ],
+      [facetCuts, init, calldata],
+    ),
+  );
+}
+
+async function executeDiamondCutWithScheduling(
+  diamondAddress: string,
+  facetCuts: FacetCutInput[],
+  init: string = ethers.ZeroAddress,
+  calldata: string = '0x',
+): Promise<void> {
+  const [signer] = await ethers.getSigners();
+  const diamondCut = new ethers.Contract(
+    diamondAddress,
+    DIAMOND_CUT_EXTENDED_ABI,
+    signer,
+  );
+
+  const timelock = BigInt(await diamondCut.getDiamondCutTimelock());
+  if (timelock === 0n) {
+    const tx = await diamondCut.diamondCut(facetCuts, init, calldata);
+    await tx.wait();
+    return;
+  }
+
+  const expectedCutHash = computeDiamondCutHash(facetCuts, init, calldata);
+  let [pendingHash, pendingEta] = await diamondCut.getPendingDiamondCut();
+  let pendingHashStr = String(pendingHash).toLowerCase();
+  let pendingEtaBigInt = BigInt(pendingEta);
+
+  if (pendingEtaBigInt === 0n) {
+    console.log('   Scheduling diamond cut (timelock enabled)...');
+    const scheduleTx = await diamondCut.scheduleDiamondCut(
+      facetCuts,
+      init,
+      calldata,
+    );
+    await scheduleTx.wait();
+    [pendingHash, pendingEta] = await diamondCut.getPendingDiamondCut();
+    pendingHashStr = String(pendingHash).toLowerCase();
+    pendingEtaBigInt = BigInt(pendingEta);
+  }
+
+  if (pendingHashStr !== expectedCutHash.toLowerCase()) {
+    throw new Error(
+      `Pending diamond cut does not match this deployment (pending=${pendingHashStr}, expected=${expectedCutHash}).`,
+    );
+  }
+
+  const now = BigInt(Math.floor(Date.now() / 1000));
+  if (pendingEtaBigInt > now) {
+    const secondsRemaining = Number(pendingEtaBigInt - now);
+    if (!shouldAutoWaitForDiamondCutTimelock()) {
+      throw new Error(
+        `Diamond cut scheduled but timelock is still active for ~${secondsRemaining}s. Set DEPLOY_AUTO_WAIT_FOR_DIAMOND_CUT=true to wait and execute automatically.`,
+      );
+    }
+
+    console.log(
+      `   Timelock active. Waiting ~${secondsRemaining}s before executing diamond cut...`,
+    );
+    while (true) {
+      const current = Math.floor(Date.now() / 1000);
+      const remaining = Number(pendingEtaBigInt) - current;
+      if (remaining <= 0) break;
+      await sleep(Math.min(remaining, 30) * 1000);
+    }
+  }
+
+  console.log('   Executing scheduled diamond cut...');
+  const executeTx = await diamondCut.diamondCut(facetCuts, init, calldata);
+  await executeTx.wait();
 }
 
 // =============================================================================
@@ -682,11 +791,6 @@ async function installFacetsToDiamond(
 ) {
   console.log('\n⚙️  Installing facets to Diamond...\n');
 
-  const diamondCut = await ethers.getContractAt(
-    'IDiamondCut',
-    addresses.Diamond,
-  );
-
   // Derive facets to install from the deployment mode's contract list.
   // This is the single source of truth - adding a facet to a deployment mode
   // automatically includes it in the Diamond cut. No hardcoded lists to maintain.
@@ -706,35 +810,25 @@ async function installFacetsToDiamond(
     console.log(`   Adding ${facetName}...`);
 
     try {
-      const tx = await diamondCut.diamondCut(
-        [
-          {
-            facetAddress: addresses[facetName],
-            action: 0, // Add
-            functionSelectors: FACET_SELECTORS[facetName],
-          },
-        ],
-        ethers.ZeroAddress,
-        '0x',
-      );
-      await tx.wait();
+      await executeDiamondCutWithScheduling(addresses.Diamond, [
+        {
+          facetAddress: addresses[facetName],
+          action: 0, // Add
+          functionSelectors: FACET_SELECTORS[facetName],
+        },
+      ]);
       console.log(`   ✓ Added ${FACET_SELECTORS[facetName].length} selectors`);
     } catch (error: any) {
       if (error.message.includes('already exists')) {
         console.log(`   ⚠️  Selectors already exist, trying replace...`);
         try {
-          const tx = await diamondCut.diamondCut(
-            [
-              {
-                facetAddress: addresses[facetName],
-                action: 1, // Replace
-                functionSelectors: FACET_SELECTORS[facetName],
-              },
-            ],
-            ethers.ZeroAddress,
-            '0x',
-          );
-          await tx.wait();
+          await executeDiamondCutWithScheduling(addresses.Diamond, [
+            {
+              facetAddress: addresses[facetName],
+              action: 1, // Replace
+              functionSelectors: FACET_SELECTORS[facetName],
+            },
+          ]);
           console.log(
             `   ✓ Replaced ${FACET_SELECTORS[facetName].length} selectors`,
           );
@@ -1315,9 +1409,6 @@ async function removeDeprecatedSelectors(
     return activeDeprecated.map((d) => d.selector);
   }
 
-  // Execute diamond cut to remove deprecated selectors
-  const diamondCut = await ethers.getContractAt('IDiamondCut', diamondAddress);
-
   const facetCuts = [
     {
       facetAddress: ethers.ZeroAddress,
@@ -1327,8 +1418,10 @@ async function removeDeprecatedSelectors(
   ];
 
   console.log('   Removing deprecated selectors...');
-  const tx = await diamondCut.diamondCut(facetCuts, ethers.ZeroAddress, '0x');
-  await tx.wait();
+  await executeDiamondCutWithScheduling(
+    diamondAddress,
+    facetCuts as FacetCutInput[],
+  );
   console.log('   ✓ Deprecated selectors removed\n');
 
   return activeDeprecated.map((d) => d.selector);
@@ -1481,10 +1574,6 @@ async function updateFacet(
       };
     }
 
-    const diamondCut = await ethers.getContractAt(
-      'IDiamondCut',
-      diamondAddress,
-    );
     const facetCuts: Array<{
       facetAddress: string;
       action: number;
@@ -1532,12 +1621,10 @@ async function updateFacet(
     }
 
     try {
-      const tx = await diamondCut.diamondCut(
-        facetCuts,
-        ethers.ZeroAddress,
-        '0x',
+      await executeDiamondCutWithScheduling(
+        diamondAddress,
+        facetCuts as FacetCutInput[],
       );
-      await tx.wait();
     } catch (error: any) {
       console.error('   Diamond cut failed:', error.message);
       // Try executing cuts one at a time to find the problematic one
@@ -1547,12 +1634,7 @@ async function updateFacet(
           const actionName =
             cut.action === 0 ? 'Add' : cut.action === 1 ? 'Replace' : 'Remove';
           console.log(`   Trying ${actionName} cut...`);
-          const singleTx = await diamondCut.diamondCut(
-            [cut],
-            ethers.ZeroAddress,
-            '0x',
-          );
-          await singleTx.wait();
+          await executeDiamondCutWithScheduling(diamondAddress, [cut]);
           console.log(`   ✓ ${actionName} succeeded`);
         } catch (singleError: any) {
           console.error(
@@ -1605,22 +1687,16 @@ async function updateFacet(
     };
   }
 
-  const diamondCut = await ethers.getContractAt('IDiamondCut', diamondAddress);
   const actionCode = action === 'add' ? 0 : action === 'replace' ? 1 : 2;
 
   console.log(`⚙️  Performing diamondCut (${action})...`);
-  const tx = await diamondCut.diamondCut(
-    [
-      {
-        facetAddress: action === 'remove' ? ethers.ZeroAddress : facetAddress,
-        action: actionCode,
-        functionSelectors: selectors,
-      },
-    ],
-    ethers.ZeroAddress,
-    '0x',
-  );
-  await tx.wait();
+  await executeDiamondCutWithScheduling(diamondAddress, [
+    {
+      facetAddress: action === 'remove' ? ethers.ZeroAddress : facetAddress,
+      action: actionCode,
+      functionSelectors: selectors,
+    },
+  ]);
   console.log(
     `   ✓ ${action === 'remove' ? 'Removed' : 'Updated'} ${selectors.length} selectors\n`,
   );
