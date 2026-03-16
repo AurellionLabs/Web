@@ -7,6 +7,7 @@ WORKDIR /app
 COPY bun.lock ./
 COPY package*.json ./
 COPY indexer/package*.json ./indexer/
+COPY aurellion-core/package*.json ./aurellion-core/
 
 # Install dependencies
 RUN bun install --frozen-lockfile
