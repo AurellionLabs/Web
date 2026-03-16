@@ -17,6 +17,8 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { keccak256, toBytes } from 'viem';
 
+import 'dotenv/config';
+console.log(process.env);
 // ============================================================================
 // CONFIGURATION
 // ============================================================================
@@ -1321,6 +1323,8 @@ export default createConfig({
   },
 });
 `;
+
+  console.log(`>>>>>>>>>>>>>>>>>>>>>>>>${process.env.CHAIN_ID}`);
 
   fs.writeFileSync(
     path.join(INDEXER_DIR, 'ponder.config.generated.ts'),
