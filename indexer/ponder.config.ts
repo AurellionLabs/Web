@@ -1,13 +1,22 @@
-// Use auto-generated config with custom database
-import generatedConfig from './ponder.config.generated';
+import { createConfig } from 'ponder';
 
-export default {
-  ...generatedConfig,
+import { resolveIndexerRuntimeConfig } from './runtime-config';
+
+const runtimeConfig = resolveIndexerRuntimeConfig();
+
+export default createConfig({
+  chains: {
+    [runtimeConfig.chain.name]: {
+      id: runtimeConfig.chain.id,
+      rpc: runtimeConfig.chain.rpc,
+    },
+  },
+  contracts: {
+    Diamond: runtimeConfig.contracts.Diamond,
+  },
   database: {
     kind: 'postgres',
-    connectionString:
-      process.env.DATABASE_URL ||
-      'postgresql://postgres:aurellion_secure_2026@localhost:5432/ponder_indexer',
-    schema: process.env.DATABASE_SCHEMA || 'public',
+    connectionString: runtimeConfig.database.connectionString,
+    schema: runtimeConfig.database.schema,
   },
-};
+});

@@ -14,10 +14,15 @@
  *   DIAMOND_ADDRESS  – override the default Diamond address
  */
 
-import { ethers } from 'hardhat';
+import hre, { ethers } from 'hardhat';
 import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
+import {
+  createDeploymentManifest,
+  getDeploymentArtifactPaths,
+} from './lib/deployment-manifest';
+import { resolveDiamondAddress } from './lib/runtime-contracts';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -39,22 +44,6 @@ interface FacetSelectorsFile {
     selectors: Record<string, string>;
     allSelectors: string[];
   };
-}
-
-interface ManifestFacet {
-  address: string;
-  codeHash: string;
-  selectors: string[];
-  deployedAt: string;
-}
-
-interface Manifest {
-  network: string;
-  chainId: number;
-  diamond: string;
-  updatedAt: string;
-  gitCommit: string;
-  facets: Record<string, ManifestFacet>;
 }
 
 // ---------------------------------------------------------------------------
@@ -94,7 +83,19 @@ function buildSelectorToFacetMap(
 // ---------------------------------------------------------------------------
 
 async function main(): Promise<void> {
-  const diamondAddress = process.env.DIAMOND_ADDRESS || DEFAULT_DIAMOND_ADDRESS;
+  const existingDiamondAddress = process.env.NEXT_PUBLIC_DIAMOND_ADDRESS;
+  const diamondAddress = resolveDiamondAddress({
+    manifestDiamondAddress: existingDiamondAddress || DEFAULT_DIAMOND_ADDRESS,
+    env: process.env,
+  });
+  const chainId = Number((await ethers.provider.getNetwork()).chainId);
+  const deploymentsDir = path.resolve(__dirname, '../deployments');
+  const networkName = hre.network.name;
+  const artifactPaths = getDeploymentArtifactPaths({
+    deploymentsDir,
+    networkName,
+    chainId,
+  });
 
   console.log(`\n📋 Building deployment manifest`);
   console.log(`   Diamond: ${diamondAddress}\n`);
@@ -136,8 +137,6 @@ async function main(): Promise<void> {
       throw err;
     }
   }
-
-  const chainId = Number((await ethers.provider.getNetwork()).chainId);
 
   // For each facet address, group selectors and resolve the name
   // A single address may serve multiple named facets (rare) so we group by
@@ -192,25 +191,25 @@ async function main(): Promise<void> {
   }
 
   // Build manifest
-  const manifest: Manifest = {
-    network: 'baseSepolia',
+  const manifest = createDeploymentManifest({
+    networkName,
     chainId,
-    diamond: diamondAddress,
-    updatedAt: new Date().toISOString(),
+    diamondAddress,
     gitCommit: getGitCommit(),
     facets,
-  };
+  });
 
-  // Write to deployments/manifest.json
-  const deploymentsDir = path.resolve(__dirname, '../deployments');
+  // Write the manifest to the chain-specific deployment artifact path.
   if (!fs.existsSync(deploymentsDir)) {
     fs.mkdirSync(deploymentsDir, { recursive: true });
   }
 
-  const manifestPath = path.join(deploymentsDir, 'manifest.json');
-  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
+  fs.writeFileSync(
+    artifactPaths.manifestPath,
+    JSON.stringify(manifest, null, 2) + '\n',
+  );
 
-  console.log(`\n✅ Manifest written to deployments/manifest.json`);
+  console.log(`\n✅ Manifest written to ${artifactPaths.manifestPath}`);
   console.log(`   ${Object.keys(facets).length} facets recorded\n`);
 }
 

@@ -14,7 +14,15 @@ const mockGetIpfsGroupId = vi.fn(() => 'test-group');
 const mockGatewayGet = vi.fn();
 const mockListAll = vi.fn();
 const mockKeyvalues = vi.fn(() => ({ all: mockListAll }));
-const mockList = vi.fn(() => ({ keyvalues: mockKeyvalues }));
+const mockList = vi.fn(() => {
+  const builder = {
+    group: vi.fn(() => builder),
+    keyvalues: mockKeyvalues,
+    all: mockListAll,
+  };
+
+  return builder;
+});
 
 vi.mock('@/infrastructure/cache', () => ({
   initCache: mockInitCache,
@@ -69,10 +77,10 @@ describe('platform-metadata-server', () => {
       '@/infrastructure/repositories/shared/platform-metadata-server'
     );
 
-    const records = await getAssetRecordsByHashFromServerCache('123');
+    const records = await getAssetRecordsByHashFromServerCache('123', 42161);
 
     expect(records).toHaveLength(1);
-    expect(mockGetIpfsGroupId).toHaveBeenCalledWith(84532);
+    expect(mockGetIpfsGroupId).toHaveBeenCalledWith(42161);
     expect(mockHashToAssets).toHaveBeenCalledWith(
       '123',
       expect.any(Object),
@@ -100,9 +108,10 @@ describe('platform-metadata-server', () => {
       '@/infrastructure/repositories/shared/platform-metadata-server'
     );
 
-    const result = await getAssetByTokenIdFromServerCache('9');
+    const result = await getAssetByTokenIdFromServerCache('9', 42161);
 
     expect(result.cid).toBe('QmRaw');
+    expect(mockGetIpfsGroupId).toHaveBeenCalledWith(42161);
     expect(result.asset).toEqual({
       assetClass: 'GOAT',
       tokenId: '9',
