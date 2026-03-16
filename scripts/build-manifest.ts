@@ -22,13 +22,14 @@ import {
   createDeploymentManifest,
   getDeploymentArtifactPaths,
 } from './lib/deployment-manifest';
-import { resolveDiamondAddress } from './lib/runtime-contracts';
+import {
+  readDiamondAddressFromChainConstants,
+  resolveDiamondAddress,
+} from './lib/runtime-contracts';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
-
-const DEFAULT_DIAMOND_ADDRESS = '0x8ed92Ff64dC6e833182a4743124FE3e48E2966A7';
 
 const FACET_SELECTORS_PATH = path.join(
   __dirname,
@@ -83,11 +84,6 @@ function buildSelectorToFacetMap(
 // ---------------------------------------------------------------------------
 
 async function main(): Promise<void> {
-  const existingDiamondAddress = process.env.NEXT_PUBLIC_DIAMOND_ADDRESS;
-  const diamondAddress = resolveDiamondAddress({
-    manifestDiamondAddress: existingDiamondAddress || DEFAULT_DIAMOND_ADDRESS,
-    env: process.env,
-  });
   const chainId = Number((await ethers.provider.getNetwork()).chainId);
   const deploymentsDir = path.resolve(__dirname, '../deployments');
   const networkName = hre.network.name;
@@ -96,9 +92,26 @@ async function main(): Promise<void> {
     networkName,
     chainId,
   });
+  const chainConstantsDiamondAddress = readDiamondAddressFromChainConstants(
+    path.resolve(process.cwd(), 'chain-constants.ts'),
+  );
+  let diamondAddress: string | null = null;
+
+  try {
+    diamondAddress = resolveDiamondAddress({
+      chainConstantsDiamondAddress,
+      manifestDiamondAddress: fs.existsSync(artifactPaths.manifestPath)
+        ? JSON.parse(fs.readFileSync(artifactPaths.manifestPath, 'utf-8'))
+            .diamond
+        : null,
+      env: process.env,
+    });
+  } catch {
+    diamondAddress = null;
+  }
 
   console.log(`\n📋 Building deployment manifest`);
-  console.log(`   Diamond: ${diamondAddress}\n`);
+  console.log(`   Diamond: ${diamondAddress ?? '(not configured)'}\n`);
 
   // Load selector -> facetName map from the generated JSON
   let selectorToFacet = new Map<string, string>();
@@ -116,25 +129,32 @@ async function main(): Promise<void> {
   // Query the on-chain Diamond via DiamondLoupe.
   // If no Diamond exists at this address (fresh network), write an empty manifest
   // so detect-facet-changes treats all facets as "new".
-  const loupe = await ethers.getContractAt('IDiamondLoupe', diamondAddress);
   let onChainFacets: Array<{
     facetAddress: string;
     functionSelectors: string[];
   }> = [];
-  try {
-    onChainFacets = await loupe.facets();
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (
-      msg.includes('BAD_DATA') ||
-      msg.includes('could not decode') ||
-      msg.includes('0x')
-    ) {
-      console.warn(
-        `⚠️  No Diamond found at ${diamondAddress} on this network — writing empty manifest (all facets will be treated as new)`,
-      );
-    } else {
-      throw err;
+
+  if (!diamondAddress) {
+    console.warn(
+      `⚠️  No Diamond configured for ${networkName} (${chainId}) — writing empty manifest (all facets will be treated as new)`,
+    );
+  } else {
+    const loupe = await ethers.getContractAt('IDiamondLoupe', diamondAddress);
+    try {
+      onChainFacets = await loupe.facets();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (
+        msg.includes('BAD_DATA') ||
+        msg.includes('could not decode') ||
+        msg.includes('0x')
+      ) {
+        console.warn(
+          `⚠️  No Diamond found at ${diamondAddress} on this network — writing empty manifest (all facets will be treated as new)`,
+        );
+      } else {
+        throw err;
+      }
     }
   }
 
@@ -194,7 +214,7 @@ async function main(): Promise<void> {
   const manifest = createDeploymentManifest({
     networkName,
     chainId,
-    diamondAddress,
+    diamondAddress: diamondAddress || ethers.ZeroAddress,
     gitCommit: getGitCommit(),
     facets,
   });

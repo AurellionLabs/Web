@@ -8,7 +8,10 @@ import { PinataSDK } from 'pinata';
 import { getIpfsGroupId } from '../chain-constants';
 import { DEFAULT_SUPPORTED_ASSETS_DIR } from './lib/supported-assets';
 import { loadDeploymentManifest } from './lib/deployment-manifest';
-import { resolveDiamondAddress as resolveRuntimeDiamondAddress } from './lib/runtime-contracts';
+import {
+  readDiamondAddressFromChainConstants,
+  resolveDiamondAddress as resolveRuntimeDiamondAddress,
+} from './lib/runtime-contracts';
 import { syncSupportedAssets } from './lib/supported-assets-sync';
 
 interface CliOptions {
@@ -67,9 +70,13 @@ async function resolveDiamondAddress(diamondAddress?: string): Promise<string> {
     networkName: network.name,
     chainId: activeChainId,
   });
+  const chainConstantsDiamondAddress = readDiamondAddressFromChainConstants(
+    path.resolve(process.cwd(), 'chain-constants.ts'),
+  );
 
   return resolveRuntimeDiamondAddress({
     explicitAddress: diamondAddress,
+    chainConstantsDiamondAddress,
     manifestDiamondAddress: manifest?.diamond,
     env: process.env,
   });

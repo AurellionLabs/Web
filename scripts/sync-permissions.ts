@@ -10,7 +10,10 @@ import {
 } from './lib/permissions-catalog';
 import { loadDeploymentManifest } from './lib/deployment-manifest';
 import { syncPermissions } from './lib/permissions-sync-runner';
-import { resolveDiamondAddress as resolveRuntimeDiamondAddress } from './lib/runtime-contracts';
+import {
+  readDiamondAddressFromChainConstants,
+  resolveDiamondAddress as resolveRuntimeDiamondAddress,
+} from './lib/runtime-contracts';
 
 interface CliOptions {
   write: boolean;
@@ -75,9 +78,13 @@ async function resolveDiamondAddress(diamondAddress?: string): Promise<string> {
     networkName: network.name,
     chainId: activeChainId,
   });
+  const chainConstantsDiamondAddress = readDiamondAddressFromChainConstants(
+    path.resolve(process.cwd(), 'chain-constants.ts'),
+  );
 
   return resolveRuntimeDiamondAddress({
     explicitAddress: diamondAddress,
+    chainConstantsDiamondAddress,
     manifestDiamondAddress: manifest?.diamond,
     env: process.env,
   });

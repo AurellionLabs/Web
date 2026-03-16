@@ -1,6 +1,9 @@
 import { ethers } from 'ethers';
 
-import { resolveDiamondAddress } from '@/scripts/lib/runtime-contracts';
+import {
+  loadDiamondAddressFromChainConstants,
+  resolveDiamondAddress,
+} from '@/scripts/lib/runtime-contracts';
 
 describe('runtime-contracts', () => {
   it('prefers the explicit CLI diamond address', () => {
@@ -37,6 +40,17 @@ describe('runtime-contracts', () => {
     expect(result).toBe('0x2222222222222222222222222222222222222222');
   });
 
+  it('prefers the current chain-constants address over a stale manifest', () => {
+    const result = resolveDiamondAddress({
+      chainConstantsDiamondAddress:
+        '0x5555555555555555555555555555555555555555',
+      manifestDiamondAddress: '0x2222222222222222222222222222222222222222',
+      env: {},
+    });
+
+    expect(result).toBe('0x5555555555555555555555555555555555555555');
+  });
+
   it('rejects missing or zero addresses', () => {
     expect(() =>
       resolveDiamondAddress({
@@ -45,5 +59,15 @@ describe('runtime-contracts', () => {
         },
       }),
     ).toThrow('Diamond address not found');
+  });
+
+  it('parses NEXT_PUBLIC_DIAMOND_ADDRESS from chain-constants content', () => {
+    const result = loadDiamondAddressFromChainConstants(`
+      export const NEXT_PUBLIC_DIAMOND_ADDRESS =
+        process.env.NEXT_PUBLIC_DIAMOND_ADDRESS ||
+        '0x7777777777777777777777777777777777777777';
+    `);
+
+    expect(result).toBe('0x7777777777777777777777777777777777777777');
   });
 });

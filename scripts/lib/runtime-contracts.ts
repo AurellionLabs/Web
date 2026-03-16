@@ -1,8 +1,10 @@
 import { ethers } from 'ethers';
+import fs from 'node:fs';
 
 interface ResolveDiamondAddressOptions {
   explicitAddress?: string;
   manifestDiamondAddress?: string | null;
+  chainConstantsDiamondAddress?: string | null;
   env?: Record<string, string | undefined>;
 }
 
@@ -19,6 +21,28 @@ function normalizeAddress(value?: string | null): string | null {
   return normalized;
 }
 
+export function loadDiamondAddressFromChainConstants(
+  content: string,
+): string | null {
+  const match = content.match(
+    /export const NEXT_PUBLIC_DIAMOND_ADDRESS\s*=\s*(?:['"]([^'"]+)['"]|[^;]*\|\|\s*['"]([^'"]+)['"])/,
+  );
+
+  return normalizeAddress(match?.[1] || match?.[2] || null);
+}
+
+export function readDiamondAddressFromChainConstants(
+  filePath: string,
+): string | null {
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+
+  return loadDiamondAddressFromChainConstants(
+    fs.readFileSync(filePath, 'utf-8'),
+  );
+}
+
 export function resolveDiamondAddress(
   options: ResolveDiamondAddressOptions,
 ): string {
@@ -27,6 +51,7 @@ export function resolveDiamondAddress(
     normalizeAddress(options.explicitAddress) ||
     normalizeAddress(env.DIAMOND_ADDRESS) ||
     normalizeAddress(env.NEXT_PUBLIC_DIAMOND_ADDRESS) ||
+    normalizeAddress(options.chainConstantsDiamondAddress) ||
     normalizeAddress(options.manifestDiamondAddress);
 
   if (!resolved) {
