@@ -1,0 +1,31 @@
+{
+  "name": "aurellion-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --tsconfig ./tsconfig.json src/index.ts",
+    "start": "node dist/index.js",
+    "build": "node ./scripts/build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config vitest.config.ts",
+    "smoke": "tsx --tsconfig ./tsconfig.json scripts/public-api-smoke.ts smoke",
+    "smoke:health": "tsx --tsconfig ./tsconfig.json scripts/public-api-smoke.ts health",
+    "smoke:discover": "tsx --tsconfig ./tsconfig.json scripts/public-api-smoke.ts discover --kind all",
+    "smoke:auth": "tsx --tsconfig ./tsconfig.json scripts/public-api-smoke.ts auth",
+    "smoke:rate-limit": "tsx --tsconfig ./tsconfig.json scripts/public-api-smoke.ts rate-limit"
+  },
+  "dependencies": {
+    "ethers": "^6.13.5",
+    "fastify": "^5.8.2",
+    "graphql-request": "^7.2.0",
+    "node-cache": "^5.1.2",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.3",
+    "tsx": "^4.21.0",
+    "typescript": "^5",
+    "vitest": "^3.1.2"
+  }
+}
