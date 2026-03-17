@@ -36,16 +36,13 @@ import {
 } from '@/app/components/ui/form';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
 import { ethers } from 'ethers';
-import {
-  NEXT_PUBLIC_DIAMOND_ADDRESS,
-  NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS,
-  NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL,
-} from '@/chain-constants';
+import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
 import { Order, OrderStatus } from '@/domain/orders';
 import { formatTokenAmount, parseTokenAmount } from '@/lib/formatters';
 import { RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuraToken } from '@/hooks/useAuraToken';
+import { useQuoteTokenMetadata } from '@/hooks/useQuoteTokenMetadata';
 
 // Replace with your actual Google Maps API key
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
@@ -76,6 +73,8 @@ export default function OrderPage({ params }: { params: { id: string } }) {
     isLoadingBalance,
     symbol: auraSymbol,
   } = useAuraToken();
+  const { decimals: quoteTokenDecimals, symbol: quoteTokenSymbol } =
+    useQuoteTokenMetadata();
 
   // Load Google Maps script
   const { isLoaded, loadError } = useLoadScript({
@@ -265,7 +264,7 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                   {(
                     totalPrice - parseFloat(auraBalance.replace(/,/g, ''))
                   ).toFixed(2)}{' '}
-                  more {NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL}.
+                  more {quoteTokenSymbol}.
                 </span>
               </div>
             )}
@@ -297,7 +296,7 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                   const assetPrice = asset.price || '0';
                   const priceInQuoteToken = parseTokenAmount(
                     assetPrice,
-                    NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS,
+                    quoteTokenDecimals,
                   );
                   const totalPriceWei =
                     priceInQuoteToken * BigInt(data.quantity);
@@ -489,8 +488,8 @@ export default function OrderPage({ params }: { params: { id: string } }) {
                   ? 'PLACING ORDER...'
                   : parseFloat(auraBalance.replace(/,/g, '')) < totalPrice &&
                       totalPrice > 0
-                    ? `INSUFFICIENT ${NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL} BALANCE`
-                    : `PLACE ORDER — ${(totalPrice || 0).toFixed(2)} ${NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL}`}
+                    ? `INSUFFICIENT ${quoteTokenSymbol} BALANCE`
+                    : `PLACE ORDER — ${(totalPrice || 0).toFixed(2)} ${quoteTokenSymbol}`}
               </TrapButton>
             </form>
           </Form>

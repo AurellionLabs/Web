@@ -13,8 +13,8 @@ import {
 import { cn } from '@/lib/utils';
 import { P2POffer } from '@/domain/p2p';
 import { formatUnits } from 'ethers';
-import { NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS } from '@/chain-constants';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
+import { useQuoteTokenMetadata } from '@/hooks/useQuoteTokenMetadata';
 
 // Keep libraries as a stable constant to prevent LoadScript reloads
 const GOOGLE_LIBRARIES: 'places'[] = ['places'];
@@ -97,6 +97,7 @@ export function DeliveryDetailsDialog({
   confirmLabel,
   pendingLabel,
 }: DeliveryDetailsDialogProps) {
+  const { decimals: quoteTokenDecimals } = useQuoteTokenMetadata();
   const [deliveryAddress, setDeliveryAddress] = useState(
     initialDeliveryAddress || '',
   );
@@ -153,13 +154,14 @@ export function DeliveryDetailsDialog({
     requirePickupNodeSelection && effectiveNodeOptions.length > 0;
 
   const formatPrice = (price: bigint) => {
-    const maximumFractionDigits = Math.min(NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS, 6);
-    return parseFloat(
-      formatUnits(price, NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS),
-    ).toLocaleString(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits,
-    });
+    const maximumFractionDigits = Math.min(quoteTokenDecimals, 6);
+    return parseFloat(formatUnits(price, quoteTokenDecimals)).toLocaleString(
+      undefined,
+      {
+        minimumFractionDigits: 2,
+        maximumFractionDigits,
+      },
+    );
   };
 
   const handlePlaceSelect = () => {

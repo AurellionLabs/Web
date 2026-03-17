@@ -17,6 +17,8 @@ import {
 } from '@/domain/p2p';
 import {
   NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
+  NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS,
+  NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL,
   NEXT_PUBLIC_DIAMOND_ADDRESS,
 } from '@/chain-constants';
 import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
@@ -56,6 +58,8 @@ import {
 const ERC20_ABI = [
   'function approve(address spender, uint256 amount) external returns (bool)',
   'function allowance(address owner, address spender) external view returns (uint256)',
+  'function decimals() external view returns (uint8)',
+  'function symbol() external view returns (string)',
 ];
 
 const ERC1155_ABI = [
@@ -891,6 +895,44 @@ export class DiamondP2PService implements IP2PService {
       }
     } else {
     }
+  }
+
+  /**
+   * Read quote-token metadata from the payment token configured on-chain.
+   * Falls back to frontend constants if ERC20 metadata calls fail.
+   */
+  async getQuoteTokenMetadata(): Promise<{
+    address: string;
+    decimals: number;
+    symbol: string;
+  }> {
+    const address = await this.getConfiguredPayTokenAddress();
+    const provider = this.context.getProvider();
+    const quoteToken = new ethers.Contract(address, ERC20_ABI, provider);
+
+    const [decimalsResult, symbolResult] = await Promise.allSettled([
+      quoteToken.decimals() as Promise<bigint | number>,
+      quoteToken.symbol() as Promise<string>,
+    ]);
+
+    const decimals =
+      decimalsResult.status === 'fulfilled'
+        ? Number(decimalsResult.value)
+        : NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS;
+    const symbol =
+      symbolResult.status === 'fulfilled'
+        ? String(symbolResult.value || '').trim() ||
+          NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL
+        : NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL;
+
+    return {
+      address,
+      decimals:
+        Number.isFinite(decimals) && decimals >= 0
+          ? Math.floor(decimals)
+          : NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS,
+      symbol,
+    };
   }
 
   /**

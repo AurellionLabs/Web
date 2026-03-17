@@ -1,5 +1,4 @@
 import { parseUnits } from 'ethers';
-import { NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS } from '@/chain-constants';
 
 /**
  * Default P2P delivery bounty in whole quote-token units.
@@ -7,7 +6,8 @@ import { NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS } from '@/chain-constants';
  */
 export const DEFAULT_P2P_DELIVERY_BOUNTY_TOKENS = '0';
 
-export const DEFAULT_P2P_DELIVERY_BOUNTY_WEI = parseUnits(
-  DEFAULT_P2P_DELIVERY_BOUNTY_TOKENS,
-  NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS,
-);
+export function getDefaultP2PDeliveryBountyWei(
+  quoteTokenDecimals: number,
+): bigint {
+  return parseUnits(DEFAULT_P2P_DELIVERY_BOUNTY_TOKENS, quoteTokenDecimals);
+}
