@@ -68,6 +68,7 @@ import type {
   SupportingDocument,
 } from '@/domain/node';
 import { useToast } from '@/hooks/use-toast';
+import { useQuoteTokenMetadata } from '@/hooks/useQuoteTokenMetadata';
 import { MapView } from '@/app/components/ui/map-view';
 import AssetSelectionForm from './asset-selection-form';
 import { usePlatform } from '@/app/providers/platform.provider';
@@ -138,6 +139,7 @@ export default function NodeDashboardPage() {
   const { nodes: allNodes, refreshNodes } = useNodes();
   const router = useRouter();
   const { toast } = useToast();
+  const { decimals: quoteTokenDecimals } = useQuoteTokenMetadata();
   const { isReadOnly: diamondIsReadOnly } = useDiamond();
 
   const searchParams = new URLSearchParams(window.location.search);
@@ -1385,7 +1387,12 @@ export default function NodeDashboardPage() {
                             {order.tokenQuantity}
                           </td>
                           <td className="px-4 py-4 font-mono text-foreground">
-                            ${formatTokenAmount(order.price, 18, 2)}
+                            $
+                            {formatTokenAmount(
+                              order.price,
+                              quoteTokenDecimals,
+                              2,
+                            )}
                           </td>
                           <td className="px-4 py-4">
                             {signedOrders[order.id] &&

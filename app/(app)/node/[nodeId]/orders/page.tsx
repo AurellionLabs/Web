@@ -36,6 +36,7 @@ import { useSelectedNode } from '@/app/providers/selected-node.provider';
 import { OrderWithAsset } from '@/app/types/shared';
 import { formatTokenAmount } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
+import { useQuoteTokenMetadata } from '@/hooks/useQuoteTokenMetadata';
 
 const orderStatuses = [
   { value: 'all', label: 'All Statuses' },
@@ -108,6 +109,8 @@ function OrdersContent({
   onRefresh: () => Promise<void>;
   isRefreshing: boolean;
 }) {
+  const { decimals: quoteTokenDecimals, symbol: quoteTokenSymbol } =
+    useQuoteTokenMetadata();
   const searchParams = useSearchParams();
   const [filteredOrders, setFilteredOrders] =
     useState<OrderWithAsset[]>(orders);
@@ -396,7 +399,8 @@ function OrdersContent({
                     onClick={() => handleSort('value')}
                   >
                     <span className="flex items-center gap-1">
-                      {formatTokenAmount(order.price, 18, 2)} AURA
+                      {formatTokenAmount(order.price, quoteTokenDecimals, 2)}{' '}
+                      {quoteTokenSymbol}
                       <ArrowUpDown className="w-3 h-3 text-foreground/20" />
                     </span>
                   </td>

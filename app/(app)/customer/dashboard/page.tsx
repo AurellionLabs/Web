@@ -314,7 +314,8 @@ export default function CustomerDashboard() {
     .filter((order) => order.currentStatus === OrderStatus.SETTLED)
     .reduce(
       (total, order) =>
-        total + parseFloat(formatTokenAmount(order.price, 18, 6)),
+        total +
+        parseFloat(formatTokenAmount(order.price, quoteTokenDecimals, 6)),
       0,
     );
 
@@ -954,7 +955,12 @@ export default function CustomerDashboard() {
                           {order.tokenQuantity}
                         </td>
                         <td className="px-4 py-4 text-sm font-mono text-foreground">
-                          ${formatTokenAmount(order.price, 18, 2)}
+                          $
+                          {formatTokenAmount(
+                            order.price,
+                            quoteTokenDecimals,
+                            2,
+                          )}
                         </td>
                         <td className="px-4 py-4">
                           <EvaStatusBadge
