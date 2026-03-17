@@ -101,7 +101,7 @@ async function main() {
     diamondAddress,
   );
   const auSysWriteFacet = await ethers.getContractAt(
-    'AuSysFacet',
+    'AuSysAdminFacet',
     diamondAddress,
   );
   const nodesFacet = await ethers.getContractAt('NodesFacet', diamondAddress);
