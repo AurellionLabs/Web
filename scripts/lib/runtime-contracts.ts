@@ -5,6 +5,7 @@ interface ResolveDiamondAddressOptions {
   explicitAddress?: string;
   manifestDiamondAddress?: string | null;
   chainConstantsDiamondAddress?: string | null;
+  preferManifestOverChainConstants?: boolean;
   env?: Record<string, string | undefined>;
 }
 
@@ -47,12 +48,16 @@ export function resolveDiamondAddress(
   options: ResolveDiamondAddressOptions,
 ): string {
   const env = options.env || process.env;
+  const fallbackAddress = options.preferManifestOverChainConstants
+    ? normalizeAddress(options.manifestDiamondAddress) ||
+      normalizeAddress(options.chainConstantsDiamondAddress)
+    : normalizeAddress(options.chainConstantsDiamondAddress) ||
+      normalizeAddress(options.manifestDiamondAddress);
   const resolved =
     normalizeAddress(options.explicitAddress) ||
     normalizeAddress(env.DIAMOND_ADDRESS) ||
     normalizeAddress(env.NEXT_PUBLIC_DIAMOND_ADDRESS) ||
-    normalizeAddress(options.chainConstantsDiamondAddress) ||
-    normalizeAddress(options.manifestDiamondAddress);
+    fallbackAddress;
 
   if (!resolved) {
     throw new Error(

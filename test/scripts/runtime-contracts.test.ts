@@ -51,6 +51,18 @@ describe('runtime-contracts', () => {
     expect(result).toBe('0x5555555555555555555555555555555555555555');
   });
 
+  it('can prefer the network manifest over chain constants when requested', () => {
+    const result = resolveDiamondAddress({
+      chainConstantsDiamondAddress:
+        '0x5555555555555555555555555555555555555555',
+      manifestDiamondAddress: '0x2222222222222222222222222222222222222222',
+      preferManifestOverChainConstants: true,
+      env: {},
+    });
+
+    expect(result).toBe('0x2222222222222222222222222222222222222222');
+  });
+
   it('rejects missing or zero addresses', () => {
     expect(() =>
       resolveDiamondAddress({

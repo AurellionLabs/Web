@@ -17,12 +17,10 @@ import { syncSupportedAssets } from './lib/supported-assets-sync';
 interface CliOptions {
   write: boolean;
   catalogDirectory: string;
-  diamondAddress: string;
+  diamondAddress?: string;
 }
 
 function parseArgs(argv: string[]): CliOptions {
-  if (!process.env.DIAMOND_ADDRESS)
-    throw new Error('Diamond Address not found in environment variables');
   const options: CliOptions = {
     write: false,
     catalogDirectory: process.env.SUPPORTED_ASSETS_DIR
@@ -78,8 +76,9 @@ async function resolveDiamondAddress(diamondAddress?: string): Promise<string> {
 
   return resolveRuntimeDiamondAddress({
     explicitAddress: diamondAddress,
-    chainConstantsDiamondAddress,
     manifestDiamondAddress: manifest?.diamond,
+    chainConstantsDiamondAddress,
+    preferManifestOverChainConstants: true,
     env: process.env,
   });
 }
