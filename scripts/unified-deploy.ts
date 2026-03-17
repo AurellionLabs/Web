@@ -59,6 +59,7 @@ import {
   replaceChainConstant,
 } from './lib/deploy-config';
 import { planFacetSelectorAdditions } from './lib/facet-selector-install';
+import { sendWithNonceRetry } from './lib/nonce-retry';
 import {
   getSupportedAssetClasses,
   loadSupportedAssetCatalog,
@@ -313,10 +314,17 @@ async function executeDiamondCutWithScheduling(
     DIAMOND_CUT_EXTENDED_ABI,
     signer,
   );
+  const getPendingNonce = () => signer.getNonce('pending');
 
   const timelock = BigInt(await diamondCut.getDiamondCutTimelock());
   if (timelock === 0n) {
-    const tx = await diamondCut.diamondCut(facetCuts, init, calldata);
+    const tx = await sendWithNonceRetry({
+      label: 'diamondCut',
+      getPendingNonce,
+      logger: console,
+      send: (overrides) =>
+        diamondCut.diamondCut(facetCuts, init, calldata, overrides ?? {}),
+    });
     await tx.wait();
     return;
   }
@@ -328,11 +336,18 @@ async function executeDiamondCutWithScheduling(
 
   if (pendingEtaBigInt === 0n) {
     console.log('   Scheduling diamond cut (timelock enabled)...');
-    const scheduleTx = await diamondCut.scheduleDiamondCut(
-      facetCuts,
-      init,
-      calldata,
-    );
+    const scheduleTx = await sendWithNonceRetry({
+      label: 'scheduleDiamondCut',
+      getPendingNonce,
+      logger: console,
+      send: (overrides) =>
+        diamondCut.scheduleDiamondCut(
+          facetCuts,
+          init,
+          calldata,
+          overrides ?? {},
+        ),
+    });
     await scheduleTx.wait();
     [pendingHash, pendingEta] = await diamondCut.getPendingDiamondCut();
     pendingHashStr = String(pendingHash).toLowerCase();
@@ -366,7 +381,13 @@ async function executeDiamondCutWithScheduling(
   }
 
   console.log('   Executing scheduled diamond cut...');
-  const executeTx = await diamondCut.diamondCut(facetCuts, init, calldata);
+  const executeTx = await sendWithNonceRetry({
+    label: 'diamondCut',
+    getPendingNonce,
+    logger: console,
+    send: (overrides) =>
+      diamondCut.diamondCut(facetCuts, init, calldata, overrides ?? {}),
+  });
   await executeTx.wait();
 }
 
@@ -664,6 +685,7 @@ async function deployContract(
   console.log(`\n📦 Deploying ${config.name}...`);
 
   const Factory = await ethers.getContractFactory(config.contractName);
+  const [signer] = await ethers.getSigners();
 
   // Get constructor args
   const args = config.constructorArgs
@@ -674,7 +696,12 @@ async function deployContract(
     console.log(`   Constructor args: ${JSON.stringify(args)}`);
   }
 
-  const contract = await Factory.deploy(...args);
+  const contract = await sendWithNonceRetry({
+    label: `deploy ${config.name}`,
+    getPendingNonce: () => signer.getNonce('pending'),
+    logger: console,
+    send: (overrides) => Factory.deploy(...args, overrides ?? {}),
+  });
   await waitForConfirmations(contract.deploymentTransaction());
 
   const address = await contract.getAddress();
@@ -893,7 +920,17 @@ async function postDeploymentConfig(
         'Ausys',
         resolvedAddresses.AuSys,
       );
-      const tx = await auSys.setNodeManager(resolvedAddresses.AurumNodeManager);
+      const [signer] = await ethers.getSigners();
+      const tx = await sendWithNonceRetry({
+        label: 'AuSys.setNodeManager',
+        getPendingNonce: () => signer.getNonce('pending'),
+        logger: console,
+        send: (overrides) =>
+          auSys.setNodeManager(
+            resolvedAddresses.AurumNodeManager,
+            overrides ?? {},
+          ),
+      });
       await tx.wait();
       console.log('   ✓ NodeManager set');
     } catch (e: any) {
@@ -911,7 +948,14 @@ async function postDeploymentConfig(
         'AurumNodeManager',
         resolvedAddresses.AurumNodeManager,
       );
-      const tx = await nodeManager.addToken(resolvedAddresses.AuraAsset);
+      const [signer] = await ethers.getSigners();
+      const tx = await sendWithNonceRetry({
+        label: 'AurumNodeManager.addToken',
+        getPendingNonce: () => signer.getNonce('pending'),
+        logger: console,
+        send: (overrides) =>
+          nodeManager.addToken(resolvedAddresses.AuraAsset, overrides ?? {}),
+      });
       await tx.wait();
       console.log('   ✓ AuraAsset token added');
     } catch (e: any) {
@@ -943,7 +987,17 @@ async function postDeploymentConfig(
       ) {
         console.log('   ✓ Diamond is already the NodeManager');
       } else {
-        const tx = await auraAsset.setNodeManager(resolvedAddresses.Diamond);
+        const [signer] = await ethers.getSigners();
+        const tx = await sendWithNonceRetry({
+          label: 'AuraAsset.setNodeManager',
+          getPendingNonce: () => signer.getNonce('pending'),
+          logger: console,
+          send: (overrides) =>
+            auraAsset.setNodeManager(
+              resolvedAddresses.Diamond,
+              overrides ?? {},
+            ),
+        });
         await tx.wait();
         console.log('   ✓ Diamond set as NodeManager for AuraAsset');
       }
@@ -983,7 +1037,17 @@ async function postDeploymentConfig(
       resolvedAddresses.Diamond,
     );
     try {
-      const tx = await diamond.setAuraAssetAddress(resolvedAddresses.AuraAsset);
+      const [signer] = await ethers.getSigners();
+      const tx = await sendWithNonceRetry({
+        label: 'NodesFacet.setAuraAssetAddress',
+        getPendingNonce: () => signer.getNonce('pending'),
+        logger: console,
+        send: (overrides) =>
+          diamond.setAuraAssetAddress(
+            resolvedAddresses.AuraAsset,
+            overrides ?? {},
+          ),
+      });
       await tx.wait();
       console.log('   ✓ AuraAsset address set in Diamond');
     } catch (e: any) {
@@ -1006,7 +1070,14 @@ async function postDeploymentConfig(
 
     for (const className of DEFAULT_SUPPORTED_ASSET_CLASSES) {
       try {
-        const tx = await assetsFacet.addSupportedClass(className);
+        const [signer] = await ethers.getSigners();
+        const tx = await sendWithNonceRetry({
+          label: `AssetsFacet.addSupportedClass(${className})`,
+          getPendingNonce: () => signer.getNonce('pending'),
+          logger: console,
+          send: (overrides) =>
+            assetsFacet.addSupportedClass(className, overrides ?? {}),
+        });
         await tx.wait();
         console.log(`   ✓ Added class: ${className}`);
         addedCount++;
@@ -1044,7 +1115,17 @@ async function postDeploymentConfig(
       );
       const currentPayToken = await auSysViewFacet.getPayToken();
       if (currentPayToken === ethers.ZeroAddress) {
-        const tx = await auSysAdminFacet.setPayToken(resolvedAddresses.Aura);
+        const [signer] = await ethers.getSigners();
+        const tx = await sendWithNonceRetry({
+          label: 'AuSysAdminFacet.setPayToken',
+          getPendingNonce: () => signer.getNonce('pending'),
+          logger: console,
+          send: (overrides) =>
+            auSysAdminFacet.setPayToken(
+              resolvedAddresses.Aura,
+              overrides ?? {},
+            ),
+        });
         await tx.wait();
         console.log(`   ✓ AuSys pay token set to ${resolvedAddresses.Aura}`);
       } else if (
@@ -1074,7 +1155,13 @@ async function postDeploymentConfig(
       try {
         const cfg = await rwyFacet.getRWYConfig();
         if (cfg[0] === 0n || cfg[1] === 0n || cfg[2] === 0n || cfg[3] === 0n) {
-          const tx = await rwyFacet.initializeRWYStaking();
+          const [signer] = await ethers.getSigners();
+          const tx = await sendWithNonceRetry({
+            label: 'RWYStakingFacet.initializeRWYStaking',
+            getPendingNonce: () => signer.getNonce('pending'),
+            logger: console,
+            send: (overrides) => rwyFacet.initializeRWYStaking(overrides ?? {}),
+          });
           await tx.wait();
           console.log('   ✓ Initialized RWY staking defaults');
         } else {
@@ -1091,7 +1178,17 @@ async function postDeploymentConfig(
         try {
           const currentQuote = await rwyFacet.getRWYQuoteToken();
           if (currentQuote === ethers.ZeroAddress) {
-            const tx = await rwyFacet.setRWYQuoteToken(resolvedAddresses.Aura);
+            const [signer] = await ethers.getSigners();
+            const tx = await sendWithNonceRetry({
+              label: 'RWYStakingFacet.setRWYQuoteToken',
+              getPendingNonce: () => signer.getNonce('pending'),
+              logger: console,
+              send: (overrides) =>
+                rwyFacet.setRWYQuoteToken(
+                  resolvedAddresses.Aura,
+                  overrides ?? {},
+                ),
+            });
             await tx.wait();
             console.log(
               `   ✓ RWY quote token set to ${resolvedAddresses.Aura}`,
@@ -1111,7 +1208,17 @@ async function postDeploymentConfig(
         try {
           const currentClob = await rwyFacet.getRWYCLOBAddress();
           if (currentClob === ethers.ZeroAddress) {
-            const tx = await rwyFacet.setRWYCLOBAddress(resolvedAddresses.CLOB);
+            const [signer] = await ethers.getSigners();
+            const tx = await sendWithNonceRetry({
+              label: 'RWYStakingFacet.setRWYCLOBAddress',
+              getPendingNonce: () => signer.getNonce('pending'),
+              logger: console,
+              send: (overrides) =>
+                rwyFacet.setRWYCLOBAddress(
+                  resolvedAddresses.CLOB,
+                  overrides ?? {},
+                ),
+            });
             await tx.wait();
             console.log(
               `   ✓ RWY CLOB address set to ${resolvedAddresses.CLOB}`,
@@ -1130,7 +1237,14 @@ async function postDeploymentConfig(
       try {
         const currentRecipient = await rwyFacet.getRWYFeeRecipient();
         if (currentRecipient === ethers.ZeroAddress) {
-          const tx = await rwyFacet.setRWYFeeRecipient(deployer);
+          const [signer] = await ethers.getSigners();
+          const tx = await sendWithNonceRetry({
+            label: 'RWYStakingFacet.setRWYFeeRecipient',
+            getPendingNonce: () => signer.getNonce('pending'),
+            logger: console,
+            send: (overrides) =>
+              rwyFacet.setRWYFeeRecipient(deployer, overrides ?? {}),
+          });
           await tx.wait();
           console.log(`   ✓ RWY fee recipient set to ${deployer}`);
         } else {
@@ -1517,7 +1631,12 @@ async function updateFacet(
       facetAddress = '0x' + '0'.repeat(40);
     } else {
       const Factory = await ethers.getContractFactory(config.contractName);
-      const facet = await Factory.deploy();
+      const facet = await sendWithNonceRetry({
+        label: `deploy ${facetName}`,
+        getPendingNonce: () => deployer.getNonce('pending'),
+        logger: console,
+        send: (overrides) => Factory.deploy(overrides ?? {}),
+      });
       await waitForConfirmations(facet.deploymentTransaction());
       facetAddress = await facet.getAddress();
       blockNumber = await getDeploymentBlock(facet.deploymentTransaction());
