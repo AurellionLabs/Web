@@ -8,9 +8,11 @@ import {
 
 export async function GET(request: NextRequest) {
   try {
+    const chainIdParam = request.nextUrl.searchParams.get('chainId');
+    const chainId = chainIdParam ? Number(chainIdParam) : undefined;
     const tokenId = request.nextUrl.searchParams.get('tokenId');
     if (tokenId) {
-      const result = await getAssetByTokenIdFromServerCache(tokenId);
+      const result = await getAssetByTokenIdFromServerCache(tokenId, chainId);
       return NextResponse.json(result);
     }
 
@@ -21,19 +23,20 @@ export async function GET(request: NextRequest) {
           .split(',')
           .map((tokenId) => tokenId.trim())
           .filter(Boolean),
+        chainId,
       );
       return NextResponse.json({ assets });
     }
 
     const className = request.nextUrl.searchParams.get('className');
     if (className) {
-      const assets = await getClassAssetsFromServerCache(className);
+      const assets = await getClassAssetsFromServerCache(className, chainId);
       return NextResponse.json({ assets });
     }
 
     const hash = request.nextUrl.searchParams.get('hash');
     if (hash) {
-      const records = await getAssetRecordsByHashFromServerCache(hash);
+      const records = await getAssetRecordsByHashFromServerCache(hash, chainId);
       return NextResponse.json({ records });
     }
 

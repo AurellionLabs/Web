@@ -1,5 +1,5 @@
 // Auto-generated deployment constants for baseSepolia
-// Deployed: 2026-03-15T22:16:18.286Z
+// Deployed: 2026-03-17T10:09:33.605Z
 // Chain ID: 84532
 
 // =============================================================================
@@ -32,16 +32,25 @@ export const NEXT_PUBLIC_ORDER_BRIDGE_ADDRESS =
 // Quote token address for CLOB trading
 // For testnet: Using AURA token so testers have tokens to simulate payments
 // For mainnet: Would use USDC (0x036CbD53842c5426634e7929541eC2318f3dCF7e on Base Sepolia)
-export const NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS = NEXT_PUBLIC_AURA_TOKEN_ADDRESS;
+export const NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS =
+  process.env.NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS || NEXT_PUBLIC_AURA_TOKEN_ADDRESS;
 
 export const NEXT_PUBLIC_AUSYS_FACET_ADDRESS =
-  '0xbECAB23410D27e8104a1e04351a2Db4587595B15';
+  '0xf6cfAfDabA9162e58c586380F821B35C5fc03b76';
 
 // Quote token decimals - changes based on which token is used
 // AURA = 18 decimals (testnet), USDC = 6 decimals (production)
-export const NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS = 18; // Change to 6 for USDC in production
+const ARBITRUM_USDC_ADDRESS = '0xaf88d065e77c8cc2239327c5edb3a432268e5831';
+const quoteTokenIsArbitrumUsdc =
+  NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS.toLowerCase() === ARBITRUM_USDC_ADDRESS;
+
+export const NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS = Number(
+  process.env.NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS ||
+    (quoteTokenIsArbitrumUsdc ? '6' : '18'),
+);
 export const NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL =
-  'AURA';
+  process.env.NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL ||
+  (quoteTokenIsArbitrumUsdc ? 'USDC' : 'AURA');
 
 //
 // AuraGoat is the same as AuraAsset for now (ERC1155 token contract)
@@ -55,30 +64,30 @@ export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = NEXT_PUBLIC_AURA_ASSET_ADDRESS;
 
 export const NEXT_PUBLIC_DIAMOND_ADDRESS =
   process.env.NEXT_PUBLIC_DIAMOND_ADDRESS ||
-  '0x77FA5086e44B797F3C82A265ebac98937A258c8e';
+  '0x0Adc63e71B035d5c7FDB1B4593999FA1F296f1B2';
 export const NEXT_PUBLIC_DIAMOND_CUT_FACET_ADDRESS =
-  '0xe22fEF33B8bb2561eA836027F190cF307e07F347';
+  '0x4415c7a891c2e53015f7A9E3818c366962C0f1C1';
 export const NEXT_PUBLIC_DIAMOND_LOUPE_FACET_ADDRESS =
-  '0x3DD549a51b6b8714F083fD2eA1Ae8Ef1624a6Fc1';
+  '0x990993b1a1f88eCDB062Cae8BcB4A7a312d044ee';
 export const NEXT_PUBLIC_OWNERSHIP_FACET_ADDRESS =
-  '0x57eA97f88369B6501B1110c26B4Df0A54a57564c';
+  '0x3CA79C1cf29B8d19F7c643bB6E6bc9c49762E70f';
 export const NEXT_PUBLIC_ERC1155_RECEIVER_FACET_ADDRESS =
-  '0xa034125e00418443Ab8F7e77c67767B0100a2a8a';
+  '0x3E6b78b8954aA5d41C305162c73Fa5B4A762eCa1';
 export const NEXT_PUBLIC_NODES_FACET_ADDRESS =
-  '0x36D80D494E8e817751bfEB4bAa5d54FC4b02b101';
+  '0x86B2265f649fF5b1Bd4D2273D643f892Feba5981';
 export const NEXT_PUBLIC_ASSETS_FACET_ADDRESS =
-  '0x93b81703BF9A09f1E680a75A658Ce0bEd9Aa1056';
+  '0x0167D34d3e99100D8336B9817550F96e6fe7F5d8';
 export const NEXT_PUBLIC_ORDERS_FACET_ADDRESS =
-  '0xf4965D0E64848d9EAc1751693118AB656dD5135a';
+  '0xB2d0CaC089063848b429e4d5795e49FE3504Eb24';
 export const NEXT_PUBLIC_STAKING_FACET_ADDRESS =
   '0xa9E03bAB4dB2fAC44C6e4b7eB8e9D3bEfF26CcF5';
 export const NEXT_PUBLIC_BRIDGE_FACET_ADDRESS =
-  '0xE53910FB537c7Fef68b594d16DF5c29aD60cc4FD';
+  '0x3EbAcfA2a54B0eD6d9e742783B994Bc55662272d';
 export const NEXT_PUBLIC_CLOB_FACET_ADDRESS =
-  '0x2661E867ab1216F8A52DB6Da9695E49521f44878';
+  '0x054774fFcCEcA75f29eD3fBD344E84217BF7ADDe';
 // OrderRouterFacet - SINGLE ENTRY POINT for all order operations (V2 storage)
 export const NEXT_PUBLIC_ORDER_ROUTER_FACET_ADDRESS =
-  '0x880B33D8351944fBdda1f444e196FCAbE056212f';
+  '0xcfD05223A52A1E28ca2a11099a1eDC53d2EC8553';
 
 // Diamond deployment block (for indexer start block)
 export const DIAMOND_DEPLOY_BLOCK = 38515909;
@@ -159,7 +168,7 @@ export const AURA_ASSET_DEPLOY_BLOCK = 36033385;
 // RWY_VAULT_DEPLOY_BLOCK removed - now part of Diamond
 
 export const NEXT_PUBLIC_RWY_STAKING_FACET_ADDRESS =
-  '0x433938De7a42dD21C4928CC3F1829f9327AFD645';
+  '0x597565d7e1C737cd789Ca635173f98DB26280997';
 
 // =============================================================================
 // IPFS GROUP IDS - Chain-specific Pinata groups for metadata

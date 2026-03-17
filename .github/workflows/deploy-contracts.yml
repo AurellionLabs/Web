@@ -128,8 +128,8 @@ jobs:
         with:
           name: facet-changes-${{ github.sha }}
           path: |
-            deployments/manifest.json
-            deployments/pending-changes.json
+            deployments/manifest*.json
+            deployments/pending-changes*.json
 
 # ---------------------------------------------------------------------------
 # Job 2: deploy – deploy changed / new facets to the Diamond
@@ -164,6 +164,12 @@ jobs:
 
       - name: Generate ABIs & selectors
         run: bun scripts/gen-all.ts
+
+      - name: Download detect artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: facet-changes-${{ github.sha }}
+          path: deployments
 
       # ------------------------------------------------------------------
       # Full redeploy via workflow_dispatch mode
@@ -262,25 +268,28 @@ jobs:
         run: |
           set -euo pipefail
 
+          : > .deploy-sync-files
+          CONFIG_CHANGED=false
+
           TRACKED_FILES=(
-            deployments/manifest.json
             chain-constants.ts
             indexer/diamond-constants.ts
           )
-
-          : > .deploy-sync-files
-          CONFIG_CHANGED=false
 
           for file in "${TRACKED_FILES[@]}"; do
             if ! git diff --quiet -- "$file"; then
               echo "$file" >> .deploy-sync-files
               echo "Will persist $file"
 
-              if [ "$file" != "deployments/manifest.json" ]; then
-                CONFIG_CHANGED=true
-              fi
+              CONFIG_CHANGED=true
             fi
           done
+
+          while IFS= read -r file; do
+            [ -n "$file" ] || continue
+            echo "$file" >> .deploy-sync-files
+            echo "Will persist $file"
+          done < <(git diff --name-only -- deployments/ | rg '^deployments/manifest\\..+\\.json$')
 
           if [ ! -s .deploy-sync-files ]; then
             echo "has_changes=false" >> "$GITHUB_OUTPUT"

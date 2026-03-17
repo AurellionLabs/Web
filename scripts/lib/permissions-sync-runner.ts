@@ -7,9 +7,15 @@ export interface PermissionFacetTransaction {
   wait(): Promise<unknown>;
 }
 
-export interface AuSysPermissionFacetLike {
+export interface AuSysDriverReadFacetLike {
   getAllowedDrivers(): Promise<string[]>;
-  setDriver(address: string, enable: boolean): Promise<PermissionFacetTransaction>;
+}
+
+export interface AuSysDriverWriteFacetLike {
+  setDriver(
+    address: string,
+    enable: boolean,
+  ): Promise<PermissionFacetTransaction>;
 }
 
 export interface NodePermissionFacetLike {
@@ -41,7 +47,8 @@ export async function syncPermissions(options: {
   write: boolean;
   desiredDrivers: string[];
   desiredNodeRegistrars: string[];
-  auSysFacet: AuSysPermissionFacetLike;
+  auSysReadFacet: AuSysDriverReadFacetLike;
+  auSysWriteFacet: AuSysDriverWriteFacetLike;
   nodesFacet: NodePermissionFacetLike;
   allowEmpty: boolean;
 }): Promise<PermissionSyncSummary> {
@@ -52,7 +59,7 @@ export async function syncPermissions(options: {
   });
 
   const [currentDrivers, currentNodeRegistrars] = await Promise.all([
-    options.auSysFacet.getAllowedDrivers(),
+    options.auSysReadFacet.getAllowedDrivers(),
     options.nodesFacet.getAllowedNodeRegistrars(),
   ]);
 
@@ -65,11 +72,11 @@ export async function syncPermissions(options: {
 
   if (options.write) {
     for (const wallet of actions.drivers.toAdd) {
-      const tx = await options.auSysFacet.setDriver(wallet, true);
+      const tx = await options.auSysWriteFacet.setDriver(wallet, true);
       await tx.wait();
     }
     for (const wallet of actions.drivers.toRemove) {
-      const tx = await options.auSysFacet.setDriver(wallet, false);
+      const tx = await options.auSysWriteFacet.setDriver(wallet, false);
       await tx.wait();
     }
     for (const wallet of actions.nodeRegistrars.toAdd) {

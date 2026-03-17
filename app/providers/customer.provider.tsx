@@ -87,7 +87,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const repoContext = RepositoryContext.getInstance();
   const orderRepository = repoContext.getOrderRepository();
   const { address, connectedWallet } = useWallet();
-  const { getAssetByTokenId } = usePlatform();
+  const { getAssetByTokenId, supportedAssets } = usePlatform();
 
   /**
    * Get a signer-aligned Ausys contract.
@@ -194,6 +194,43 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }
   }, [orderRepository, address, getAssetByTokenId]);
+
+  useEffect(() => {
+    if (orders.length === 0 || supportedAssets.length === 0) return;
+    if (!orders.some((order) => !order.asset)) return;
+
+    let cancelled = false;
+
+    (async () => {
+      let resolvedAny = false;
+      const enrichedOrders = await Promise.all(
+        orders.map(async (order) => {
+          if (order.asset) return order;
+          try {
+            const asset = await getAssetByTokenId(order.tokenId);
+            if (asset) {
+              resolvedAny = true;
+              return { ...order, asset };
+            }
+          } catch (err) {
+            console.warn(
+              `Failed to re-enrich asset for tokenId ${order.tokenId}:`,
+              err,
+            );
+          }
+          return order;
+        }),
+      );
+
+      if (!cancelled && resolvedAny) {
+        setOrders(enrichedOrders);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [orders, supportedAssets.length, getAssetByTokenId]);
 
   const cancelOrder = useCallback(
     async (orderId: string) => {

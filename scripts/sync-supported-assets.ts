@@ -2,11 +2,16 @@
 
 import path from 'node:path';
 
-import { ethers } from 'hardhat';
+import { ethers, network } from 'hardhat';
 import { PinataSDK } from 'pinata';
 
 import { getIpfsGroupId } from '../chain-constants';
 import { DEFAULT_SUPPORTED_ASSETS_DIR } from './lib/supported-assets';
+import { loadDeploymentManifest } from './lib/deployment-manifest';
+import {
+  readDiamondAddressFromChainConstants,
+  resolveDiamondAddress as resolveRuntimeDiamondAddress,
+} from './lib/runtime-contracts';
 import { syncSupportedAssets } from './lib/supported-assets-sync';
 
 interface CliOptions {
@@ -59,21 +64,23 @@ function parseArgs(argv: string[]): CliOptions {
 }
 
 async function resolveDiamondAddress(diamondAddress?: string): Promise<string> {
-  if (diamondAddress) {
-    return diamondAddress;
-  }
+  const activeChainId = Number((await ethers.provider.getNetwork()).chainId);
+  const manifest = loadDeploymentManifest({
+    deploymentsDir: path.resolve(process.cwd(), 'deployments'),
+    networkName: network.name,
+    chainId: activeChainId,
+  });
+  const chainConstantsDiamondAddress = readDiamondAddressFromChainConstants(
+    path.resolve(process.cwd(), 'chain-constants.ts'),
+  );
 
-  const chainConstants = await import('../chain-constants');
-  const resolved = (chainConstants as { NEXT_PUBLIC_DIAMOND_ADDRESS?: string })
-    .NEXT_PUBLIC_DIAMOND_ADDRESS;
-
-  if (!resolved || resolved === ethers.ZeroAddress) {
-    throw new Error(
-      'Diamond address not found. Pass --diamond or set DIAMOND_ADDRESS.',
-    );
-  }
-
-  return resolved;
+  return resolveRuntimeDiamondAddress({
+    explicitAddress: diamondAddress,
+    manifestDiamondAddress: manifest?.diamond,
+    chainConstantsDiamondAddress,
+    preferManifestOverChainConstants: true,
+    env: process.env,
+  });
 }
 
 function requirePinataJwt(): string {

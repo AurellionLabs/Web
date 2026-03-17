@@ -39,10 +39,12 @@ function createRoleFacet(initialWallets: string[] = []) {
 
 describe('syncPermissions', () => {
   it('reports add/remove diffs in dry-run mode', async () => {
-    const driverFacet = {
+    const driverReadFacet = {
       getAllowedDrivers: vi
         .fn()
         .mockResolvedValue(['DRIVER_PRESENT', 'DRIVER_STALE']),
+    };
+    const driverWriteFacet = {
       setDriver: vi.fn(),
     };
     const nodesFacet = {
@@ -54,7 +56,8 @@ describe('syncPermissions', () => {
       write: false,
       desiredDrivers: ['DRIVER_PRESENT', 'DRIVER_NEW'],
       desiredNodeRegistrars: ['NODE_NEW'],
-      auSysFacet: driverFacet as any,
+      auSysReadFacet: driverReadFacet as any,
+      auSysWriteFacet: driverWriteFacet as any,
       nodesFacet: nodesFacet as any,
       allowEmpty: false,
     });
@@ -64,13 +67,15 @@ describe('syncPermissions', () => {
     expect(summary.drivers.toRemove).toEqual(['DRIVER_STALE']);
     expect(summary.nodeRegistrars.toAdd).toEqual(['NODE_NEW']);
     expect(summary.nodeRegistrars.toRemove).toEqual(['NODE_STALE']);
-    expect(driverFacet.setDriver).not.toHaveBeenCalled();
+    expect(driverWriteFacet.setDriver).not.toHaveBeenCalled();
     expect(nodesFacet.setNodeRegistrar).not.toHaveBeenCalled();
   });
 
   it('applies the diff in write mode', async () => {
-    const driverFacet = {
+    const driverReadFacet = {
       getAllowedDrivers: vi.fn().mockResolvedValue(['0xdriverOld']),
+    };
+    const driverWriteFacet = {
       setDriver: vi.fn().mockResolvedValue({
         wait: vi.fn().mockResolvedValue(undefined),
       }),
@@ -86,13 +91,20 @@ describe('syncPermissions', () => {
       write: true,
       desiredDrivers: ['0xdriverNew'],
       desiredNodeRegistrars: ['0xnodeNew'],
-      auSysFacet: driverFacet as any,
+      auSysReadFacet: driverReadFacet as any,
+      auSysWriteFacet: driverWriteFacet as any,
       nodesFacet: nodesFacet as any,
       allowEmpty: false,
     });
 
-    expect(driverFacet.setDriver).toHaveBeenCalledWith('0xdriverNew', true);
-    expect(driverFacet.setDriver).toHaveBeenCalledWith('0xdriverOld', false);
+    expect(driverWriteFacet.setDriver).toHaveBeenCalledWith(
+      '0xdriverNew',
+      true,
+    );
+    expect(driverWriteFacet.setDriver).toHaveBeenCalledWith(
+      '0xdriverOld',
+      false,
+    );
     expect(nodesFacet.setNodeRegistrar).toHaveBeenCalledWith('0xnodeNew', true);
     expect(nodesFacet.setNodeRegistrar).toHaveBeenCalledWith(
       '0xnodeOld',

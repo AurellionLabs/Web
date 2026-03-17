@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useCustomer } from '@/app/providers/customer.provider';
 import {
@@ -70,10 +70,16 @@ import {
 import { P2PDeliveryDetails, P2POffer, P2POfferStatus } from '@/domain/p2p';
 import { getWalletAddress } from '@/dapp-connectors/base-controller';
 import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
+import { getDefaultP2PDeliveryBountyWei } from '@/config/p2p';
 import { useWallet } from '@/hooks/useWallet';
 import { AUSYS_ABI } from '@/lib/constants/contracts';
 import { formatTokenAmount } from '@/lib/formatters';
 import { getJourneyRoleConflictMessage } from '@/utils/journey-role-conflicts';
+import { useQuoteTokenMetadata } from '@/hooks/useQuoteTokenMetadata';
+import {
+  buildAssetNameLookup,
+  resolveOrderAssetName,
+} from '@/utils/order-asset-resolution';
 
 type SortConfig = {
   key: 'tokenQuantity' | 'price' | 'createdAt' | null;
@@ -133,6 +139,7 @@ export default function CustomerDashboard() {
   } = useCustomer();
   const { toast } = useToast();
   const { address: walletAddress } = useWallet();
+  const { decimals: quoteTokenDecimals } = useQuoteTokenMetadata();
 
   // User holdings for redemption
   const {
@@ -143,7 +150,7 @@ export default function CustomerDashboard() {
   } = useUserHoldings();
 
   // Platform data for asset metadata enrichment
-  const { getAssetByTokenId } = usePlatform();
+  const { getAssetByTokenId, supportedAssets } = usePlatform();
 
   // Enrich holdings with IPFS metadata (attributes, full name, class)
   const [enrichedHoldings, setEnrichedHoldings] = useState<UserHolding[]>([]);
@@ -182,6 +189,33 @@ export default function CustomerDashboard() {
       cancelled = true;
     };
   }, [holdings, getAssetByTokenId]);
+
+  const orderAssetNameByTokenId = useMemo(() => {
+    const platformLookup = buildAssetNameLookup(
+      supportedAssets.map((asset) => ({
+        tokenId: asset.tokenId,
+        name: asset.name,
+      })),
+    );
+    const holdingsLookup = buildAssetNameLookup(
+      enrichedHoldings.map((holding) => ({
+        tokenId: holding.tokenId,
+        name: holding.name,
+      })),
+    );
+
+    return new Map([...platformLookup, ...holdingsLookup]);
+  }, [supportedAssets, enrichedHoldings]);
+
+  const getOrderAssetName = (order: {
+    tokenId: string;
+    asset?: { name?: string } | null;
+  }) =>
+    resolveOrderAssetName({
+      tokenId: order.tokenId,
+      directName: order.asset?.name,
+      lookups: [orderAssetNameByTokenId],
+    });
 
   // Settlement destination
   const { pendingOrders: pendingSettlements, refetch: refetchSettlements } =
@@ -311,7 +345,8 @@ export default function CustomerDashboard() {
     .filter((order) => order.currentStatus === OrderStatus.SETTLED)
     .reduce(
       (total, order) =>
-        total + parseFloat(formatTokenAmount(order.price, 18, 6)),
+        total +
+        parseFloat(formatTokenAmount(order.price, quoteTokenDecimals, 6)),
       0,
     );
 
@@ -487,7 +522,7 @@ export default function CustomerDashboard() {
           startName: order.locationData?.startName ?? '',
           endName: deliveryData.deliveryAddress,
         },
-        bountyWei: BigInt('500000000000000000'), // 0.5 USDT default bounty
+        bountyWei: getDefaultP2PDeliveryBountyWei(quoteTokenDecimals),
         etaTimestamp: BigInt(Math.floor(Date.now() / 1000) + 7 * 24 * 3600), // 7 days
         tokenQuantity: BigInt(order.tokenQuantity),
         assetId: BigInt(order.tokenId),
@@ -945,13 +980,18 @@ export default function CustomerDashboard() {
                           </div>
                         </td>
                         <td className="px-4 py-4 text-sm text-foreground capitalize">
-                          {order.asset?.name || 'Unknown'}
+                          {getOrderAssetName(order)}
                         </td>
                         <td className="px-4 py-4 text-sm font-mono text-foreground">
                           {order.tokenQuantity}
                         </td>
                         <td className="px-4 py-4 text-sm font-mono text-foreground">
-                          ${formatTokenAmount(order.price, 18, 2)}
+                          $
+                          {formatTokenAmount(
+                            order.price,
+                            quoteTokenDecimals,
+                            2,
+                          )}
                         </td>
                         <td className="px-4 py-4">
                           <EvaStatusBadge

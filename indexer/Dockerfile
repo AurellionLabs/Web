@@ -55,4 +55,6 @@ USER ponder
 
 EXPOSE 8080
 
+
+CMD ["bun", "run", "generate", "indexer"]
 CMD ["bun", "run", "--cwd", "indexer", "start"]

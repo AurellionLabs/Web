@@ -15,6 +15,19 @@ import { PinataSDK } from 'pinata';
 const PINATA_GATEWAY = 'orange-electronic-flyingfish-697.mypinata.cloud';
 const CLASS_CACHE_PREFIX = 'platform:class:';
 const HASH_CACHE_PREFIX = 'ipfs:hash:';
+const TOKEN_CACHE_PREFIX = 'ipfs:token:';
+
+function resolveChainId(chainId?: number): number {
+  return chainId || NEXT_PUBLIC_DEFAULT_CHAIN_ID;
+}
+
+function getScopedCacheKey(
+  prefix: string,
+  value: string,
+  chainId?: number,
+): string {
+  return `${prefix}${resolveChainId(chainId)}:${value}`;
+}
 
 function normalizeTokenId(tokenId: string | number | bigint): string {
   try {
@@ -138,11 +151,11 @@ function createServerPinata(): PinataSDK | null {
   });
 }
 
-function getServerPinataListBuilder(pinata: PinataSDK) {
+function getServerPinataListBuilder(pinata: PinataSDK, chainId?: number) {
   const listBuilder = pinata.files.public.list() as any;
 
   if (typeof listBuilder.group === 'function') {
-    return listBuilder.group(getIpfsGroupId(NEXT_PUBLIC_DEFAULT_CHAIN_ID));
+    return listBuilder.group(getIpfsGroupId(resolveChainId(chainId)));
   }
 
   return listBuilder;
@@ -161,14 +174,16 @@ async function getCacheSafely() {
   }
 }
 
-async function getCachedIpfsMetadata(tokenId: string) {
+async function getCachedIpfsMetadata(tokenId: string, chainId?: number) {
   const cache = await getCacheSafely();
   if (!cache) {
     return null;
   }
 
   try {
-    return await cache.getIpfsMetadata(tokenId);
+    return await cache.getIpfsMetadata(
+      getScopedCacheKey(TOKEN_CACHE_PREFIX, tokenId, chainId),
+    );
   } catch (error) {
     console.warn(
       '[platform-metadata-server] Failed reading token metadata cache',
@@ -178,14 +193,21 @@ async function getCachedIpfsMetadata(tokenId: string) {
   }
 }
 
-async function setCachedIpfsMetadata(tokenId: string, metadata: AssetMetadata) {
+async function setCachedIpfsMetadata(
+  tokenId: string,
+  metadata: AssetMetadata,
+  chainId?: number,
+) {
   const cache = await getCacheSafely();
   if (!cache) {
     return;
   }
 
   try {
-    await cache.setIpfsMetadata(tokenId, metadata);
+    await cache.setIpfsMetadata(
+      getScopedCacheKey(TOKEN_CACHE_PREFIX, tokenId, chainId),
+      metadata,
+    );
   } catch (error) {
     console.warn(
       '[platform-metadata-server] Failed writing token metadata cache',
@@ -286,10 +308,11 @@ async function getGatewayPayload(
 
 export async function getAssetByTokenIdFromServerCache(
   tokenId: string | number | bigint,
+  chainId?: number,
 ): Promise<{ asset: Asset | null; cid: string | null }> {
   const normalizedTokenId = normalizeTokenId(tokenId);
 
-  const cached = await getCachedIpfsMetadata(normalizedTokenId);
+  const cached = await getCachedIpfsMetadata(normalizedTokenId, chainId);
 
   if (cached) {
     return {
@@ -308,7 +331,7 @@ export async function getAssetByTokenIdFromServerCache(
 
   for (const candidate of candidates) {
     list = await withPinataRetry(() =>
-      getServerPinataListBuilder(pinata)
+      getServerPinataListBuilder(pinata, chainId)
         .keyvalues({ tokenId: candidate })
         .all(),
     );
@@ -327,23 +350,32 @@ export async function getAssetByTokenIdFromServerCache(
     normalizedTokenId,
   );
 
-  await setCachedIpfsMetadata(normalizedTokenId, {
-    name: asset.name,
-    class: asset.assetClass,
-    cid,
-    attributes: asset.attributes,
-  });
+  await setCachedIpfsMetadata(
+    normalizedTokenId,
+    {
+      name: asset.name,
+      class: asset.assetClass,
+      cid,
+      attributes: asset.attributes,
+    },
+    chainId,
+  );
 
   return { asset, cid };
 }
 
 export async function getClassAssetsFromServerCache(
   assetClass: string,
+  chainId?: number,
 ): Promise<Asset[]> {
   const normalizedClass = assetClass.trim();
   if (!normalizedClass) return [];
 
-  const cacheKey = `${CLASS_CACHE_PREFIX}${normalizedClass.toLowerCase()}`;
+  const cacheKey = getScopedCacheKey(
+    CLASS_CACHE_PREFIX,
+    normalizedClass.toLowerCase(),
+    chainId,
+  );
   const cached = await getCachedCidContent(cacheKey);
 
   if (cached && Array.isArray(cached)) {
@@ -356,7 +388,7 @@ export async function getClassAssetsFromServerCache(
   }
 
   let list = await withPinataRetry(() =>
-    getServerPinataListBuilder(pinata)
+    getServerPinataListBuilder(pinata, chainId)
       .keyvalues({ className: normalizedClass })
       .all(),
   );
@@ -365,7 +397,7 @@ export async function getClassAssetsFromServerCache(
   if (!list.length) {
     shouldFilterByPayloadClass = true;
     list = await withPinataRetry(() =>
-      getServerPinataListBuilder(pinata).all(),
+      getServerPinataListBuilder(pinata, chainId).all(),
     );
   }
 
@@ -409,10 +441,14 @@ export async function getClassAssetsFromServerCache(
 
 export async function getAssetsByTokenIdsFromServerCache(
   tokenIds: string[],
+  chainId?: number,
 ): Promise<Asset[]> {
   const results = await Promise.all(
     tokenIds.map(async (tokenId) => {
-      const { asset } = await getAssetByTokenIdFromServerCache(tokenId);
+      const { asset } = await getAssetByTokenIdFromServerCache(
+        tokenId,
+        chainId,
+      );
       return asset;
     }),
   );
@@ -422,12 +458,13 @@ export async function getAssetsByTokenIdsFromServerCache(
 
 export async function getAssetRecordsByHashFromServerCache(
   hash: string,
+  chainId?: number,
 ): Promise<AssetIpfsRecord[]> {
   if (!hash) {
     return [];
   }
 
-  const cacheKey = `${HASH_CACHE_PREFIX}${hash}`;
+  const cacheKey = getScopedCacheKey(HASH_CACHE_PREFIX, hash, chainId);
   const cached = await getCachedCidContent(cacheKey);
   if (cached && Array.isArray(cached)) {
     return cached as AssetIpfsRecord[];
@@ -438,7 +475,7 @@ export async function getAssetRecordsByHashFromServerCache(
     return [];
   }
 
-  const groupId = getIpfsGroupId(NEXT_PUBLIC_DEFAULT_CHAIN_ID);
+  const groupId = getIpfsGroupId(resolveChainId(chainId));
   const byHash = await hashToAssets(hash, pinata, groupId);
   if (byHash.length > 0 || !/^(\d+)$/.test(hash)) {
     return byHash;

@@ -68,6 +68,7 @@ import type {
   SupportingDocument,
 } from '@/domain/node';
 import { useToast } from '@/hooks/use-toast';
+import { useQuoteTokenMetadata } from '@/hooks/useQuoteTokenMetadata';
 import { MapView } from '@/app/components/ui/map-view';
 import AssetSelectionForm from './asset-selection-form';
 import { usePlatform } from '@/app/providers/platform.provider';
@@ -86,6 +87,10 @@ import {
 } from '@/infrastructure/shared/graph-queries';
 import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 import { detectJourneyRoleConflict } from '@/utils/journey-role-conflicts';
+import {
+  buildAssetNameLookup,
+  resolveOrderAssetName,
+} from '@/utils/order-asset-resolution';
 
 const tokenizeFormSchema = z.object({
   assetClass: z.string().min(1, { message: 'Please select an asset class.' }),
@@ -138,6 +143,7 @@ export default function NodeDashboardPage() {
   const { nodes: allNodes, refreshNodes } = useNodes();
   const router = useRouter();
   const { toast } = useToast();
+  const { decimals: quoteTokenDecimals } = useQuoteTokenMetadata();
   const { isReadOnly: diamondIsReadOnly } = useDiamond();
 
   const searchParams = new URLSearchParams(window.location.search);
@@ -167,7 +173,8 @@ export default function NodeDashboardPage() {
   const [isUpdatingCapacity, setIsUpdatingCapacity] = useState(false);
   const [editingCapacity, setEditingCapacity] =
     useState<EditingCapacity | null>(null);
-  const { supportedAssetClasses, getAssetByTokenId } = usePlatform();
+  const { supportedAssetClasses, supportedAssets, getAssetByTokenId } =
+    usePlatform();
 
   const dashboardTopologyNodes = useMemo(() => {
     const unique = new Map<string, (typeof allNodes)[number]>();
@@ -191,6 +198,33 @@ export default function NodeDashboardPage() {
   }, [allNodes]);
 
   const [selectedAssetName, setSelectedAssetName] = useState<string>('');
+
+  const nodeAssetNameByTokenId = useMemo(() => {
+    const nodeLookup = buildAssetNameLookup(
+      assets.map((asset) => ({
+        tokenId: asset.id,
+        name: asset.name,
+      })),
+    );
+    const platformLookup = buildAssetNameLookup(
+      supportedAssets.map((asset) => ({
+        tokenId: asset.tokenId,
+        name: asset.name,
+      })),
+    );
+
+    return new Map([...platformLookup, ...nodeLookup]);
+  }, [assets, supportedAssets]);
+
+  const getOrderAssetName = (order: {
+    tokenId: string;
+    asset?: { name?: string } | null;
+  }) =>
+    resolveOrderAssetName({
+      tokenId: order.tokenId,
+      directName: order.asset?.name,
+      lookups: [nodeAssetNameByTokenId],
+    });
 
   // Document management state
   const [isAddDocumentOpen, setIsAddDocumentOpen] = useState(false);
@@ -1379,13 +1413,18 @@ export default function NodeDashboardPage() {
                             {truncateId(order.buyer, 12)}
                           </td>
                           <td className="px-4 py-4 capitalize text-foreground">
-                            {order.asset?.name || 'Unknown Asset'}
+                            {getOrderAssetName(order)}
                           </td>
                           <td className="px-4 py-4 font-mono text-foreground">
                             {order.tokenQuantity}
                           </td>
                           <td className="px-4 py-4 font-mono text-foreground">
-                            ${formatTokenAmount(order.price, 18, 2)}
+                            $
+                            {formatTokenAmount(
+                              order.price,
+                              quoteTokenDecimals,
+                              2,
+                            )}
                           </td>
                           <td className="px-4 py-4">
                             {signedOrders[order.id] &&
