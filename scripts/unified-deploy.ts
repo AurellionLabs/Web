@@ -62,6 +62,11 @@ import { loadDeploymentManifest } from './lib/deployment-manifest';
 import { planFacetSelectorAdditions } from './lib/facet-selector-install';
 import { sendWithNonceRetry } from './lib/nonce-retry';
 import {
+  assertAddressHasContractCode,
+  isProductionPayTokenChain,
+  resolveExpectedPayToken,
+} from './lib/pay-token';
+import {
   readDiamondAddressFromChainConstants,
   resolveDiamondAddress as resolveRuntimeDiamondAddress,
 } from './lib/runtime-contracts';
@@ -929,6 +934,7 @@ async function postDeploymentConfig(
   deployer: string,
 ) {
   console.log('\n⚙️  Post-deployment configuration...\n');
+  const activeChainId = Number((await ethers.provider.getNetwork()).chainId);
 
   // Merge addresses deployed in this run with already-known addresses from
   // chain-constants.ts so partial deploy modes can still run full configuration.
@@ -942,6 +948,22 @@ async function postDeploymentConfig(
     ) {
       resolvedAddresses[name] = existingAddresses[cfg.chainConstantKey];
     }
+  }
+  const shouldForceProductionPayToken =
+    isProductionPayTokenChain(activeChainId);
+  const expectedPayToken = resolvedAddresses.Diamond
+    ? resolveExpectedPayToken({
+        chainId: activeChainId,
+        fallbackTokenAddress: resolvedAddresses.Aura,
+      })
+    : null;
+
+  if (expectedPayToken) {
+    await assertAddressHasContractCode(
+      ethers.provider,
+      expectedPayToken,
+      'Expected pay token',
+    );
   }
 
   // Set NodeManager in AuSys if both exist
@@ -1134,7 +1156,7 @@ async function postDeploymentConfig(
 
   // Configure AuSysFacet payment token for P2P escrows.
   // Required for buy-offer creation and sell-offer acceptance.
-  if (resolvedAddresses.Diamond && resolvedAddresses.Aura) {
+  if (resolvedAddresses.Diamond && expectedPayToken) {
     console.log('   Configuring AuSys pay token on Diamond...');
     try {
       const auSysAdminFacet = await ethers.getContractAt(
@@ -1146,25 +1168,31 @@ async function postDeploymentConfig(
         resolvedAddresses.Diamond,
       );
       const currentPayToken = await auSysViewFacet.getPayToken();
-      if (currentPayToken === ethers.ZeroAddress) {
+      const isUnset = currentPayToken === ethers.ZeroAddress;
+      const isMismatch =
+        currentPayToken.toLowerCase() !== expectedPayToken.toLowerCase();
+      const shouldSetPayToken =
+        isUnset || (shouldForceProductionPayToken && isMismatch);
+
+      if (shouldSetPayToken) {
+        if (isMismatch && shouldForceProductionPayToken) {
+          console.log(
+            `   ⚠️  AuSys pay token mismatch on chain ${activeChainId}. Correcting ${currentPayToken} -> ${expectedPayToken}`,
+          );
+        }
         const [signer] = await ethers.getSigners();
         const tx = await sendWithNonceRetry({
           label: 'AuSysAdminFacet.setPayToken',
           getPendingNonce: () => signer.getNonce('pending'),
           logger: console,
           send: (overrides) =>
-            auSysAdminFacet.setPayToken(
-              resolvedAddresses.Aura,
-              overrides ?? {},
-            ),
+            auSysAdminFacet.setPayToken(expectedPayToken, overrides ?? {}),
         });
         await tx.wait();
-        console.log(`   ✓ AuSys pay token set to ${resolvedAddresses.Aura}`);
-      } else if (
-        currentPayToken.toLowerCase() !== resolvedAddresses.Aura.toLowerCase()
-      ) {
+        console.log(`   ✓ AuSys pay token set to ${expectedPayToken}`);
+      } else if (isMismatch) {
         console.log(
-          `   ⚠️  AuSys pay token already set to ${currentPayToken} (not overwriting with ${resolvedAddresses.Aura})`,
+          `   ⚠️  AuSys pay token already set to ${currentPayToken} (not overwriting with ${expectedPayToken})`,
         );
       } else {
         console.log('   ✓ AuSys pay token already configured');
@@ -1206,24 +1234,34 @@ async function postDeploymentConfig(
       }
 
       // Set RWY quote token if unset.
-      if (resolvedAddresses.Aura) {
+      if (expectedPayToken) {
         try {
           const currentQuote = await rwyFacet.getRWYQuoteToken();
-          if (currentQuote === ethers.ZeroAddress) {
+          const isUnset = currentQuote === ethers.ZeroAddress;
+          const isMismatch =
+            currentQuote.toLowerCase() !== expectedPayToken.toLowerCase();
+          const shouldSetQuoteToken =
+            isUnset || (shouldForceProductionPayToken && isMismatch);
+
+          if (shouldSetQuoteToken) {
+            if (isMismatch && shouldForceProductionPayToken) {
+              console.log(
+                `   ⚠️  RWY quote token mismatch on chain ${activeChainId}. Correcting ${currentQuote} -> ${expectedPayToken}`,
+              );
+            }
             const [signer] = await ethers.getSigners();
             const tx = await sendWithNonceRetry({
               label: 'RWYStakingFacet.setRWYQuoteToken',
               getPendingNonce: () => signer.getNonce('pending'),
               logger: console,
               send: (overrides) =>
-                rwyFacet.setRWYQuoteToken(
-                  resolvedAddresses.Aura,
-                  overrides ?? {},
-                ),
+                rwyFacet.setRWYQuoteToken(expectedPayToken, overrides ?? {}),
             });
             await tx.wait();
+            console.log(`   ✓ RWY quote token set to ${expectedPayToken}`);
+          } else if (isMismatch) {
             console.log(
-              `   ✓ RWY quote token set to ${resolvedAddresses.Aura}`,
+              `   ⚠️  RWY quote token already set to ${currentQuote} (not overwriting with ${expectedPayToken})`,
             );
           } else {
             console.log('   ✓ RWY quote token already configured');
