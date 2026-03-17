@@ -96,14 +96,22 @@ async function main() {
   const network = await ethers.provider.getNetwork();
   const chainId = Number(network.chainId);
   const diamondAddress = await resolveDiamondAddress(options.diamondAddress);
-  const auSysFacet = await ethers.getContractAt('AuSysFacet', diamondAddress);
+  const auSysReadFacet = await ethers.getContractAt(
+    'AuSysViewFacet',
+    diamondAddress,
+  );
+  const auSysWriteFacet = await ethers.getContractAt(
+    'AuSysFacet',
+    diamondAddress,
+  );
   const nodesFacet = await ethers.getContractAt('NodesFacet', diamondAddress);
 
   const summary = await syncPermissions({
     write: options.write,
     desiredDrivers: catalog.drivers,
     desiredNodeRegistrars: catalog.nodeRegistrars,
-    auSysFacet,
+    auSysReadFacet,
+    auSysWriteFacet,
     nodesFacet,
     allowEmpty: options.allowEmpty,
   });
