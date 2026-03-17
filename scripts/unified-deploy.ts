@@ -58,6 +58,7 @@ import {
   renderIndexerDiamondConstants,
   replaceChainConstant,
 } from './lib/deploy-config';
+import { planFacetSelectorAdditions } from './lib/facet-selector-install';
 import {
   getSupportedAssetClasses,
   loadSupportedAssetCatalog,
@@ -790,6 +791,7 @@ async function installFacetsToDiamond(
   modeContracts: string[],
 ) {
   console.log('\n⚙️  Installing facets to Diamond...\n');
+  void deployedContracts;
 
   // Derive facets to install from the deployment mode's contract list.
   // This is the single source of truth - adding a facet to a deployment mode
@@ -804,40 +806,61 @@ async function installFacetsToDiamond(
 
   console.log(`   Facets to install: ${facetsToInstall.join(', ')}\n`);
 
+  const diamondLoupe = await ethers.getContractAt(
+    'IDiamondLoupe',
+    addresses.Diamond,
+  );
+  const activeSelectors = new Set<string>();
+  const facets = await diamondLoupe.facets();
+
+  for (const facet of facets) {
+    for (const selector of facet.functionSelectors) {
+      activeSelectors.add(selector.toLowerCase());
+    }
+  }
+
   for (const facetName of facetsToInstall) {
     if (!addresses[facetName] || !FACET_SELECTORS[facetName]) continue;
 
     console.log(`   Adding ${facetName}...`);
+    const rawSelectors = FACET_SELECTORS[facetName];
+    const { selectorsToAdd, duplicateCount, alreadyInstalledCount } =
+      planFacetSelectorAdditions({
+        selectors: rawSelectors,
+        activeSelectors,
+      });
+
+    if (duplicateCount > 0) {
+      console.log(
+        `   ⚠️  Removed ${duplicateCount} duplicate selector(s) from ${facetName}`,
+      );
+    }
+
+    if (alreadyInstalledCount > 0) {
+      console.log(
+        `   ⚠️  Skipping ${alreadyInstalledCount} selector(s) already installed on the Diamond`,
+      );
+    }
+
+    if (selectorsToAdd.length === 0) {
+      console.log(`   ✓ No new selectors to add for ${facetName}`);
+      continue;
+    }
 
     try {
       await executeDiamondCutWithScheduling(addresses.Diamond, [
         {
           facetAddress: addresses[facetName],
           action: 0, // Add
-          functionSelectors: FACET_SELECTORS[facetName],
+          functionSelectors: selectorsToAdd,
         },
       ]);
-      console.log(`   ✓ Added ${FACET_SELECTORS[facetName].length} selectors`);
+      selectorsToAdd.forEach((selector) =>
+        activeSelectors.add(selector.toLowerCase()),
+      );
+      console.log(`   ✓ Added ${selectorsToAdd.length} selectors`);
     } catch (error: any) {
-      if (error.message.includes('already exists')) {
-        console.log(`   ⚠️  Selectors already exist, trying replace...`);
-        try {
-          await executeDiamondCutWithScheduling(addresses.Diamond, [
-            {
-              facetAddress: addresses[facetName],
-              action: 1, // Replace
-              functionSelectors: FACET_SELECTORS[facetName],
-            },
-          ]);
-          console.log(
-            `   ✓ Replaced ${FACET_SELECTORS[facetName].length} selectors`,
-          );
-        } catch {
-          console.log(`   ⚠️  Could not replace selectors`);
-        }
-      } else {
-        console.log(`   ⚠️  Error: ${error.message}`);
-      }
+      throw new Error(`Failed to install ${facetName}: ${error.message}`);
     }
   }
 }
