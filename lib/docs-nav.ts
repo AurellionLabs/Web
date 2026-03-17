@@ -105,6 +105,13 @@ export const NAV_STRUCTURE: NavItem[] = [
     ],
   },
   {
+    title: 'Public API',
+    icon: '◉',
+    children: [
+      { title: 'Aurellion Core API Contract', slug: ['public-api', 'aurellion-core-api-contract'] },
+    ],
+  },
+  {
     title: 'Technical Reference',
     icon: '⊞',
     children: [

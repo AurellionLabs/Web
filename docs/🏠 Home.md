@@ -68,6 +68,10 @@ tags: [home, index, navigation]
 - [[Indexer/Ponder Setup]] — Event indexer configuration
 - [[Indexer/Schema and Queries]] — GraphQL schema and query patterns
 
+### Public API
+
+- [[Public API/Aurellion Core API Contract]] — Public HTTP contract for `aurellion-core`
+
 ### Technical Reference
 
 - [[Technical Reference/Developer Quickstart]] — Working code examples for every operation ⭐ start here
@@ -134,6 +138,7 @@ tags: [home, index, navigation]
 - [Base Sepolia Explorer](https://sepolia.basescan.org)
 - [Diamond: 0x8ed92Ff64dC6e833182a4743124FE3e48E2966A7](https://sepolia.basescan.org/address/0x8ed92Ff64dC6e833182a4743124FE3e48E2966A7)
 - [Indexer GraphQL](https://indexer.aurellionlabs.com/graphql)
+- [Aurellion Core Public API](https://prod-aurellion-core.up.railway.app)
 - [OpenZeppelin ERC-1155](https://docs.openzeppelin.com/contracts/erc1155)
 - [Ponder Docs](https://ponder.sh)
 - [Base Documentation](https://docs.base.org)
