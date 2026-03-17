@@ -861,17 +861,34 @@ export class DiamondP2PService implements IP2PService {
         // signer.getAddress(); verify allowance against the actual tx sender.
         allowanceOwner = receipt.from;
       }
-      await this.waitForApprovalState({
-        label: `ERC20 allowance for token ${quoteTokenAddress}`,
-        maxAttempts: 12,
-        read: async () =>
-          BigInt(
-            (
-              await quoteToken.allowance(allowanceOwner, diamondAddress)
-            ).toString(),
-          ),
-        isSatisfied: (allowance) => allowance >= amount,
-      });
+      try {
+        await this.waitForApprovalState({
+          label: `ERC20 allowance for token ${quoteTokenAddress}`,
+          maxAttempts: 12,
+          read: async () =>
+            BigInt(
+              (
+                await quoteToken.allowance(allowanceOwner, diamondAddress)
+              ).toString(),
+            ),
+          isSatisfied: (allowance) => allowance >= amount,
+        });
+      } catch {
+        // If wallet submitted a capped approval amount, request exact required amount.
+        const fallbackTx = await quoteToken.approve(diamondAddress, amount);
+        await fallbackTx.wait();
+        await this.waitForApprovalState({
+          label: `ERC20 allowance for token ${quoteTokenAddress}`,
+          maxAttempts: 12,
+          read: async () =>
+            BigInt(
+              (
+                await quoteToken.allowance(allowanceOwner, diamondAddress)
+              ).toString(),
+            ),
+          isSatisfied: (allowance) => allowance >= amount,
+        });
+      }
     } else {
     }
   }

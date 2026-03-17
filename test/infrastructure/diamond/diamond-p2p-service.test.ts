@@ -1243,6 +1243,57 @@ describe('acceptOfferWithDelivery', () => {
     }
   });
 
+  it('should retry ERC20 approval with exact required amount when first approval is capped', async () => {
+    vi.useFakeTimers();
+    try {
+      const context = createAcceptWithDeliveryContext();
+      const service = new DiamondP2PService(context);
+      const requiredAllowance =
+        BigInt('1000000000000000000') +
+        BigInt('20000000000000000') +
+        DELIVERY_DETAILS.bountyWei;
+      const cappedAllowance = BigInt(1_000_000);
+      let allowanceReads = 0;
+
+      context._mockQuoteToken.allowance.mockImplementation(() => {
+        allowanceReads += 1;
+        // Initial pre-approve read
+        if (allowanceReads === 1) {
+          return Promise.resolve(BigInt(0));
+        }
+        // First visibility loop keeps seeing capped approval (insufficient)
+        if (allowanceReads <= 13) {
+          return Promise.resolve(cappedAllowance);
+        }
+        // After fallback exact-amount approval, allowance is sufficient
+        return Promise.resolve(requiredAllowance);
+      });
+
+      const acceptPromise = service.acceptOfferWithDelivery(
+        OFFER_ID,
+        DELIVERY_DETAILS,
+      );
+
+      await vi.runAllTimersAsync();
+      await expect(acceptPromise).resolves.toBeUndefined();
+
+      expect(context._mockQuoteToken.approve).toHaveBeenCalledTimes(2);
+      expect(context._mockQuoteToken.approve).toHaveBeenNthCalledWith(
+        1,
+        '0xDiamondAddr0000000000000000000000000000',
+        ethers.MaxUint256,
+      );
+      expect(context._mockQuoteToken.approve).toHaveBeenNthCalledWith(
+        2,
+        '0xDiamondAddr0000000000000000000000000000',
+        requiredAllowance,
+      );
+      expect(context._diamond.acceptP2POffer).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('should not call createOrderJourney if acceptP2POffer fails', async () => {
     const context = createAcceptWithDeliveryContext();
     context._diamond.acceptP2POffer.mockRejectedValue(
