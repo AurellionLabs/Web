@@ -155,22 +155,35 @@ export class DiamondP2PService implements IP2PService {
     label: string;
     maxAttempts?: number;
   }): Promise<T> {
-    const maxAttempts = options.maxAttempts ?? 5;
+    const maxAttempts = options.maxAttempts ?? 10;
     let lastValue: T | undefined;
+    let lastError: unknown;
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       if (attempt > 0) {
-        await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
+        await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
       }
 
-      lastValue = await options.read();
-      if (options.isSatisfied(lastValue)) {
-        return lastValue;
+      try {
+        lastValue = await options.read();
+        if (options.isSatisfied(lastValue)) {
+          return lastValue;
+        }
+      } catch (error) {
+        lastError = error;
       }
     }
 
+    const lastObserved =
+      lastValue !== undefined ? ` Last observed: ${String(lastValue)}.` : '';
+    const lastErrorText =
+      lastError instanceof Error
+        ? ` Last read error: ${lastError.message}.`
+        : lastError
+          ? ` Last read error: ${String(lastError)}.`
+          : '';
     throw new Error(
-      `${options.label} did not become visible after the approval transaction confirmed`,
+      `${options.label} did not become visible after the approval transaction confirmed.${lastObserved}${lastErrorText}`,
     );
   }
 
@@ -816,6 +829,7 @@ export class DiamondP2PService implements IP2PService {
   ): Promise<void> {
     const signer = this.context.getSigner();
     const signerAddress = await this.context.getSignerAddress();
+    let allowanceOwner = signerAddress;
 
     // Use context helper only for the default configured token (keeps tests simple).
     const shouldUseContextHelper =
@@ -830,19 +844,30 @@ export class DiamondP2PService implements IP2PService {
     const diamondAddress = this.getDiamondAddress();
 
     const currentAllowance = await quoteToken.allowance(
-      signerAddress,
+      allowanceOwner,
       diamondAddress,
     );
 
     if (BigInt(currentAllowance.toString()) < amount) {
       const tx = await quoteToken.approve(diamondAddress, ethers.MaxUint256);
-      await tx.wait();
+      const receipt = await tx.wait();
+      if (
+        receipt &&
+        typeof receipt.from === 'string' &&
+        receipt.from.trim().length > 0 &&
+        receipt.from.toLowerCase() !== allowanceOwner.toLowerCase()
+      ) {
+        // Some wallet stacks submit approvals from a different account than
+        // signer.getAddress(); verify allowance against the actual tx sender.
+        allowanceOwner = receipt.from;
+      }
       await this.waitForApprovalState({
         label: `ERC20 allowance for token ${quoteTokenAddress}`,
+        maxAttempts: 12,
         read: async () =>
           BigInt(
             (
-              await quoteToken.allowance(signerAddress, diamondAddress)
+              await quoteToken.allowance(allowanceOwner, diamondAddress)
             ).toString(),
           ),
         isSatisfied: (allowance) => allowance >= amount,

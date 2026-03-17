@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { P2POffer, P2POfferStatus, P2PDeliveryDetails } from '@/domain/p2p';
 import { formatUnits } from 'ethers';
+import { NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS } from '@/chain-constants';
 import {
   DeliveryDetailsDialog,
   DeliveryFormData,
@@ -842,9 +843,12 @@ export default function P2PMarketOffersPage() {
 
   // Format price for display
   const formatPrice = (price: bigint) => {
-    return parseFloat(formatUnits(price, 18)).toLocaleString(undefined, {
+    const maximumFractionDigits = Math.min(NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS, 6);
+    return parseFloat(
+      formatUnits(price, NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS),
+    ).toLocaleString(undefined, {
       minimumFractionDigits: 2,
-      maximumFractionDigits: 6,
+      maximumFractionDigits,
     });
   };
 

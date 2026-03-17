@@ -57,6 +57,7 @@ import {
 import {
   renderIndexerDiamondConstants,
   replaceChainConstant,
+  ensureQuoteTokenRuntimeConfig,
 } from './lib/deploy-config';
 import { loadDeploymentManifest } from './lib/deployment-manifest';
 import { planFacetSelectorAdditions } from './lib/facet-selector-install';
@@ -532,6 +533,9 @@ function updateChainConstants(
   if (timestampRegex.test(content)) {
     content = content.replace(timestampRegex, newTimestamp);
   }
+
+  // Keep quote token settings runtime-configurable across regenerations.
+  content = ensureQuoteTokenRuntimeConfig(content);
 
   fs.writeFileSync(constantsPath, content);
   console.log('✅ Updated chain-constants.ts');

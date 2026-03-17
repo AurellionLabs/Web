@@ -27,6 +27,58 @@ export function replaceChainConstant(
   return content;
 }
 
+function upsertConstant(
+  content: string,
+  key: string,
+  renderedValue: string,
+): string {
+  const exportRegex = new RegExp(
+    String.raw`export const ${key}\s*=\s*[\s\S]*?;`,
+    'm',
+  );
+
+  if (exportRegex.test(content)) {
+    return content.replace(exportRegex, renderedValue);
+  }
+
+  return `${content.trimEnd()}\n\n${renderedValue}\n`;
+}
+
+export function ensureQuoteTokenRuntimeConfig(content: string): string {
+  const quoteTokenAddressConst = `export const NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS =
+  process.env.NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS || NEXT_PUBLIC_AURA_TOKEN_ADDRESS;`;
+  let updated = upsertConstant(
+    content,
+    'NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS',
+    quoteTokenAddressConst,
+  );
+
+  const quoteTokenDecimalsBlock = `// Quote token decimals - changes based on which token is used
+// AURA = 18 decimals (testnet), USDC = 6 decimals (production)
+const ARBITRUM_USDC_ADDRESS = '0xaf88d065e77c8cc2239327c5edb3a432268e5831';
+const quoteTokenIsArbitrumUsdc =
+  NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS.toLowerCase() === ARBITRUM_USDC_ADDRESS;
+
+export const NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS = Number(
+  process.env.NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS ||
+    (quoteTokenIsArbitrumUsdc ? '6' : '18'),
+);
+export const NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL =
+  process.env.NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL ||
+  (quoteTokenIsArbitrumUsdc ? 'USDC' : 'AURA');`;
+
+  const quoteTokenDecimalsRegex =
+    /\/\/ Quote token decimals - changes based on which token is used[\s\S]*?export const NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL\s*=\s*[\s\S]*?;/m;
+
+  if (quoteTokenDecimalsRegex.test(updated)) {
+    updated = updated.replace(quoteTokenDecimalsRegex, quoteTokenDecimalsBlock);
+  } else {
+    updated = `${updated.trimEnd()}\n\n${quoteTokenDecimalsBlock}\n`;
+  }
+
+  return updated;
+}
+
 export function renderIndexerDiamondConstants({
   address,
   blockNumber,

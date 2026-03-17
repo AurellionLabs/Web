@@ -39,7 +39,10 @@ import {
   MapPin,
 } from 'lucide-react';
 import { parseUnits, isAddress } from 'ethers';
-import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
+import {
+  NEXT_PUBLIC_DIAMOND_ADDRESS,
+  NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS,
+} from '@/chain-constants';
 import { useUserAssets } from '@/hooks/useUserAssets';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
 
@@ -668,7 +671,7 @@ export default function CreateP2POfferPage() {
         token: NEXT_PUBLIC_DIAMOND_ADDRESS,
         tokenId: tokenIdToSubmit,
         quantity: BigInt(formData.quantity),
-        price: parseUnits(formData.price, 18),
+        price: parseUnits(formData.price, NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS),
         isSellOffer: formData.offerType === 'sell',
         nodes: selectedNodeAddresses,
         pickupNodeRef: selectedPickupNodeRef,
