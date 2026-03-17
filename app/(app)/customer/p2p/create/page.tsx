@@ -41,6 +41,7 @@ import {
 import { parseUnits, isAddress } from 'ethers';
 import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
 import { useUserAssets } from '@/hooks/useUserAssets';
+import { useQuoteTokenMetadata } from '@/hooks/useQuoteTokenMetadata';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
 
 type Step =
@@ -157,6 +158,7 @@ const computeDeterministicTokenId = (
 export default function CreateP2POfferPage() {
   const { setCurrentUserRole, connected } = useMainProvider();
   const { p2pService } = useDiamond();
+  const { refresh: refreshQuoteTokenMetadata } = useQuoteTokenMetadata();
   const { supportedAssetClasses, getClassAssets } = usePlatform();
   const { nodes: ownedNodes } = useNodes();
   const router = useRouter();
@@ -664,11 +666,13 @@ export default function CreateP2POfferPage() {
         );
       }
 
+      const quoteTokenMetadata = await refreshQuoteTokenMetadata();
+
       await p2pService.createOffer({
         token: NEXT_PUBLIC_DIAMOND_ADDRESS,
         tokenId: tokenIdToSubmit,
         quantity: BigInt(formData.quantity),
-        price: parseUnits(formData.price, 18),
+        price: parseUnits(formData.price, quoteTokenMetadata.decimals),
         isSellOffer: formData.offerType === 'sell',
         nodes: selectedNodeAddresses,
         pickupNodeRef: selectedPickupNodeRef,
@@ -707,6 +711,7 @@ export default function CreateP2POfferPage() {
     selectedSellNodeOwnerAddress,
     classAssets,
     validateDetailsStep,
+    refreshQuoteTokenMetadata,
   ]);
 
   const handlePlaceSelect = () => {

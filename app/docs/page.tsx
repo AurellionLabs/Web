@@ -19,6 +19,7 @@ import {
   GitBranch,
   Box,
   Settings,
+  Globe,
 } from 'lucide-react';
 
 const categories = [
@@ -77,6 +78,14 @@ const categories = [
     accent: 'gold' as const,
     href: '/docs/indexer/ponder-setup',
     pages: ['Ponder Setup', 'Schema & Queries'],
+  },
+  {
+    icon: <Globe size={16} />,
+    title: 'Public API',
+    subtitle: 'HTTP contract for public order and node lookups.',
+    accent: 'gold' as const,
+    href: '/docs/public-api/aurellion-core-api-contract',
+    pages: ['Aurellion Core API Contract'],
   },
   {
     icon: <Settings size={16} />,
@@ -146,8 +155,8 @@ export default function DocsHomePage() {
           },
           {
             label: 'Doc Pages',
-            value: '54',
-            sub: 'across 8 sections',
+            value: '55',
+            sub: 'across 9 sections',
             color: 'crimson' as const,
           },
           {

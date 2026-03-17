@@ -16,6 +16,7 @@ import hre, { ethers } from 'hardhat';
 import * as fs from 'fs';
 import * as path from 'path';
 import { CONTRACTS } from './deploy.config';
+import { getDeploymentArtifactPaths } from './lib/deployment-manifest';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -47,12 +48,6 @@ interface ChangeResult {
 // ---------------------------------------------------------------------------
 // Paths
 // ---------------------------------------------------------------------------
-
-const MANIFEST_PATH = path.resolve(__dirname, '../deployments/manifest.json');
-const PENDING_CHANGES_PATH = path.resolve(
-  __dirname,
-  '../deployments/pending-changes.json',
-);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -90,16 +85,23 @@ async function getCompiledDeployedBytecodeHash(
 // ---------------------------------------------------------------------------
 
 async function main(): Promise<void> {
+  const chainId = Number((await ethers.provider.getNetwork()).chainId);
+  const artifactPaths = getDeploymentArtifactPaths({
+    deploymentsDir: path.resolve(__dirname, '../deployments'),
+    networkName: hre.network.name,
+    chainId,
+  });
+
   // Load manifest
-  if (!fs.existsSync(MANIFEST_PATH)) {
+  if (!fs.existsSync(artifactPaths.manifestPath)) {
     console.error(
-      '❌ deployments/manifest.json not found. Run build-manifest.ts first.',
+      `❌ ${artifactPaths.manifestPath} not found. Run build-manifest.ts first.`,
     );
     process.exit(1);
   }
 
   const manifest: Manifest = JSON.parse(
-    fs.readFileSync(MANIFEST_PATH, 'utf-8'),
+    fs.readFileSync(artifactPaths.manifestPath, 'utf-8'),
   );
 
   console.error(`\n🔍 Detecting facet changes against manifest`);
@@ -160,15 +162,15 @@ async function main(): Promise<void> {
   );
 
   // Write pending-changes.json
-  const deploymentsDir = path.dirname(PENDING_CHANGES_PATH);
+  const deploymentsDir = path.dirname(artifactPaths.pendingChangesPath);
   if (!fs.existsSync(deploymentsDir)) {
     fs.mkdirSync(deploymentsDir, { recursive: true });
   }
   fs.writeFileSync(
-    PENDING_CHANGES_PATH,
+    artifactPaths.pendingChangesPath,
     JSON.stringify(result, null, 2) + '\n',
   );
-  console.error(`   Written to deployments/pending-changes.json`);
+  console.error(`   Written to ${artifactPaths.pendingChangesPath}`);
 
   // Output JSON to stdout for CI
   console.log(JSON.stringify(result));

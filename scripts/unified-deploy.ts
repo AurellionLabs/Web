@@ -57,7 +57,20 @@ import {
 import {
   renderIndexerDiamondConstants,
   replaceChainConstant,
+  ensureQuoteTokenRuntimeConfig,
 } from './lib/deploy-config';
+import { loadDeploymentManifest } from './lib/deployment-manifest';
+import { planFacetSelectorAdditions } from './lib/facet-selector-install';
+import { sendWithNonceRetry } from './lib/nonce-retry';
+import {
+  assertAddressHasContractCode,
+  isProductionPayTokenChain,
+  resolveExpectedPayToken,
+} from './lib/pay-token';
+import {
+  readDiamondAddressFromChainConstants,
+  resolveDiamondAddress as resolveRuntimeDiamondAddress,
+} from './lib/runtime-contracts';
 import {
   getSupportedAssetClasses,
   loadSupportedAssetCatalog,
@@ -243,6 +256,33 @@ async function waitForConfirmations(
   }
 }
 
+async function resolveActiveDiamondAddress(): Promise<string> {
+  const chainId = Number((await ethers.provider.getNetwork()).chainId);
+  const manifest = loadDeploymentManifest({
+    deploymentsDir: path.resolve(process.cwd(), 'deployments'),
+    networkName: network.name,
+    chainId,
+  });
+  const chainConstantsDiamondAddress = readDiamondAddressFromChainConstants(
+    path.resolve(process.cwd(), 'chain-constants.ts'),
+  );
+  const diamondAddress = resolveRuntimeDiamondAddress({
+    manifestDiamondAddress: manifest?.diamond,
+    chainConstantsDiamondAddress,
+    preferManifestOverChainConstants: true,
+    env: process.env,
+  });
+  const code = await ethers.provider.getCode(diamondAddress);
+
+  if (!code || code === '0x') {
+    throw new Error(
+      `Resolved Diamond address ${diamondAddress} has no code on ${network.name} (${chainId}). Provide DIAMOND_ADDRESS or ensure deployments/manifest.${network.name}.json is available.`,
+    );
+  }
+
+  return diamondAddress;
+}
+
 /**
  * Extract function selectors directly from a compiled contract
  * This is used when FACET_ABI is not defined for a facet
@@ -312,10 +352,17 @@ async function executeDiamondCutWithScheduling(
     DIAMOND_CUT_EXTENDED_ABI,
     signer,
   );
+  const getPendingNonce = () => signer.getNonce('pending');
 
   const timelock = BigInt(await diamondCut.getDiamondCutTimelock());
   if (timelock === 0n) {
-    const tx = await diamondCut.diamondCut(facetCuts, init, calldata);
+    const tx = await sendWithNonceRetry({
+      label: 'diamondCut',
+      getPendingNonce,
+      logger: console,
+      send: (overrides) =>
+        diamondCut.diamondCut(facetCuts, init, calldata, overrides ?? {}),
+    });
     await tx.wait();
     return;
   }
@@ -327,11 +374,18 @@ async function executeDiamondCutWithScheduling(
 
   if (pendingEtaBigInt === 0n) {
     console.log('   Scheduling diamond cut (timelock enabled)...');
-    const scheduleTx = await diamondCut.scheduleDiamondCut(
-      facetCuts,
-      init,
-      calldata,
-    );
+    const scheduleTx = await sendWithNonceRetry({
+      label: 'scheduleDiamondCut',
+      getPendingNonce,
+      logger: console,
+      send: (overrides) =>
+        diamondCut.scheduleDiamondCut(
+          facetCuts,
+          init,
+          calldata,
+          overrides ?? {},
+        ),
+    });
     await scheduleTx.wait();
     [pendingHash, pendingEta] = await diamondCut.getPendingDiamondCut();
     pendingHashStr = String(pendingHash).toLowerCase();
@@ -365,7 +419,13 @@ async function executeDiamondCutWithScheduling(
   }
 
   console.log('   Executing scheduled diamond cut...');
-  const executeTx = await diamondCut.diamondCut(facetCuts, init, calldata);
+  const executeTx = await sendWithNonceRetry({
+    label: 'diamondCut',
+    getPendingNonce,
+    logger: console,
+    send: (overrides) =>
+      diamondCut.diamondCut(facetCuts, init, calldata, overrides ?? {}),
+  });
   await executeTx.wait();
 }
 
@@ -473,6 +533,9 @@ function updateChainConstants(
   if (timestampRegex.test(content)) {
     content = content.replace(timestampRegex, newTimestamp);
   }
+
+  // Keep quote token settings runtime-configurable across regenerations.
+  content = ensureQuoteTokenRuntimeConfig(content);
 
   fs.writeFileSync(constantsPath, content);
   console.log('✅ Updated chain-constants.ts');
@@ -663,6 +726,7 @@ async function deployContract(
   console.log(`\n📦 Deploying ${config.name}...`);
 
   const Factory = await ethers.getContractFactory(config.contractName);
+  const [signer] = await ethers.getSigners();
 
   // Get constructor args
   const args = config.constructorArgs
@@ -673,7 +737,12 @@ async function deployContract(
     console.log(`   Constructor args: ${JSON.stringify(args)}`);
   }
 
-  const contract = await Factory.deploy(...args);
+  const contract = await sendWithNonceRetry({
+    label: `deploy ${config.name}`,
+    getPendingNonce: () => signer.getNonce('pending'),
+    logger: console,
+    send: (overrides) => Factory.deploy(...args, overrides ?? {}),
+  });
   await waitForConfirmations(contract.deploymentTransaction());
 
   const address = await contract.getAddress();
@@ -790,6 +859,7 @@ async function installFacetsToDiamond(
   modeContracts: string[],
 ) {
   console.log('\n⚙️  Installing facets to Diamond...\n');
+  void deployedContracts;
 
   // Derive facets to install from the deployment mode's contract list.
   // This is the single source of truth - adding a facet to a deployment mode
@@ -804,40 +874,61 @@ async function installFacetsToDiamond(
 
   console.log(`   Facets to install: ${facetsToInstall.join(', ')}\n`);
 
+  const diamondLoupe = await ethers.getContractAt(
+    'IDiamondLoupe',
+    addresses.Diamond,
+  );
+  const activeSelectors = new Set<string>();
+  const facets = await diamondLoupe.facets();
+
+  for (const facet of facets) {
+    for (const selector of facet.functionSelectors) {
+      activeSelectors.add(selector.toLowerCase());
+    }
+  }
+
   for (const facetName of facetsToInstall) {
     if (!addresses[facetName] || !FACET_SELECTORS[facetName]) continue;
 
     console.log(`   Adding ${facetName}...`);
+    const rawSelectors = FACET_SELECTORS[facetName];
+    const { selectorsToAdd, duplicateCount, alreadyInstalledCount } =
+      planFacetSelectorAdditions({
+        selectors: rawSelectors,
+        activeSelectors,
+      });
+
+    if (duplicateCount > 0) {
+      console.log(
+        `   ⚠️  Removed ${duplicateCount} duplicate selector(s) from ${facetName}`,
+      );
+    }
+
+    if (alreadyInstalledCount > 0) {
+      console.log(
+        `   ⚠️  Skipping ${alreadyInstalledCount} selector(s) already installed on the Diamond`,
+      );
+    }
+
+    if (selectorsToAdd.length === 0) {
+      console.log(`   ✓ No new selectors to add for ${facetName}`);
+      continue;
+    }
 
     try {
       await executeDiamondCutWithScheduling(addresses.Diamond, [
         {
           facetAddress: addresses[facetName],
           action: 0, // Add
-          functionSelectors: FACET_SELECTORS[facetName],
+          functionSelectors: selectorsToAdd,
         },
       ]);
-      console.log(`   ✓ Added ${FACET_SELECTORS[facetName].length} selectors`);
+      selectorsToAdd.forEach((selector) =>
+        activeSelectors.add(selector.toLowerCase()),
+      );
+      console.log(`   ✓ Added ${selectorsToAdd.length} selectors`);
     } catch (error: any) {
-      if (error.message.includes('already exists')) {
-        console.log(`   ⚠️  Selectors already exist, trying replace...`);
-        try {
-          await executeDiamondCutWithScheduling(addresses.Diamond, [
-            {
-              facetAddress: addresses[facetName],
-              action: 1, // Replace
-              functionSelectors: FACET_SELECTORS[facetName],
-            },
-          ]);
-          console.log(
-            `   ✓ Replaced ${FACET_SELECTORS[facetName].length} selectors`,
-          );
-        } catch {
-          console.log(`   ⚠️  Could not replace selectors`);
-        }
-      } else {
-        console.log(`   ⚠️  Error: ${error.message}`);
-      }
+      throw new Error(`Failed to install ${facetName}: ${error.message}`);
     }
   }
 }
@@ -847,6 +938,7 @@ async function postDeploymentConfig(
   deployer: string,
 ) {
   console.log('\n⚙️  Post-deployment configuration...\n');
+  const activeChainId = Number((await ethers.provider.getNetwork()).chainId);
 
   // Merge addresses deployed in this run with already-known addresses from
   // chain-constants.ts so partial deploy modes can still run full configuration.
@@ -861,6 +953,22 @@ async function postDeploymentConfig(
       resolvedAddresses[name] = existingAddresses[cfg.chainConstantKey];
     }
   }
+  const shouldForceProductionPayToken =
+    isProductionPayTokenChain(activeChainId);
+  const expectedPayToken = resolvedAddresses.Diamond
+    ? resolveExpectedPayToken({
+        chainId: activeChainId,
+        fallbackTokenAddress: resolvedAddresses.Aura,
+      })
+    : null;
+
+  if (expectedPayToken) {
+    await assertAddressHasContractCode(
+      ethers.provider,
+      expectedPayToken,
+      'Expected pay token',
+    );
+  }
 
   // Set NodeManager in AuSys if both exist
   if (resolvedAddresses.AuSys && resolvedAddresses.AurumNodeManager) {
@@ -870,7 +978,17 @@ async function postDeploymentConfig(
         'Ausys',
         resolvedAddresses.AuSys,
       );
-      const tx = await auSys.setNodeManager(resolvedAddresses.AurumNodeManager);
+      const [signer] = await ethers.getSigners();
+      const tx = await sendWithNonceRetry({
+        label: 'AuSys.setNodeManager',
+        getPendingNonce: () => signer.getNonce('pending'),
+        logger: console,
+        send: (overrides) =>
+          auSys.setNodeManager(
+            resolvedAddresses.AurumNodeManager,
+            overrides ?? {},
+          ),
+      });
       await tx.wait();
       console.log('   ✓ NodeManager set');
     } catch (e: any) {
@@ -888,7 +1006,14 @@ async function postDeploymentConfig(
         'AurumNodeManager',
         resolvedAddresses.AurumNodeManager,
       );
-      const tx = await nodeManager.addToken(resolvedAddresses.AuraAsset);
+      const [signer] = await ethers.getSigners();
+      const tx = await sendWithNonceRetry({
+        label: 'AurumNodeManager.addToken',
+        getPendingNonce: () => signer.getNonce('pending'),
+        logger: console,
+        send: (overrides) =>
+          nodeManager.addToken(resolvedAddresses.AuraAsset, overrides ?? {}),
+      });
       await tx.wait();
       console.log('   ✓ AuraAsset token added');
     } catch (e: any) {
@@ -920,7 +1045,17 @@ async function postDeploymentConfig(
       ) {
         console.log('   ✓ Diamond is already the NodeManager');
       } else {
-        const tx = await auraAsset.setNodeManager(resolvedAddresses.Diamond);
+        const [signer] = await ethers.getSigners();
+        const tx = await sendWithNonceRetry({
+          label: 'AuraAsset.setNodeManager',
+          getPendingNonce: () => signer.getNonce('pending'),
+          logger: console,
+          send: (overrides) =>
+            auraAsset.setNodeManager(
+              resolvedAddresses.Diamond,
+              overrides ?? {},
+            ),
+        });
         await tx.wait();
         console.log('   ✓ Diamond set as NodeManager for AuraAsset');
       }
@@ -960,7 +1095,17 @@ async function postDeploymentConfig(
       resolvedAddresses.Diamond,
     );
     try {
-      const tx = await diamond.setAuraAssetAddress(resolvedAddresses.AuraAsset);
+      const [signer] = await ethers.getSigners();
+      const tx = await sendWithNonceRetry({
+        label: 'NodesFacet.setAuraAssetAddress',
+        getPendingNonce: () => signer.getNonce('pending'),
+        logger: console,
+        send: (overrides) =>
+          diamond.setAuraAssetAddress(
+            resolvedAddresses.AuraAsset,
+            overrides ?? {},
+          ),
+      });
       await tx.wait();
       console.log('   ✓ AuraAsset address set in Diamond');
     } catch (e: any) {
@@ -983,7 +1128,14 @@ async function postDeploymentConfig(
 
     for (const className of DEFAULT_SUPPORTED_ASSET_CLASSES) {
       try {
-        const tx = await assetsFacet.addSupportedClass(className);
+        const [signer] = await ethers.getSigners();
+        const tx = await sendWithNonceRetry({
+          label: `AssetsFacet.addSupportedClass(${className})`,
+          getPendingNonce: () => signer.getNonce('pending'),
+          logger: console,
+          send: (overrides) =>
+            assetsFacet.addSupportedClass(className, overrides ?? {}),
+        });
         await tx.wait();
         console.log(`   ✓ Added class: ${className}`);
         addedCount++;
@@ -1008,7 +1160,7 @@ async function postDeploymentConfig(
 
   // Configure AuSysFacet payment token for P2P escrows.
   // Required for buy-offer creation and sell-offer acceptance.
-  if (resolvedAddresses.Diamond && resolvedAddresses.Aura) {
+  if (resolvedAddresses.Diamond && expectedPayToken) {
     console.log('   Configuring AuSys pay token on Diamond...');
     try {
       const auSysAdminFacet = await ethers.getContractAt(
@@ -1020,15 +1172,31 @@ async function postDeploymentConfig(
         resolvedAddresses.Diamond,
       );
       const currentPayToken = await auSysViewFacet.getPayToken();
-      if (currentPayToken === ethers.ZeroAddress) {
-        const tx = await auSysAdminFacet.setPayToken(resolvedAddresses.Aura);
+      const isUnset = currentPayToken === ethers.ZeroAddress;
+      const isMismatch =
+        currentPayToken.toLowerCase() !== expectedPayToken.toLowerCase();
+      const shouldSetPayToken =
+        isUnset || (shouldForceProductionPayToken && isMismatch);
+
+      if (shouldSetPayToken) {
+        if (isMismatch && shouldForceProductionPayToken) {
+          console.log(
+            `   ⚠️  AuSys pay token mismatch on chain ${activeChainId}. Correcting ${currentPayToken} -> ${expectedPayToken}`,
+          );
+        }
+        const [signer] = await ethers.getSigners();
+        const tx = await sendWithNonceRetry({
+          label: 'AuSysAdminFacet.setPayToken',
+          getPendingNonce: () => signer.getNonce('pending'),
+          logger: console,
+          send: (overrides) =>
+            auSysAdminFacet.setPayToken(expectedPayToken, overrides ?? {}),
+        });
         await tx.wait();
-        console.log(`   ✓ AuSys pay token set to ${resolvedAddresses.Aura}`);
-      } else if (
-        currentPayToken.toLowerCase() !== resolvedAddresses.Aura.toLowerCase()
-      ) {
+        console.log(`   ✓ AuSys pay token set to ${expectedPayToken}`);
+      } else if (isMismatch) {
         console.log(
-          `   ⚠️  AuSys pay token already set to ${currentPayToken} (not overwriting with ${resolvedAddresses.Aura})`,
+          `   ⚠️  AuSys pay token already set to ${currentPayToken} (not overwriting with ${expectedPayToken})`,
         );
       } else {
         console.log('   ✓ AuSys pay token already configured');
@@ -1051,7 +1219,13 @@ async function postDeploymentConfig(
       try {
         const cfg = await rwyFacet.getRWYConfig();
         if (cfg[0] === 0n || cfg[1] === 0n || cfg[2] === 0n || cfg[3] === 0n) {
-          const tx = await rwyFacet.initializeRWYStaking();
+          const [signer] = await ethers.getSigners();
+          const tx = await sendWithNonceRetry({
+            label: 'RWYStakingFacet.initializeRWYStaking',
+            getPendingNonce: () => signer.getNonce('pending'),
+            logger: console,
+            send: (overrides) => rwyFacet.initializeRWYStaking(overrides ?? {}),
+          });
           await tx.wait();
           console.log('   ✓ Initialized RWY staking defaults');
         } else {
@@ -1064,14 +1238,34 @@ async function postDeploymentConfig(
       }
 
       // Set RWY quote token if unset.
-      if (resolvedAddresses.Aura) {
+      if (expectedPayToken) {
         try {
           const currentQuote = await rwyFacet.getRWYQuoteToken();
-          if (currentQuote === ethers.ZeroAddress) {
-            const tx = await rwyFacet.setRWYQuoteToken(resolvedAddresses.Aura);
+          const isUnset = currentQuote === ethers.ZeroAddress;
+          const isMismatch =
+            currentQuote.toLowerCase() !== expectedPayToken.toLowerCase();
+          const shouldSetQuoteToken =
+            isUnset || (shouldForceProductionPayToken && isMismatch);
+
+          if (shouldSetQuoteToken) {
+            if (isMismatch && shouldForceProductionPayToken) {
+              console.log(
+                `   ⚠️  RWY quote token mismatch on chain ${activeChainId}. Correcting ${currentQuote} -> ${expectedPayToken}`,
+              );
+            }
+            const [signer] = await ethers.getSigners();
+            const tx = await sendWithNonceRetry({
+              label: 'RWYStakingFacet.setRWYQuoteToken',
+              getPendingNonce: () => signer.getNonce('pending'),
+              logger: console,
+              send: (overrides) =>
+                rwyFacet.setRWYQuoteToken(expectedPayToken, overrides ?? {}),
+            });
             await tx.wait();
+            console.log(`   ✓ RWY quote token set to ${expectedPayToken}`);
+          } else if (isMismatch) {
             console.log(
-              `   ✓ RWY quote token set to ${resolvedAddresses.Aura}`,
+              `   ⚠️  RWY quote token already set to ${currentQuote} (not overwriting with ${expectedPayToken})`,
             );
           } else {
             console.log('   ✓ RWY quote token already configured');
@@ -1088,7 +1282,17 @@ async function postDeploymentConfig(
         try {
           const currentClob = await rwyFacet.getRWYCLOBAddress();
           if (currentClob === ethers.ZeroAddress) {
-            const tx = await rwyFacet.setRWYCLOBAddress(resolvedAddresses.CLOB);
+            const [signer] = await ethers.getSigners();
+            const tx = await sendWithNonceRetry({
+              label: 'RWYStakingFacet.setRWYCLOBAddress',
+              getPendingNonce: () => signer.getNonce('pending'),
+              logger: console,
+              send: (overrides) =>
+                rwyFacet.setRWYCLOBAddress(
+                  resolvedAddresses.CLOB,
+                  overrides ?? {},
+                ),
+            });
             await tx.wait();
             console.log(
               `   ✓ RWY CLOB address set to ${resolvedAddresses.CLOB}`,
@@ -1107,7 +1311,14 @@ async function postDeploymentConfig(
       try {
         const currentRecipient = await rwyFacet.getRWYFeeRecipient();
         if (currentRecipient === ethers.ZeroAddress) {
-          const tx = await rwyFacet.setRWYFeeRecipient(deployer);
+          const [signer] = await ethers.getSigners();
+          const tx = await sendWithNonceRetry({
+            label: 'RWYStakingFacet.setRWYFeeRecipient',
+            getPendingNonce: () => signer.getNonce('pending'),
+            logger: console,
+            send: (overrides) =>
+              rwyFacet.setRWYFeeRecipient(deployer, overrides ?? {}),
+          });
           await tx.wait();
           console.log(`   ✓ RWY fee recipient set to ${deployer}`);
         } else {
@@ -1444,16 +1655,7 @@ async function updateFacet(
   const [deployer] = await ethers.getSigners();
   const chainId = Number((await ethers.provider.getNetwork()).chainId);
   const existingAddresses = loadExistingAddresses();
-
-  const diamondAddress = existingAddresses['NEXT_PUBLIC_DIAMOND_ADDRESS'];
-  if (
-    !diamondAddress ||
-    diamondAddress === '0x0000000000000000000000000000000000000000'
-  ) {
-    throw new Error(
-      'Diamond address not found in chain-constants.ts. Deploy Diamond first.',
-    );
-  }
+  const diamondAddress = await resolveActiveDiamondAddress();
 
   console.log(`Network: ${network.name} (Chain ID: ${chainId})`);
   console.log(`Deployer: ${deployer.address}`);
@@ -1494,7 +1696,12 @@ async function updateFacet(
       facetAddress = '0x' + '0'.repeat(40);
     } else {
       const Factory = await ethers.getContractFactory(config.contractName);
-      const facet = await Factory.deploy();
+      const facet = await sendWithNonceRetry({
+        label: `deploy ${facetName}`,
+        getPendingNonce: () => deployer.getNonce('pending'),
+        logger: console,
+        send: (overrides) => Factory.deploy(overrides ?? {}),
+      });
       await waitForConfirmations(facet.deploymentTransaction());
       facetAddress = await facet.getAddress();
       blockNumber = await getDeploymentBlock(facet.deploymentTransaction());
@@ -1864,10 +2071,12 @@ async function verifyFacetUpdate(
     return;
   }
 
-  const diamondAddress = loadExistingAddresses()['NEXT_PUBLIC_DIAMOND_ADDRESS'];
-  if (!diamondAddress) {
+  let diamondAddress: string;
+  try {
+    diamondAddress = await resolveActiveDiamondAddress();
+  } catch (error) {
     console.log(
-      '⚠️  Diamond address not found, skipping on-chain verification',
+      `⚠️  ${error instanceof Error ? error.message : 'Diamond address not found, skipping on-chain verification'}`,
     );
     return;
   }

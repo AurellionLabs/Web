@@ -115,7 +115,7 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
   const { address, connectedWallet } = useWallet();
   const { connected } = useMainProvider();
   const { getNode, refreshNodes } = useNodes();
-  const { getAssetByTokenId } = usePlatform();
+  const { getAssetByTokenId, supportedAssets } = usePlatform();
 
   // Use Diamond infrastructure
   const {
@@ -287,6 +287,48 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
     }
     prevAddressRef.current = address ?? null;
   }, [address, selectedNodeAddress, nodeRepository, loadOrders]);
+
+  useEffect(() => {
+    if (
+      !selectedNodeAddress ||
+      orders.length === 0 ||
+      supportedAssets.length === 0
+    )
+      return;
+    if (!orders.some((order) => !order.asset)) return;
+
+    let cancelled = false;
+
+    (async () => {
+      let resolvedAny = false;
+      const enrichedOrders = await Promise.all(
+        orders.map(async (order) => {
+          if (order.asset) return order;
+          try {
+            const asset = await getAssetByTokenId(order.tokenId);
+            if (asset) {
+              resolvedAny = true;
+              return { ...order, asset };
+            }
+          } catch (err) {
+            console.warn(
+              `Failed to re-enrich node order asset for tokenId ${order.tokenId}:`,
+              err,
+            );
+          }
+          return order;
+        }),
+      );
+
+      if (!cancelled && resolvedAny) {
+        setOrders(enrichedOrders);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedNodeAddress, orders, supportedAssets.length, getAssetByTokenId]);
 
   const clearSelection = useCallback(() => {
     setSelectedNodeAddress(null);

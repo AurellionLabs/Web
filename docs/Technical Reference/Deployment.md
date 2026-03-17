@@ -22,6 +22,7 @@ All current contract addresses, deployment metadata, and infrastructure configur
 | Default RPC     | `https://sepolia.base.org`                                   |
 | Hardhat default | `baseSepolia`                                                |
 | Indexer GraphQL | `https://indexer.aurellionlabs.com/graphql`                  |
+| Core Public API | `https://prod-aurellion-core.up.railway.app`                 |
 
 ---
 

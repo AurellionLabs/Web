@@ -11,6 +11,8 @@ lib/
 !lib/docs.ts
 !lib/docs-nav.ts
 !lib/contracts/
+!scripts/lib/
+!scripts/lib/*.ts
 
 # Next.js
 .next/

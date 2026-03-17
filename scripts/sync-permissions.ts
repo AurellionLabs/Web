@@ -2,13 +2,18 @@
 
 import path from 'node:path';
 
-import { ethers } from 'hardhat';
+import { ethers, network } from 'hardhat';
 
 import {
   DEFAULT_PERMISSIONS_DIR,
   loadPermissionsCatalog,
 } from './lib/permissions-catalog';
+import { loadDeploymentManifest } from './lib/deployment-manifest';
 import { syncPermissions } from './lib/permissions-sync-runner';
+import {
+  readDiamondAddressFromChainConstants,
+  resolveDiamondAddress as resolveRuntimeDiamondAddress,
+} from './lib/runtime-contracts';
 
 interface CliOptions {
   write: boolean;
@@ -67,21 +72,22 @@ function parseArgs(argv: string[]): CliOptions {
 }
 
 async function resolveDiamondAddress(diamondAddress?: string): Promise<string> {
-  if (diamondAddress) {
-    return diamondAddress;
-  }
+  const activeChainId = Number((await ethers.provider.getNetwork()).chainId);
+  const manifest = loadDeploymentManifest({
+    deploymentsDir: path.resolve(process.cwd(), 'deployments'),
+    networkName: network.name,
+    chainId: activeChainId,
+  });
+  const chainConstantsDiamondAddress = readDiamondAddressFromChainConstants(
+    path.resolve(process.cwd(), 'chain-constants.ts'),
+  );
 
-  const chainConstants = await import('../chain-constants');
-  const resolved = (chainConstants as { NEXT_PUBLIC_DIAMOND_ADDRESS?: string })
-    .NEXT_PUBLIC_DIAMOND_ADDRESS;
-
-  if (!resolved || resolved === ethers.ZeroAddress) {
-    throw new Error(
-      'Diamond address not found. Pass --diamond or set DIAMOND_ADDRESS.',
-    );
-  }
-
-  return resolved;
+  return resolveRuntimeDiamondAddress({
+    explicitAddress: diamondAddress,
+    chainConstantsDiamondAddress,
+    manifestDiamondAddress: manifest?.diamond,
+    env: process.env,
+  });
 }
 
 async function main() {
@@ -90,14 +96,22 @@ async function main() {
   const network = await ethers.provider.getNetwork();
   const chainId = Number(network.chainId);
   const diamondAddress = await resolveDiamondAddress(options.diamondAddress);
-  const auSysFacet = await ethers.getContractAt('AuSysFacet', diamondAddress);
+  const auSysReadFacet = await ethers.getContractAt(
+    'AuSysViewFacet',
+    diamondAddress,
+  );
+  const auSysWriteFacet = await ethers.getContractAt(
+    'AuSysAdminFacet',
+    diamondAddress,
+  );
   const nodesFacet = await ethers.getContractAt('NodesFacet', diamondAddress);
 
   const summary = await syncPermissions({
     write: options.write,
     desiredDrivers: catalog.drivers,
     desiredNodeRegistrars: catalog.nodeRegistrars,
-    auSysFacet,
+    auSysReadFacet,
+    auSysWriteFacet,
     nodesFacet,
     allowEmpty: options.allowEmpty,
   });

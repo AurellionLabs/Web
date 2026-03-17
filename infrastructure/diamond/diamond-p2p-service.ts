@@ -17,6 +17,8 @@ import {
 } from '@/domain/p2p';
 import {
   NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
+  NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS,
+  NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL,
   NEXT_PUBLIC_DIAMOND_ADDRESS,
 } from '@/chain-constants';
 import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
@@ -56,6 +58,8 @@ import {
 const ERC20_ABI = [
   'function approve(address spender, uint256 amount) external returns (bool)',
   'function allowance(address owner, address spender) external view returns (uint256)',
+  'function decimals() external view returns (uint8)',
+  'function symbol() external view returns (string)',
 ];
 
 const ERC1155_ABI = [
@@ -155,22 +159,35 @@ export class DiamondP2PService implements IP2PService {
     label: string;
     maxAttempts?: number;
   }): Promise<T> {
-    const maxAttempts = options.maxAttempts ?? 5;
+    const maxAttempts = options.maxAttempts ?? 10;
     let lastValue: T | undefined;
+    let lastError: unknown;
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       if (attempt > 0) {
-        await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
+        await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
       }
 
-      lastValue = await options.read();
-      if (options.isSatisfied(lastValue)) {
-        return lastValue;
+      try {
+        lastValue = await options.read();
+        if (options.isSatisfied(lastValue)) {
+          return lastValue;
+        }
+      } catch (error) {
+        lastError = error;
       }
     }
 
+    const lastObserved =
+      lastValue !== undefined ? ` Last observed: ${String(lastValue)}.` : '';
+    const lastErrorText =
+      lastError instanceof Error
+        ? ` Last read error: ${lastError.message}.`
+        : lastError
+          ? ` Last read error: ${String(lastError)}.`
+          : '';
     throw new Error(
-      `${options.label} did not become visible after the approval transaction confirmed`,
+      `${options.label} did not become visible after the approval transaction confirmed.${lastObserved}${lastErrorText}`,
     );
   }
 
@@ -816,6 +833,7 @@ export class DiamondP2PService implements IP2PService {
   ): Promise<void> {
     const signer = this.context.getSigner();
     const signerAddress = await this.context.getSignerAddress();
+    let allowanceOwner = signerAddress;
 
     // Use context helper only for the default configured token (keeps tests simple).
     const shouldUseContextHelper =
@@ -830,25 +848,91 @@ export class DiamondP2PService implements IP2PService {
     const diamondAddress = this.getDiamondAddress();
 
     const currentAllowance = await quoteToken.allowance(
-      signerAddress,
+      allowanceOwner,
       diamondAddress,
     );
 
     if (BigInt(currentAllowance.toString()) < amount) {
       const tx = await quoteToken.approve(diamondAddress, ethers.MaxUint256);
-      await tx.wait();
-      await this.waitForApprovalState({
-        label: `ERC20 allowance for token ${quoteTokenAddress}`,
-        read: async () =>
-          BigInt(
-            (
-              await quoteToken.allowance(signerAddress, diamondAddress)
-            ).toString(),
-          ),
-        isSatisfied: (allowance) => allowance >= amount,
-      });
+      const receipt = await tx.wait();
+      if (
+        receipt &&
+        typeof receipt.from === 'string' &&
+        receipt.from.trim().length > 0 &&
+        receipt.from.toLowerCase() !== allowanceOwner.toLowerCase()
+      ) {
+        // Some wallet stacks submit approvals from a different account than
+        // signer.getAddress(); verify allowance against the actual tx sender.
+        allowanceOwner = receipt.from;
+      }
+      try {
+        await this.waitForApprovalState({
+          label: `ERC20 allowance for token ${quoteTokenAddress}`,
+          maxAttempts: 12,
+          read: async () =>
+            BigInt(
+              (
+                await quoteToken.allowance(allowanceOwner, diamondAddress)
+              ).toString(),
+            ),
+          isSatisfied: (allowance) => allowance >= amount,
+        });
+      } catch {
+        // If wallet submitted a capped approval amount, request exact required amount.
+        const fallbackTx = await quoteToken.approve(diamondAddress, amount);
+        await fallbackTx.wait();
+        await this.waitForApprovalState({
+          label: `ERC20 allowance for token ${quoteTokenAddress}`,
+          maxAttempts: 12,
+          read: async () =>
+            BigInt(
+              (
+                await quoteToken.allowance(allowanceOwner, diamondAddress)
+              ).toString(),
+            ),
+          isSatisfied: (allowance) => allowance >= amount,
+        });
+      }
     } else {
     }
+  }
+
+  /**
+   * Read quote-token metadata from the payment token configured on-chain.
+   * Falls back to frontend constants if ERC20 metadata calls fail.
+   */
+  async getQuoteTokenMetadata(): Promise<{
+    address: string;
+    decimals: number;
+    symbol: string;
+  }> {
+    const address = await this.getConfiguredPayTokenAddress();
+    const provider = this.context.getProvider();
+    const quoteToken = new ethers.Contract(address, ERC20_ABI, provider);
+
+    const [decimalsResult, symbolResult] = await Promise.allSettled([
+      quoteToken.decimals() as Promise<bigint | number>,
+      quoteToken.symbol() as Promise<string>,
+    ]);
+
+    const decimals =
+      decimalsResult.status === 'fulfilled'
+        ? Number(decimalsResult.value)
+        : NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS;
+    const symbol =
+      symbolResult.status === 'fulfilled'
+        ? String(symbolResult.value || '').trim() ||
+          NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL
+        : NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL;
+
+    return {
+      address,
+      decimals:
+        Number.isFinite(decimals) && decimals >= 0
+          ? Math.floor(decimals)
+          : NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS,
+      symbol,
+    };
   }
 
   /**

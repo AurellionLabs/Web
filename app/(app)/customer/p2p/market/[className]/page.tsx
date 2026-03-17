@@ -39,6 +39,8 @@ import {
 } from 'lucide-react';
 import { P2POffer, P2POfferStatus, P2PDeliveryDetails } from '@/domain/p2p';
 import { formatUnits } from 'ethers';
+import { getDefaultP2PDeliveryBountyWei } from '@/config/p2p';
+import { useQuoteTokenMetadata } from '@/hooks/useQuoteTokenMetadata';
 import {
   DeliveryDetailsDialog,
   DeliveryFormData,
@@ -71,6 +73,7 @@ export default function P2PMarketOffersPage() {
   const className = decodeURIComponent(String(params.className || ''));
   const { setCurrentUserRole, connected } = useMainProvider();
   const { address } = useWallet();
+  const { decimals: quoteTokenDecimals } = useQuoteTokenMetadata();
   const {
     p2pRepository,
     p2pService,
@@ -493,7 +496,7 @@ export default function P2PMarketOffersPage() {
               startName: selectedOffer.locationData?.startName ?? '',
               endName: deliveryData.deliveryAddress,
             },
-            bountyWei: BigInt('500000000000000000'), // 0.5 USDT default bounty
+            bountyWei: getDefaultP2PDeliveryBountyWei(quoteTokenDecimals),
             etaTimestamp: BigInt(Math.floor(Date.now() / 1000) + 7 * 24 * 3600), // 7 days
             tokenQuantity: BigInt(selectedOffer.quantity.toString()),
             assetId: BigInt(selectedOffer.tokenId),
@@ -555,7 +558,14 @@ export default function P2PMarketOffersPage() {
         setProcessingOfferId(null);
       }
     },
-    [p2pService, selectedOffer, address, loadOffers, refreshOrders],
+    [
+      p2pService,
+      selectedOffer,
+      address,
+      loadOffers,
+      refreshOrders,
+      quoteTokenDecimals,
+    ],
   );
 
   // Cancel an offer
@@ -726,7 +736,7 @@ export default function P2PMarketOffersPage() {
             startName: order.locationData?.startName ?? '',
             endName: deliveryData.deliveryAddress,
           },
-          bountyWei: BigInt('500000000000000000'),
+          bountyWei: getDefaultP2PDeliveryBountyWei(quoteTokenDecimals),
           etaTimestamp: BigInt(Math.floor(Date.now() / 1000) + 7 * 24 * 3600),
           tokenQuantity: BigInt(order.tokenQuantity),
           assetId: BigInt(order.tokenId),
@@ -763,7 +773,14 @@ export default function P2PMarketOffersPage() {
         setP2PActionLoading(false);
       }
     },
-    [scheduleDeliveryOrderId, address, orders, createP2PJourney, toast],
+    [
+      scheduleDeliveryOrderId,
+      address,
+      orders,
+      createP2PJourney,
+      toast,
+      quoteTokenDecimals,
+    ],
   );
 
   // Filter offers: by market class + by type
@@ -842,10 +859,14 @@ export default function P2PMarketOffersPage() {
 
   // Format price for display
   const formatPrice = (price: bigint) => {
-    return parseFloat(formatUnits(price, 18)).toLocaleString(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 6,
-    });
+    const maximumFractionDigits = Math.min(quoteTokenDecimals, 6);
+    return parseFloat(formatUnits(price, quoteTokenDecimals)).toLocaleString(
+      undefined,
+      {
+        minimumFractionDigits: 2,
+        maximumFractionDigits,
+      },
+    );
   };
 
   // Format expiry time
