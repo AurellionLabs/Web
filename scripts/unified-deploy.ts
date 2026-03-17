@@ -58,8 +58,13 @@ import {
   renderIndexerDiamondConstants,
   replaceChainConstant,
 } from './lib/deploy-config';
+import { loadDeploymentManifest } from './lib/deployment-manifest';
 import { planFacetSelectorAdditions } from './lib/facet-selector-install';
 import { sendWithNonceRetry } from './lib/nonce-retry';
+import {
+  readDiamondAddressFromChainConstants,
+  resolveDiamondAddress as resolveRuntimeDiamondAddress,
+} from './lib/runtime-contracts';
 import {
   getSupportedAssetClasses,
   loadSupportedAssetCatalog,
@@ -243,6 +248,33 @@ async function waitForConfirmations(
   } catch {
     console.warn('  Warning: Could not wait for all confirmations');
   }
+}
+
+async function resolveActiveDiamondAddress(): Promise<string> {
+  const chainId = Number((await ethers.provider.getNetwork()).chainId);
+  const manifest = loadDeploymentManifest({
+    deploymentsDir: path.resolve(process.cwd(), 'deployments'),
+    networkName: network.name,
+    chainId,
+  });
+  const chainConstantsDiamondAddress = readDiamondAddressFromChainConstants(
+    path.resolve(process.cwd(), 'chain-constants.ts'),
+  );
+  const diamondAddress = resolveRuntimeDiamondAddress({
+    manifestDiamondAddress: manifest?.diamond,
+    chainConstantsDiamondAddress,
+    preferManifestOverChainConstants: true,
+    env: process.env,
+  });
+  const code = await ethers.provider.getCode(diamondAddress);
+
+  if (!code || code === '0x') {
+    throw new Error(
+      `Resolved Diamond address ${diamondAddress} has no code on ${network.name} (${chainId}). Provide DIAMOND_ADDRESS or ensure deployments/manifest.${network.name}.json is available.`,
+    );
+  }
+
+  return diamondAddress;
 }
 
 /**
@@ -1581,16 +1613,7 @@ async function updateFacet(
   const [deployer] = await ethers.getSigners();
   const chainId = Number((await ethers.provider.getNetwork()).chainId);
   const existingAddresses = loadExistingAddresses();
-
-  const diamondAddress = existingAddresses['NEXT_PUBLIC_DIAMOND_ADDRESS'];
-  if (
-    !diamondAddress ||
-    diamondAddress === '0x0000000000000000000000000000000000000000'
-  ) {
-    throw new Error(
-      'Diamond address not found in chain-constants.ts. Deploy Diamond first.',
-    );
-  }
+  const diamondAddress = await resolveActiveDiamondAddress();
 
   console.log(`Network: ${network.name} (Chain ID: ${chainId})`);
   console.log(`Deployer: ${deployer.address}`);
@@ -2006,10 +2029,12 @@ async function verifyFacetUpdate(
     return;
   }
 
-  const diamondAddress = loadExistingAddresses()['NEXT_PUBLIC_DIAMOND_ADDRESS'];
-  if (!diamondAddress) {
+  let diamondAddress: string;
+  try {
+    diamondAddress = await resolveActiveDiamondAddress();
+  } catch (error) {
     console.log(
-      '⚠️  Diamond address not found, skipping on-chain verification',
+      `⚠️  ${error instanceof Error ? error.message : 'Diamond address not found, skipping on-chain verification'}`,
     );
     return;
   }

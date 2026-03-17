@@ -165,6 +165,12 @@ jobs:
       - name: Generate ABIs & selectors
         run: bun scripts/gen-all.ts
 
+      - name: Download detect artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: facet-changes-${{ github.sha }}
+          path: deployments
+
       # ------------------------------------------------------------------
       # Full redeploy via workflow_dispatch mode
       # ------------------------------------------------------------------
