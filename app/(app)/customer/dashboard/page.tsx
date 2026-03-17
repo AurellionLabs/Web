@@ -70,6 +70,7 @@ import {
 import { P2PDeliveryDetails, P2POffer, P2POfferStatus } from '@/domain/p2p';
 import { getWalletAddress } from '@/dapp-connectors/base-controller';
 import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
+import { DEFAULT_P2P_DELIVERY_BOUNTY_WEI } from '@/config/p2p';
 import { useWallet } from '@/hooks/useWallet';
 import { AUSYS_ABI } from '@/lib/constants/contracts';
 import { formatTokenAmount } from '@/lib/formatters';
@@ -487,7 +488,7 @@ export default function CustomerDashboard() {
           startName: order.locationData?.startName ?? '',
           endName: deliveryData.deliveryAddress,
         },
-        bountyWei: BigInt('500000000000000000'), // 0.5 USDT default bounty
+        bountyWei: DEFAULT_P2P_DELIVERY_BOUNTY_WEI,
         etaTimestamp: BigInt(Math.floor(Date.now() / 1000) + 7 * 24 * 3600), // 7 days
         tokenQuantity: BigInt(order.tokenQuantity),
         assetId: BigInt(order.tokenId),

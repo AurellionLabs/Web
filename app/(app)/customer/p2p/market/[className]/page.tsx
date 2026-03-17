@@ -40,6 +40,7 @@ import {
 import { P2POffer, P2POfferStatus, P2PDeliveryDetails } from '@/domain/p2p';
 import { formatUnits } from 'ethers';
 import { NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS } from '@/chain-constants';
+import { DEFAULT_P2P_DELIVERY_BOUNTY_WEI } from '@/config/p2p';
 import {
   DeliveryDetailsDialog,
   DeliveryFormData,
@@ -494,7 +495,7 @@ export default function P2PMarketOffersPage() {
               startName: selectedOffer.locationData?.startName ?? '',
               endName: deliveryData.deliveryAddress,
             },
-            bountyWei: BigInt('500000000000000000'), // 0.5 USDT default bounty
+            bountyWei: DEFAULT_P2P_DELIVERY_BOUNTY_WEI,
             etaTimestamp: BigInt(Math.floor(Date.now() / 1000) + 7 * 24 * 3600), // 7 days
             tokenQuantity: BigInt(selectedOffer.quantity.toString()),
             assetId: BigInt(selectedOffer.tokenId),
@@ -727,7 +728,7 @@ export default function P2PMarketOffersPage() {
             startName: order.locationData?.startName ?? '',
             endName: deliveryData.deliveryAddress,
           },
-          bountyWei: BigInt('500000000000000000'),
+          bountyWei: DEFAULT_P2P_DELIVERY_BOUNTY_WEI,
           etaTimestamp: BigInt(Math.floor(Date.now() / 1000) + 7 * 24 * 3600),
           tokenQuantity: BigInt(order.tokenQuantity),
           assetId: BigInt(order.tokenId),
