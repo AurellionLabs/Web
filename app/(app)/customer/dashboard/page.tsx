@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useCustomer } from '@/app/providers/customer.provider';
 import {
@@ -76,6 +76,10 @@ import { AUSYS_ABI } from '@/lib/constants/contracts';
 import { formatTokenAmount } from '@/lib/formatters';
 import { getJourneyRoleConflictMessage } from '@/utils/journey-role-conflicts';
 import { useQuoteTokenMetadata } from '@/hooks/useQuoteTokenMetadata';
+import {
+  buildAssetNameLookup,
+  resolveOrderAssetName,
+} from '@/utils/order-asset-resolution';
 
 type SortConfig = {
   key: 'tokenQuantity' | 'price' | 'createdAt' | null;
@@ -146,7 +150,7 @@ export default function CustomerDashboard() {
   } = useUserHoldings();
 
   // Platform data for asset metadata enrichment
-  const { getAssetByTokenId } = usePlatform();
+  const { getAssetByTokenId, supportedAssets } = usePlatform();
 
   // Enrich holdings with IPFS metadata (attributes, full name, class)
   const [enrichedHoldings, setEnrichedHoldings] = useState<UserHolding[]>([]);
@@ -185,6 +189,33 @@ export default function CustomerDashboard() {
       cancelled = true;
     };
   }, [holdings, getAssetByTokenId]);
+
+  const orderAssetNameByTokenId = useMemo(() => {
+    const platformLookup = buildAssetNameLookup(
+      supportedAssets.map((asset) => ({
+        tokenId: asset.tokenId,
+        name: asset.name,
+      })),
+    );
+    const holdingsLookup = buildAssetNameLookup(
+      enrichedHoldings.map((holding) => ({
+        tokenId: holding.tokenId,
+        name: holding.name,
+      })),
+    );
+
+    return new Map([...platformLookup, ...holdingsLookup]);
+  }, [supportedAssets, enrichedHoldings]);
+
+  const getOrderAssetName = (order: {
+    tokenId: string;
+    asset?: { name?: string } | null;
+  }) =>
+    resolveOrderAssetName({
+      tokenId: order.tokenId,
+      directName: order.asset?.name,
+      lookups: [orderAssetNameByTokenId],
+    });
 
   // Settlement destination
   const { pendingOrders: pendingSettlements, refetch: refetchSettlements } =
@@ -949,7 +980,7 @@ export default function CustomerDashboard() {
                           </div>
                         </td>
                         <td className="px-4 py-4 text-sm text-foreground capitalize">
-                          {order.asset?.name || 'Unknown'}
+                          {getOrderAssetName(order)}
                         </td>
                         <td className="px-4 py-4 text-sm font-mono text-foreground">
                           {order.tokenQuantity}

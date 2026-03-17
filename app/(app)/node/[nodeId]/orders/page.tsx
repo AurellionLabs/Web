@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useMemo, useState, Suspense } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useSearchParams, useParams } from 'next/navigation';
 import { Input } from '@/app/components/ui/input';
@@ -33,10 +33,16 @@ import {
   Filter,
 } from 'lucide-react';
 import { useSelectedNode } from '@/app/providers/selected-node.provider';
+import { usePlatform } from '@/app/providers/platform.provider';
 import { OrderWithAsset } from '@/app/types/shared';
 import { formatTokenAmount } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import { useQuoteTokenMetadata } from '@/hooks/useQuoteTokenMetadata';
+import {
+  buildAssetNameLookup,
+  normalizeTokenId,
+  resolveOrderAssetName,
+} from '@/utils/order-asset-resolution';
 
 const orderStatuses = [
   { value: 'all', label: 'All Statuses' },
@@ -53,8 +59,18 @@ type SortConfig = {
 
 export default function OrdersPage() {
   const { setCurrentUserRole } = useMainProvider();
-  const { orders, refreshOrders, selectNode, selectedNodeAddress } =
+  const { orders, assets, refreshOrders, selectNode, selectedNodeAddress } =
     useSelectedNode();
+  const nodeAssetNameLookup = useMemo(
+    () =>
+      buildAssetNameLookup(
+        assets.map((asset) => ({
+          tokenId: String(asset.id),
+          name: asset.name,
+        })),
+      ),
+    [assets],
+  );
   const [isRefreshing, setIsRefreshing] = useState(false);
   const params = useParams();
   const nodeId = params.nodeId as string;
@@ -91,6 +107,7 @@ export default function OrdersPage() {
       <OrdersContent
         nodeId={nodeId}
         orders={orders}
+        nodeAssetNameLookup={nodeAssetNameLookup}
         onRefresh={handleRefresh}
         isRefreshing={isRefreshing}
       />
@@ -101,16 +118,19 @@ export default function OrdersPage() {
 function OrdersContent({
   nodeId,
   orders,
+  nodeAssetNameLookup,
   onRefresh,
   isRefreshing,
 }: {
   nodeId: string;
   orders: OrderWithAsset[];
+  nodeAssetNameLookup: Map<string, string>;
   onRefresh: () => Promise<void>;
   isRefreshing: boolean;
 }) {
   const { decimals: quoteTokenDecimals, symbol: quoteTokenSymbol } =
     useQuoteTokenMetadata();
+  const { supportedAssets } = usePlatform();
   const searchParams = useSearchParams();
   const [filteredOrders, setFilteredOrders] =
     useState<OrderWithAsset[]>(orders);
@@ -129,6 +149,29 @@ function OrdersContent({
     status: searchParams.get('status') || 'all',
   });
 
+  const supportedAssetNameLookup = useMemo(
+    () =>
+      buildAssetNameLookup(
+        supportedAssets.map((asset) => ({
+          tokenId: asset.tokenId,
+          name: asset.name,
+        })),
+      ),
+    [supportedAssets],
+  );
+
+  const orderAssetNameLookup = useMemo(
+    () => new Map([...supportedAssetNameLookup, ...nodeAssetNameLookup]),
+    [supportedAssetNameLookup, nodeAssetNameLookup],
+  );
+
+  const getOrderAssetName = (order: OrderWithAsset): string =>
+    resolveOrderAssetName({
+      tokenId: order.tokenId,
+      directName: order.asset?.name,
+      lookups: [orderAssetNameLookup],
+    });
+
   const handleSort = (key: 'quantity' | 'value') => {
     setSortConfig((prevSort) => ({
       key,
@@ -139,14 +182,18 @@ function OrdersContent({
 
   const uniqueAssets = Array.from(
     new Map(
-      orders
-        .filter((order) => order.asset !== null)
-        .map((order) => [
-          String(order.asset!.tokenId),
-          { value: String(order.asset!.tokenId), label: order.asset!.name },
-        ]),
+      orders.map((order) => {
+        const normalizedTokenId = normalizeTokenId(order.tokenId);
+        return [
+          normalizedTokenId,
+          {
+            value: normalizedTokenId,
+            label: getOrderAssetName(order),
+          },
+        ];
+      }),
     ).values(),
-  );
+  ).filter((asset) => asset.label !== 'Unknown Asset');
 
   useEffect(() => {
     let result = orders;
@@ -165,7 +212,7 @@ function OrdersContent({
 
     if (filters.assetType !== 'all') {
       result = result.filter(
-        (order) => String(order.asset?.tokenId) === filters.assetType,
+        (order) => normalizeTokenId(order.tokenId) === filters.assetType,
       );
     }
 
@@ -383,7 +430,7 @@ function OrdersContent({
                     {order.buyer.slice(0, 8)}...{order.buyer.slice(-6)}
                   </td>
                   <td className="px-4 py-4 font-mono text-sm tracking-[0.05em] uppercase text-foreground/80">
-                    {order.asset?.name || 'Unknown Asset'}
+                    {getOrderAssetName(order)}
                   </td>
                   <td
                     className="px-4 py-4 font-mono text-sm text-gold tabular-nums cursor-pointer"
