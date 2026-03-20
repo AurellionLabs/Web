@@ -37,9 +37,9 @@ export default function LandingPage() {
   const [bootComplete, setBootComplete] = useState(false);
 
   // Animated counters for hero stats
-  const tvlCount = useCounter(2400, 3000, mounted);
-  const assetsCount = useCounter(847, 2500, mounted);
-  const holdersCount = useCounter(12419, 3500, mounted);
+  const tvlCount = useCounter(5500, 3000, mounted);
+  const assetsCount = useCounter(10, 2500, mounted);
+  const holdersCount = useCounter(5, 3500, mounted);
   const complianceCount = useCounter(998, 2000, mounted);
 
   useEffect(() => {
@@ -179,18 +179,18 @@ export default function LandingPage() {
                     {[
                       {
                         label: 'Total Value Locked',
-                        value: `$${(tvlCount / 1000).toFixed(1)}B`,
+                        value: `$${(tvlCount / 1000).toFixed(1)}M`,
                         sub: '+12.3% 30d',
                       },
                       {
                         label: 'Assets Tokenized',
-                        value: String(assetsCount),
-                        sub: '+23 this week',
+                        value: `${String(assetsCount)}k+`,
+                        sub: '+10k this week',
                       },
                       {
-                        label: 'Active Holders',
+                        label: 'Created Orders',
                         value: holdersCount.toLocaleString(),
-                        sub: '94% retention',
+                        sub: '94% settled',
                       },
                       {
                         label: 'Compliance Rate',
@@ -239,10 +239,8 @@ export default function LandingPage() {
           <div className="border-t border-border/30 bg-card/30 backdrop-blur-sm">
             <div className="grid grid-cols-2 md:grid-cols-4">
               {[
-                { label: 'Real Estate', val: '$890M' },
-                { label: 'Commodities', val: '$620M' },
-                { label: 'Private Credit', val: '$540M' },
-                { label: 'Fine Art', val: '$350M' },
+                { label: 'Commodities', val: '$6m+' },
+                { label: 'Livestock', val: '$2m' },
               ].map((item, i) => (
                 <div
                   key={item.label}
@@ -480,26 +478,20 @@ export default function LandingPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-[1px] bg-border/15">
                 {[
                   {
-                    name: 'Manhattan RE Fund IV',
+                    name: 'Exotic Gemstone',
                     type: 'Real Estate',
-                    apy: '8.2%',
-                    tvl: '$420M',
                     id: 'RE-0041',
                     power: 8,
                   },
                   {
-                    name: 'Sovereign Gold Reserve',
+                    name: 'Gold Bullion',
                     type: 'Commodities',
-                    apy: '4.1%',
-                    tvl: '$180M',
                     id: 'CM-0017',
                     power: 5,
                   },
                   {
-                    name: 'Renaissance Art Trust',
+                    name: 'Local Livestock',
                     type: 'Fine Art',
-                    apy: '12.7%',
-                    tvl: '$95M',
                     id: 'FA-0008',
                     power: 9,
                   },
@@ -678,20 +670,20 @@ export default function LandingPage() {
                 items={[
                   {
                     label: 'Total Value Locked',
-                    target: 2847392,
+                    target: 5064487,
                     prefix: '$',
                     format: true,
                     duration: 3000,
                   },
                   {
                     label: 'Assets Tokenized',
-                    target: 847,
+                    target: 10582,
                     format: false,
                     duration: 2000,
                   },
                   {
                     label: 'Active Nodes',
-                    target: 342,
+                    target: 3,
                     format: false,
                     duration: 2500,
                   },
