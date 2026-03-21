@@ -655,7 +655,7 @@ export default function LandingPage() {
                   },
                   {
                     label: 'Assets Tokenized',
-                    target: 10582,
+                    target: 20582,
                     format: false,
                     duration: 2000,
                   },
