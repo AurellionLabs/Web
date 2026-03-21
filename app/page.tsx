@@ -37,7 +37,7 @@ export default function LandingPage() {
   const [bootComplete, setBootComplete] = useState(false);
 
   // Animated counters for hero stats
-  const tvlCount = useCounter(5500, 3000, mounted);
+  const tvlCount = useCounter(5600, 3000, mounted);
   const assetsCount = useCounter(10, 2500, mounted);
   const holdersCount = useCounter(5, 3500, mounted);
   const complianceCount = useCounter(998, 2000, mounted);
@@ -238,10 +238,7 @@ export default function LandingPage() {
           {/* Bottom asset ticker */}
           <div className="border-t border-border/30 bg-card/30 backdrop-blur-sm">
             <div className="grid grid-cols-2 md:grid-cols-4">
-              {[
-                { label: 'Commodities', val: '$6m+' },
-                { label: 'Livestock', val: '$2m' },
-              ].map((item, i) => (
+              {[{ label: 'Commodities', val: '$5m+' }].map((item, i) => (
                 <div
                   key={item.label}
                   className={`px-6 py-4 flex items-center justify-between ${i < 3 ? 'border-r border-border/15' : ''}`}
@@ -480,24 +477,18 @@ export default function LandingPage() {
                   {
                     name: 'Exotic Gemstone',
                     type: 'Real Estate',
-                    apy: '8.2%',
-                    tvl: '$4.2M',
                     id: 'RE-0041',
                     power: 8,
                   },
                   {
                     name: 'Gold Bullion',
                     type: 'Commodities',
-                    apy: '4.1%',
-                    tvl: '$1.8M',
                     id: 'CM-0017',
                     power: 5,
                   },
                   {
                     name: 'Local Livestock',
                     type: 'Fine Art',
-                    apy: '12.7%',
-                    tvl: '$950K',
                     id: 'FA-0008',
                     power: 9,
                   },
@@ -535,25 +526,6 @@ export default function LandingPage() {
                         color="gold"
                         segments={10}
                       />
-
-                      <div className="border-t border-border/25 pt-4 mt-4 flex justify-between items-end">
-                        <div>
-                          <span className="font-mono text-[11px] tracking-[0.2em] text-foreground/30 block mb-1">
-                            APY
-                          </span>
-                          <span className="font-mono text-2xl font-bold text-gold">
-                            {asset.apy}
-                          </span>
-                        </div>
-                        <div className="text-right">
-                          <span className="font-mono text-[11px] tracking-[0.2em] text-foreground/30 block mb-1">
-                            TVL
-                          </span>
-                          <span className="font-mono text-base text-foreground/60">
-                            {asset.tvl}
-                          </span>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 ))}
@@ -676,7 +648,7 @@ export default function LandingPage() {
                 items={[
                   {
                     label: 'Total Value Locked',
-                    target: 5064487,
+                    target: 5639349,
                     prefix: '$',
                     format: true,
                     duration: 3000,
