@@ -106,7 +106,9 @@ const tokenizeFormSchema = z.object({
       message: 'Please enter a valid quantity greater than 0.',
     },
   ),
-  // Price removed - set when placing sell orders on CLOB
+  price: z.string().refine((val) => /^\d+$/.test(val), {
+    message: 'Please enter a valid integer price.',
+  }),
   assetAttributes: z.record(z.string(), z.record(z.string(), z.any())),
 });
 
@@ -379,6 +381,7 @@ export default function NodeDashboardPage() {
       assetClass: '',
       assetId: '',
       quantity: '',
+      price: '',
       assetAttributes: {},
     },
   });
@@ -477,8 +480,7 @@ export default function NodeDashboardPage() {
         name: selectedAssetName,
         attributes: normalizedAttributes,
       };
-      // Price is set when placing sell orders on CLOB, not during tokenization
-      await mintAsset(assetPayload, quantity);
+      await mintAsset(assetPayload, quantity, values.price);
 
       await loadAssetAttributes(assets);
 
@@ -1083,6 +1085,8 @@ export default function NodeDashboardPage() {
                       selectedAssetClass={form.watch('assetClass')}
                       selectedAssetId={form.watch('assetId')}
                       quantity={form.watch('quantity')}
+                      price={form.watch('price')}
+                      quoteTokenDecimals={quoteTokenDecimals}
                       supportedAssetClasses={supportedAssetClasses}
                       onAssetClassChange={(value) => {
                         form.setValue('assetClass', value);
@@ -1093,6 +1097,7 @@ export default function NodeDashboardPage() {
                       onQuantityChange={(value) =>
                         form.setValue('quantity', value)
                       }
+                      onPriceChange={(value) => form.setValue('price', value)}
                       assetAttributes={assetAttributes}
                       onAssetAttributeChange={handleAssetAttributeChange}
                       onSelectedAssetChange={(asset) =>

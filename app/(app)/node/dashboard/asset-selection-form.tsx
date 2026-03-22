@@ -17,10 +17,13 @@ type Props = {
   selectedAssetClass: string;
   selectedAssetId: string;
   quantity: string;
+  price: string;
+  quoteTokenDecimals: number;
   supportedAssetClasses: string[];
   onAssetClassChange: (value: string) => void;
   onAssetIdChange: (value: string) => void;
   onQuantityChange: (value: string) => void;
+  onPriceChange: (value: string) => void;
   assetAttributes: Record<string, Record<string, AttributeValue>>;
   onAssetAttributeChange: (
     assetId: string,
@@ -32,17 +35,18 @@ type Props = {
 
 /**
  * Asset selection form for tokenizing assets.
- * Note: Price is NOT set during tokenization. Price is set when placing
- * sell orders on the CLOB.
  */
 const AssetSelectionForm: React.FC<Props> = ({
   selectedAssetClass,
   selectedAssetId,
   quantity,
+  price,
+  quoteTokenDecimals,
   supportedAssetClasses,
   onAssetClassChange,
   onAssetIdChange,
   onQuantityChange,
+  onPriceChange,
   assetAttributes,
   onAssetAttributeChange,
   onSelectedAssetChange,
@@ -159,8 +163,27 @@ const AssetSelectionForm: React.FC<Props> = ({
           }}
         />
         <p className="text-sm text-white/80 mt-1">
-          Enter the number of assets to tokenize. Set price when placing sell
-          orders.
+          Enter the number of assets to tokenize.
+        </p>
+      </div>
+
+      {/* Price Input */}
+      <div>
+        <FormLabel>Initial Price</FormLabel>
+        <Input
+          type="text"
+          placeholder="Enter integer price"
+          value={price}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (value === '' || /^\d+$/.test(value)) {
+              onPriceChange(value);
+            }
+          }}
+        />
+        <p className="text-sm text-white/80 mt-1">
+          Enter a whole-number price. The service scales it on-chain by
+          multiplying with 10^{quoteTokenDecimals}.
         </p>
       </div>
 

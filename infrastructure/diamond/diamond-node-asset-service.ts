@@ -10,7 +10,15 @@ import { INodeAssetService, NodeAsset } from '@/domain/node';
 import { Asset } from '@/domain/shared';
 import { DiamondContext } from './diamond-context';
 import { PinataSDK } from 'pinata';
-import { getIpfsGroupId } from '@/chain-constants';
+import {
+  getIpfsGroupId,
+  NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
+  NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS,
+} from '@/chain-constants';
+
+const ERC20_METADATA_INTERFACE = new ethers.Interface([
+  'function decimals() view returns (uint8)',
+]);
 
 /**
  * Diamond-based implementation of INodeAssetService
@@ -66,6 +74,64 @@ export class DiamondNodeAssetService implements INodeAssetService {
     );
   }
 
+  private async getQuoteTokenMetadata(): Promise<{
+    address: string;
+    decimals: number;
+  }> {
+    const fallback = {
+      address: NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
+      decimals: NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS,
+    };
+
+    try {
+      const diamond = this.context.getDiamond();
+      const provider = this.context.getProvider();
+      const payToken = await diamond.getPayToken();
+
+      if (!payToken || payToken === ethers.ZeroAddress) {
+        return fallback;
+      }
+
+      const result = await provider.call({
+        to: payToken,
+        data: ERC20_METADATA_INTERFACE.encodeFunctionData('decimals'),
+      });
+      const [decimalsRaw] = ERC20_METADATA_INTERFACE.decodeFunctionResult(
+        'decimals',
+        result,
+      );
+      const decimals = Number(decimalsRaw);
+
+      return {
+        address: payToken,
+        decimals:
+          Number.isFinite(decimals) && decimals >= 0
+            ? Math.floor(decimals)
+            : fallback.decimals,
+      };
+    } catch (error) {
+      console.warn(
+        '[DiamondNodeAssetService] Failed to resolve quote token decimals; using fallback constants.',
+        error,
+      );
+      return fallback;
+    }
+  }
+
+  private scaleTokenizationPrice(
+    priceInput: string,
+    quoteTokenDecimals: number,
+  ): bigint {
+    const normalizedPrice = priceInput.trim();
+    if (!/^\d+$/.test(normalizedPrice)) {
+      throw new Error(
+        'Tokenization failed: price must be entered as a non-negative integer.',
+      );
+    }
+
+    return BigInt(normalizedPrice) * 10n ** BigInt(quoteTokenDecimals);
+  }
+
   /**
    * Mint new assets for a node
    *
@@ -75,9 +141,6 @@ export class DiamondNodeAssetService implements INodeAssetService {
    *    - Node owner becomes the custodian for these tokens
    *    - Custody is tracked in Diamond AssetsFacet custody mappings
    * 2. Call Diamond.addSupportedAsset() to register asset with capacity
-   *
-   * Note: Price is NOT set during tokenization. Price is set when placing
-   * sell orders on the CLOB.
    *
    * CUSTODY MODEL:
    * - Tokens are minted to node owner's wallet (they are the custodian)
@@ -90,6 +153,7 @@ export class DiamondNodeAssetService implements INodeAssetService {
     nodeHashOrAddress: string,
     asset: Omit<Asset, 'tokenID'>,
     amount: number,
+    priceInput: string,
   ): Promise<void> {
     const diamond = this.context.getDiamond();
 
@@ -133,6 +197,12 @@ export class DiamondNodeAssetService implements INodeAssetService {
         [contractAsset],
       );
       const tokenId = BigInt(ethers.keccak256(encodedAsset));
+      const { decimals: quoteTokenDecimals } =
+        await this.getQuoteTokenMetadata();
+      const scaledPrice = this.scaleTokenizationPrice(
+        priceInput,
+        quoteTokenDecimals,
+      );
 
       // Use the unified node minting path so the contract updates node inventory
       // and supported-asset metadata through a single accounting flow.
@@ -162,12 +232,13 @@ export class DiamondNodeAssetService implements INodeAssetService {
             nodeHash,
             diamondAddress,
             tokenId,
-            0n, // price = 0 initially; set separately via updateAssetPrice
+            scaledPrice,
             BigInt(amount),
           );
           await registerTx.wait();
         } else {
-          // TokenId already registered — increment the stored capacity
+          // TokenId already registered — increment the stored capacity and
+          // replace its price with the latest submitted tokenization price.
           const updatedTokens: string[] = [];
           const updatedTokenIds: bigint[] = [];
           const updatedPrices: bigint[] = [];
@@ -176,7 +247,11 @@ export class DiamondNodeAssetService implements INodeAssetService {
           for (const a of existingAssets) {
             updatedTokens.push(a.token);
             updatedTokenIds.push(BigInt(a.tokenId));
-            updatedPrices.push(BigInt(a.price));
+            updatedPrices.push(
+              a.tokenId.toString() === tokenId.toString()
+                ? scaledPrice
+                : BigInt(a.price),
+            );
             updatedCapacities.push(
               a.tokenId.toString() === tokenId.toString()
                 ? BigInt(a.capacity) + BigInt(amount)
