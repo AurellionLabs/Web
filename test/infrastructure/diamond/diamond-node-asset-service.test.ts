@@ -114,7 +114,7 @@ describe('DiamondNodeAssetService', () => {
           ],
         },
         100,
-        '25',
+        '25.5',
       );
 
       expect(context._diamond.addNodeItem).toHaveBeenCalledTimes(1);
@@ -129,7 +129,7 @@ describe('DiamondNodeAssetService', () => {
 
       expect(context._diamond.addSupportedAsset).toHaveBeenCalledTimes(1);
       const registerArgs = context._diamond.addSupportedAsset.mock.calls[0];
-      expect(registerArgs[3]).toBe(25n * 10n ** 18n);
+      expect(registerArgs[3]).toBe(255n * 10n ** 17n);
     });
 
     it('should throw if node is not registered (ZeroAddress owner)', async () => {
@@ -247,15 +247,15 @@ describe('DiamondNodeAssetService', () => {
       });
       const service = new DiamondNodeAssetService(context);
 
-      await service.mintAsset(NODE_HASH, asset, 10, '12');
+      await service.mintAsset(NODE_HASH, asset, 10, '12.75');
 
       expect(context._diamond.addSupportedAsset).not.toHaveBeenCalled();
       const args = context._diamond.updateSupportedAssets.mock.calls[0];
-      expect(args[3]).toEqual([12n * 10n ** 18n, 9n * 10n ** 18n]);
+      expect(args[3]).toEqual([1275n * 10n ** 16n, 9n * 10n ** 18n]);
       expect(args[4]).toEqual([60n, 75n]);
     });
 
-    it('should reject invalid integer prices before calling the contract', async () => {
+    it('should reject invalid decimal prices before calling the contract', async () => {
       const context = createMockContext();
       const service = new DiamondNodeAssetService(context);
 
@@ -268,9 +268,11 @@ describe('DiamondNodeAssetService', () => {
             attributes: [],
           },
           100,
-          '12.5',
+          '12.5.1',
         ),
-      ).rejects.toThrow('price must be entered as a non-negative integer');
+      ).rejects.toThrow(
+        'price must be entered as a non-negative decimal value',
+      );
 
       expect(context._diamond.addNodeItem).not.toHaveBeenCalled();
     });

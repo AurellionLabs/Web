@@ -19,6 +19,7 @@ type Props = {
   quantity: string;
   price: string;
   quoteTokenDecimals: number;
+  quoteTokenSymbol: string;
   supportedAssetClasses: string[];
   onAssetClassChange: (value: string) => void;
   onAssetIdChange: (value: string) => void;
@@ -42,6 +43,7 @@ const AssetSelectionForm: React.FC<Props> = ({
   quantity,
   price,
   quoteTokenDecimals,
+  quoteTokenSymbol,
   supportedAssetClasses,
   onAssetClassChange,
   onAssetIdChange,
@@ -172,18 +174,17 @@ const AssetSelectionForm: React.FC<Props> = ({
         <FormLabel>Initial Price</FormLabel>
         <Input
           type="text"
-          placeholder="Enter integer price"
+          placeholder="Enter price per asset"
           value={price}
           onChange={(e) => {
             const value = e.target.value;
-            if (value === '' || /^\d+$/.test(value)) {
+            if (value === '' || /^\d*(\.\d*)?$/.test(value)) {
               onPriceChange(value);
             }
           }}
         />
         <p className="text-sm text-white/80 mt-1">
-          Enter a whole-number price. The service scales it on-chain by
-          multiplying with 10^{quoteTokenDecimals}.
+          Enter the price per asset in {quoteTokenSymbol}.
         </p>
       </div>
 

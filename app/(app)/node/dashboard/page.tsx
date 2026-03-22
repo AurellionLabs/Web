@@ -106,8 +106,8 @@ const tokenizeFormSchema = z.object({
       message: 'Please enter a valid quantity greater than 0.',
     },
   ),
-  price: z.string().refine((val) => /^\d+$/.test(val), {
-    message: 'Please enter a valid integer price.',
+  price: z.string().refine((val) => /^\d+(\.\d+)?$/.test(val), {
+    message: 'Please enter a valid price.',
   }),
   assetAttributes: z.record(z.string(), z.record(z.string(), z.any())),
 });
@@ -145,7 +145,8 @@ export default function NodeDashboardPage() {
   const { nodes: allNodes, refreshNodes } = useNodes();
   const router = useRouter();
   const { toast } = useToast();
-  const { decimals: quoteTokenDecimals } = useQuoteTokenMetadata();
+  const { decimals: quoteTokenDecimals, symbol: quoteTokenSymbol } =
+    useQuoteTokenMetadata();
   const { isReadOnly: diamondIsReadOnly } = useDiamond();
 
   const searchParams = new URLSearchParams(window.location.search);
@@ -505,6 +506,26 @@ export default function NodeDashboardPage() {
     (total, asset) => total + Number(asset.amount),
     0,
   );
+  const uniqueAssets = useMemo(() => {
+    const seenIds = new Set<string>();
+    return assets.filter((asset) => {
+      const id = String(asset.id);
+      if (seenIds.has(id)) return false;
+      seenIds.add(id);
+      return true;
+    });
+  }, [assets]);
+
+  const formatQuoteValue = (value: bigint | string | number) =>
+    `${formatTokenAmount(value, quoteTokenDecimals, 2)} ${quoteTokenSymbol}`;
+
+  const formatPriceRange = (minPrice: bigint, maxPrice: bigint) => {
+    if (minPrice === maxPrice) {
+      return formatQuoteValue(minPrice);
+    }
+
+    return `${formatTokenAmount(minPrice, quoteTokenDecimals, 2)} - ${formatTokenAmount(maxPrice, quoteTokenDecimals, 2)} ${quoteTokenSymbol}`;
+  };
 
   // ── Reputation scores (4 categories) ──
   // 1. Amount Tokenized — tokenized quantity vs total capacity
@@ -568,31 +589,50 @@ export default function NodeDashboardPage() {
     ),
   );
 
-  const getAssetsSummaryByClass = () => {
-    const summary: Record<string, { quantity: number }> = {};
+  const assetsSummaryByClass = useMemo(() => {
+    const summary = new Map<
+      string,
+      {
+        quantity: number;
+        totalValue: bigint;
+        minPrice: bigint;
+        maxPrice: bigint;
+      }
+    >();
 
-    // Deduplicate assets by token ID to avoid double-counting
-    const seenTokenIds = new Set<string>();
-    assets.forEach((asset) => {
-      const tokenId = String(asset.id || '');
-      if (seenTokenIds.has(tokenId)) return;
-      seenTokenIds.add(tokenId);
-
+    uniqueAssets.forEach((asset) => {
       const assetClass = asset.class || 'Unknown';
       const quantity = Number(asset.amount) || 0;
+      const price = BigInt(asset.price || '0');
+      const totalValue = price * BigInt(asset.amount || '0');
+      const existing = summary.get(assetClass);
 
-      if (summary[assetClass]) {
-        summary[assetClass].quantity += quantity;
-      } else {
-        summary[assetClass] = { quantity };
+      if (existing) {
+        existing.quantity += quantity;
+        existing.totalValue += totalValue;
+        existing.minPrice =
+          existing.minPrice < price ? existing.minPrice : price;
+        existing.maxPrice =
+          existing.maxPrice > price ? existing.maxPrice : price;
+        return;
       }
+
+      summary.set(assetClass, {
+        quantity,
+        totalValue,
+        minPrice: price,
+        maxPrice: price,
+      });
     });
 
-    return Object.entries(summary).map(([assetClass, { quantity }]) => ({
+    return Array.from(summary.entries()).map(([assetClass, values]) => ({
       assetClass,
-      totalQuantity: quantity,
+      totalQuantity: values.quantity,
+      totalValue: values.totalValue,
+      minPrice: values.minPrice,
+      maxPrice: values.maxPrice,
     }));
-  };
+  }, [uniqueAssets]);
 
   const totalPages = Math.ceil(orders.length / ordersPerPage);
   const startIndex = (currentPage - 1) * ordersPerPage;
@@ -676,7 +716,7 @@ export default function NodeDashboardPage() {
       return (
         <tr>
           <td />
-          <td colSpan={6} className="p-4 text-center text-muted-foreground">
+          <td colSpan={7} className="p-4 text-center text-muted-foreground">
             No assets found
           </td>
           <td />
@@ -684,18 +724,11 @@ export default function NodeDashboardPage() {
       );
     }
 
-    // Deduplicate assets by token ID before rendering
-    const seenIds = new Set<string>();
-    const uniqueAssets = assets.filter((asset) => {
-      const id = String(asset.id);
-      if (seenIds.has(id)) return false;
-      seenIds.add(id);
-      return true;
-    });
-
     return uniqueAssets.map((asset) => {
       const attributes = assetAttributesData[asset.id] || [];
       const hasAttributes = attributes.length > 0;
+      const price = BigInt(asset.price || '0');
+      const totalValue = price * BigInt(asset.amount || '0');
 
       return (
         <React.Fragment key={asset.id}>
@@ -712,15 +745,18 @@ export default function NodeDashboardPage() {
             <td className="p-4 font-mono text-foreground/50">
               {Number(asset.capacity ?? '0').toLocaleString()}
             </td>
-            <td className="p-4 font-mono text-muted-foreground text-sm">
-              Set via trading
+            <td className="p-4 font-mono text-foreground text-right">
+              {formatQuoteValue(price)}
+            </td>
+            <td className="p-4 font-mono text-gold text-right">
+              {formatQuoteValue(totalValue)}
             </td>
             <td />
           </tr>
           {/* Attributes row */}
           <tr className="border-b border-glass-border">
             <td />
-            <td colSpan={6} className="px-4 pb-4 pt-2">
+            <td colSpan={7} className="px-4 pb-4 pt-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 {loadingAttributes ? (
                   <div className="flex items-center gap-2">
@@ -1087,6 +1123,7 @@ export default function NodeDashboardPage() {
                       quantity={form.watch('quantity')}
                       price={form.watch('price')}
                       quoteTokenDecimals={quoteTokenDecimals}
+                      quoteTokenSymbol={quoteTokenSymbol}
                       supportedAssetClasses={supportedAssetClasses}
                       onAssetClassChange={(value) => {
                         form.setValue('assetClass', value);
@@ -1246,14 +1283,21 @@ export default function NodeDashboardPage() {
           />
           <EvaPanel
             label="Tokenized Assets"
-            sublabel="Summary by class"
+            sublabel="Summary by class, price, and value"
             sysId="REG.001"
             status="active"
             accent="gold"
           >
-            <ScanTable headers={['Asset Class', 'Quantity']}>
-              {getAssetsSummaryByClass().length > 0 ? (
-                getAssetsSummaryByClass().map((summary, i) => (
+            <ScanTable
+              headers={[
+                'Asset Class',
+                'Price Range',
+                'Quantity',
+                'Total Value',
+              ]}
+            >
+              {assetsSummaryByClass.length > 0 ? (
+                assetsSummaryByClass.map((summary, i) => (
                   <ChevronTableRow
                     key={summary.assetClass}
                     highlight={i === 0}
@@ -1268,8 +1312,18 @@ export default function NodeDashboardPage() {
                       </div>
                     </td>
                     <td className="py-4 px-4 text-right">
+                      <span className="font-mono text-sm text-foreground tabular-nums">
+                        {formatPriceRange(summary.minPrice, summary.maxPrice)}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 text-right">
                       <span className="font-mono text-xl font-bold text-gold tabular-nums">
                         {summary.totalQuantity.toLocaleString()}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 text-right">
+                      <span className="font-mono text-base font-bold text-gold tabular-nums">
+                        {formatQuoteValue(summary.totalValue)}
                       </span>
                     </td>
                   </ChevronTableRow>
@@ -1278,7 +1332,7 @@ export default function NodeDashboardPage() {
                 <tr>
                   <td />
                   <td
-                    colSpan={2}
+                    colSpan={4}
                     className="px-4 py-8 text-center font-mono text-sm text-foreground/30"
                   >
                     No tokenized assets found
@@ -1306,7 +1360,8 @@ export default function NodeDashboardPage() {
               'Class',
               'Quantity',
               'Capacity',
-              'Trading',
+              'Price',
+              'Total Value',
             ]}
           >
             {renderAssetDetailsRows()}

@@ -112,8 +112,8 @@ export interface NodeRepository {
 /**
  * Node asset service interface - UPDATED for new Asset struct
  *
- * Tokenization accepts a human-entered integer price. Decimal scaling to the
- * quote token's on-chain units is handled by the service layer.
+ * Tokenization accepts a human-entered decimal price string. Decimal scaling
+ * to the quote token's on-chain units is handled by the service layer.
  */
 export interface INodeAssetService {
   mintAsset(

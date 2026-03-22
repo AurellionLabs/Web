@@ -10,6 +10,7 @@ import { INodeAssetService, NodeAsset } from '@/domain/node';
 import { Asset } from '@/domain/shared';
 import { DiamondContext } from './diamond-context';
 import { PinataSDK } from 'pinata';
+import { parseTokenAmount } from '@/lib/formatters';
 import {
   getIpfsGroupId,
   NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
@@ -123,13 +124,13 @@ export class DiamondNodeAssetService implements INodeAssetService {
     quoteTokenDecimals: number,
   ): bigint {
     const normalizedPrice = priceInput.trim();
-    if (!/^\d+$/.test(normalizedPrice)) {
+    if (!/^\d+(\.\d+)?$/.test(normalizedPrice)) {
       throw new Error(
-        'Tokenization failed: price must be entered as a non-negative integer.',
+        'Tokenization failed: price must be entered as a non-negative decimal value.',
       );
     }
 
-    return BigInt(normalizedPrice) * 10n ** BigInt(quoteTokenDecimals);
+    return parseTokenAmount(normalizedPrice, quoteTokenDecimals);
   }
 
   /**
