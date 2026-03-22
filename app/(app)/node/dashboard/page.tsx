@@ -739,10 +739,10 @@ export default function NodeDashboardPage() {
             </td>
             <td className="p-4 text-foreground">{asset.name}</td>
             <td className="p-4 capitalize text-foreground">{asset.class}</td>
-            <td className="p-4 font-mono text-foreground">
+            <td className="p-4 font-mono text-foreground text-right">
               {Number(asset.amount ?? '0').toLocaleString()}
             </td>
-            <td className="p-4 font-mono text-foreground/50">
+            <td className="p-4 font-mono text-foreground/50 text-right">
               {Number(asset.capacity ?? '0').toLocaleString()}
             </td>
             <td className="p-4 font-mono text-foreground text-right">
@@ -1290,10 +1290,10 @@ export default function NodeDashboardPage() {
           >
             <ScanTable
               headers={[
-                'Asset Class',
-                'Price Range',
-                'Quantity',
-                'Total Value',
+                { label: 'Asset Class' },
+                { label: 'Price Range', align: 'right' },
+                { label: 'Quantity', align: 'right' },
+                { label: 'Total Value', align: 'right' },
               ]}
             >
               {assetsSummaryByClass.length > 0 ? (
@@ -1355,13 +1355,13 @@ export default function NodeDashboardPage() {
         >
           <ScanTable
             headers={[
-              'ID',
-              'Asset',
-              'Class',
-              'Quantity',
-              'Capacity',
-              'Price',
-              'Total Value',
+              { label: 'ID' },
+              { label: 'Asset' },
+              { label: 'Class' },
+              { label: 'Quantity', align: 'right' },
+              { label: 'Capacity', align: 'right' },
+              { label: 'Price', align: 'right' },
+              { label: 'Total Value', align: 'right' },
             ]}
           >
             {renderAssetDetailsRows()}

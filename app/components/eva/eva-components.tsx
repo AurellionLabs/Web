@@ -540,11 +540,18 @@ export function ChevronTableRow({
 }
 
 /** Scan table with chevron header accents */
+type ScanTableHeader =
+  | string
+  | {
+      label: string;
+      align?: 'left' | 'right';
+    };
+
 export function ScanTable({
   headers,
   children,
 }: {
-  headers: string[];
+  headers: ScanTableHeader[];
   children: ReactNode;
 }) {
   return (
@@ -554,25 +561,36 @@ export function ScanTable({
         <thead>
           <tr>
             <th className="w-0" />
-            {headers.map((h, i) => (
-              <th
-                key={h}
-                className="text-left py-3 px-4 font-mono text-xs tracking-[0.2em] uppercase font-bold relative"
-              >
-                <div className="flex items-center gap-2">
-                  {i === 0 && (
-                    <div className="w-0 h-0 border-l-[5px] border-l-crimson/50 border-y-[4px] border-y-transparent" />
-                  )}
-                  <span className="text-gold/50">{h}</span>
-                </div>
-                <div
-                  className="absolute bottom-0 left-0 right-0 h-[2px]"
-                  style={{
-                    background: `linear-gradient(90deg, hsl(0 70% 38% / ${i === 0 ? 0.5 : 0.15}), hsl(43 65% 62% / 0.1))`,
-                  }}
-                />
-              </th>
-            ))}
+            {headers.map((header, i) => {
+              const { label, align = 'left' } =
+                typeof header === 'string' ? { label: header } : header;
+
+              return (
+                <th
+                  key={`${label}-${i}`}
+                  className={`py-3 px-4 font-mono text-xs tracking-[0.2em] uppercase font-bold relative ${
+                    align === 'right' ? 'text-right' : 'text-left'
+                  }`}
+                >
+                  <div
+                    className={`flex items-center gap-2 ${
+                      align === 'right' ? 'justify-end' : ''
+                    }`}
+                  >
+                    {i === 0 && (
+                      <div className="w-0 h-0 border-l-[5px] border-l-crimson/50 border-y-[4px] border-y-transparent" />
+                    )}
+                    <span className="text-gold/50">{label}</span>
+                  </div>
+                  <div
+                    className="absolute bottom-0 left-0 right-0 h-[2px]"
+                    style={{
+                      background: `linear-gradient(90deg, hsl(0 70% 38% / ${i === 0 ? 0.5 : 0.15}), hsl(43 65% 62% / 0.1))`,
+                    }}
+                  />
+                </th>
+              );
+            })}
             <th className="w-0" />
           </tr>
         </thead>
