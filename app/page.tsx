@@ -475,9 +475,9 @@ export default function LandingPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-[1px] bg-border/15">
                 {[
                   {
-                    name: 'Exotic Gemstone',
-                    type: 'Real Estate',
-                    id: 'RE-0041',
+                    name: 'Gemstones',
+                    type: 'Commodities',
+                    id: 'PR-0041',
                     power: 8,
                   },
                   {
@@ -487,9 +487,9 @@ export default function LandingPage() {
                     power: 5,
                   },
                   {
-                    name: 'Local Livestock',
-                    type: 'Fine Art',
-                    id: 'FA-0008',
+                    name: 'Livestock',
+                    type: 'Commodities',
+                    id: 'LV-0008',
                     power: 9,
                   },
                 ].map((asset) => (
