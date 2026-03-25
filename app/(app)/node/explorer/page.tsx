@@ -221,6 +221,7 @@ export default function NodeExplorerPage() {
 
             <TrapButton
               variant="gold"
+              type="submit"
               size="lg"
               className="w-full"
               disabled={isSearching}
