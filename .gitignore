@@ -52,7 +52,6 @@ ralphy/tsconfig.tsbuildinfo
 .claude/
 memory/
 package-lock.json
-
 .idea/
 
 # Aurellion core build output

@@ -56,8 +56,12 @@ type SelectedNodeContextType = {
   updateNodeStatus: (status: 'Active' | 'Inactive') => Promise<void>;
   getNodeStatus: () => Promise<'Active' | 'Inactive'>;
 
-  // Asset operations (for selected node) - price set via CLOB orders
-  mintAsset: (asset: Asset, amount: number) => Promise<void>;
+  // Asset operations (for selected node)
+  mintAsset: (
+    asset: Asset,
+    amount: number,
+    priceInput: string,
+  ) => Promise<void>;
   updateAssetCapacity: (
     assetToken: string,
     assetTokenId: string,
@@ -555,9 +559,9 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
     }
   }, [nodeRepository, selectedNodeAddress]);
 
-  // Mint asset for selected node via Diamond (price set via CLOB orders)
+  // Mint asset for selected node via Diamond
   const mintAsset = useCallback(
-    async (asset: Asset, amount: number) => {
+    async (asset: Asset, amount: number, priceInput: string) => {
       if (!diamondInitialized || !selectedNodeAddress) {
         throw new Error('Diamond not initialized or no node selected');
       }
@@ -576,7 +580,7 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
           0n,
         );
 
-        await diamondMintAsset(selectedNodeAddress, asset, amount);
+        await diamondMintAsset(selectedNodeAddress, asset, amount, priceInput);
 
         // Refresh assets and nodes
         await Promise.all([refreshAssets(), refreshNodes()]);

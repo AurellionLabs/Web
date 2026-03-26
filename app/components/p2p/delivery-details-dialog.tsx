@@ -296,7 +296,7 @@ export function DeliveryDetailsDialog({
               </div>
               <div>
                 <span className="text-white/70">Delivery Bounty</span>
-                <p className="font-medium text-white">$0.50</p>
+                <p className="font-medium text-white">$0.00</p>
               </div>
             </div>
           </div>
