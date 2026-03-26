@@ -170,6 +170,7 @@ export class PlatformRepository implements IPlatformRepository {
             (
               await fetchAssetsByTokenIdsFromMetadataApi(
                 items.map((event) => String(event.token_id)),
+                this.chainId || undefined,
               )
             ).map((asset) => [asset.tokenId, asset]),
           )
@@ -393,7 +394,10 @@ export class PlatformRepository implements IPlatformRepository {
 
   async getClassAssets(assetClass: string): Promise<Asset[]> {
     if (!this.pinata) {
-      return fetchClassAssetsFromMetadataApi(assetClass);
+      return fetchClassAssetsFromMetadataApi(
+        assetClass,
+        this.chainId || undefined,
+      );
     }
     const pinata = this.pinata;
 
@@ -585,9 +589,13 @@ export class PlatformRepository implements IPlatformRepository {
     const lookupPromise = (async (): Promise<Asset | null> => {
       try {
         if (!this.pinata) {
-          const apiResult =
-            await fetchAssetByTokenIdFromMetadataApi(canonicalTokenId);
-          this.assetByTokenIdCache.set(canonicalTokenId, apiResult.asset);
+          const apiResult = await fetchAssetByTokenIdFromMetadataApi(
+            canonicalTokenId,
+            this.chainId || undefined,
+          );
+          if (apiResult.asset) {
+            this.assetByTokenIdCache.set(canonicalTokenId, apiResult.asset);
+          }
           return apiResult.asset;
         }
         const pinata = this.pinata;
@@ -608,9 +616,19 @@ export class PlatformRepository implements IPlatformRepository {
 
         let list: any[] | null = null;
         for (const candidate of candidates) {
-          list = await this.withPinataRetry(() =>
-            this.getPinataListBuilder().keyvalues({ tokenId: candidate }).all(),
-          );
+          const filters = this.chainId
+            ? [
+                { tokenId: candidate, chainId: String(this.chainId) },
+                { tokenId: candidate },
+              ]
+            : [{ tokenId: candidate }];
+
+          for (const filter of filters) {
+            list = await this.withPinataRetry(() =>
+              this.getPinataListBuilder().keyvalues(filter).all(),
+            );
+            if (list && list.length > 0) break;
+          }
           if (list && list.length > 0) break;
         }
 
@@ -619,7 +637,6 @@ export class PlatformRepository implements IPlatformRepository {
             '[PlatformRepository] getAssetByTokenId: no Pinata files found for any format:',
             candidates,
           );
-          this.assetByTokenIdCache.set(canonicalTokenId, null);
           return null;
         }
         const cid = list[0].cid;
@@ -674,7 +691,6 @@ export class PlatformRepository implements IPlatformRepository {
         return asset;
       } catch (e) {
         console.error('[PlatformRepository] getAssetByTokenId failed', e);
-        this.assetByTokenIdCache.set(canonicalTokenId, null);
         return null;
       }
     })();

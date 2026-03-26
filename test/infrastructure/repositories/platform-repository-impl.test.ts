@@ -103,12 +103,16 @@ describe('PlatformRepository', () => {
       });
       vi.stubGlobal('fetch', fetchMock);
 
-      const repo = new PlatformRepository(mockContract, undefined as any);
+      const repo = new PlatformRepository(
+        mockContract,
+        undefined as any,
+        42161,
+      );
       const assets = await repo.getSupportedAssets();
 
       expect(fetchMock).toHaveBeenCalledTimes(1);
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/platform/metadata?tokenIds=1%2C2',
+        '/api/platform/metadata?tokenIds=1%2C2&chainId=42161',
       );
       expect(assets).toHaveLength(2);
       expect(assets[0].name).toBe('First Goat');
@@ -131,11 +135,15 @@ describe('PlatformRepository', () => {
       });
       vi.stubGlobal('fetch', fetchMock);
 
-      const repo = new PlatformRepository(mockContract, undefined as any);
+      const repo = new PlatformRepository(
+        mockContract,
+        undefined as any,
+        42161,
+      );
       const asset = await repo.getAssetByTokenId('321');
 
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/platform/metadata?tokenId=321',
+        '/api/platform/metadata?tokenId=321&chainId=42161',
       );
       expect(asset?.name).toBe('API Goat');
     });
@@ -237,6 +245,48 @@ describe('PlatformRepository', () => {
       const asset = await repo.getAssetByTokenId('12345');
 
       expect(asset).toBeNull();
+    });
+
+    it('should not permanently cache null metadata API misses', async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ asset: null, cid: null }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            asset: {
+              assetClass: 'GOLD',
+              tokenId: '321',
+              name: 'Recovered Gold',
+              attributes: [
+                {
+                  name: 'purity',
+                  values: ['24k'],
+                  description: 'Purity',
+                },
+              ],
+            },
+            cid: 'bafy-recovered',
+          }),
+        });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const repo = new PlatformRepository(
+        mockContract,
+        undefined as any,
+        42161,
+      );
+
+      const first = await repo.getAssetByTokenId('321');
+      const second = await repo.getAssetByTokenId('321');
+
+      expect(first).toBeNull();
+      expect(second?.name).toBe('Recovered Gold');
+      expect(second?.attributes).toHaveLength(1);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 
     it('should handle stringified JSON from gateway', async () => {

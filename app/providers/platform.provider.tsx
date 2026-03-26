@@ -176,15 +176,35 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
         return a.tokenId === tokenId;
       }
     });
-    if (cached) return cached;
+    if (
+      cached &&
+      Array.isArray(cached.attributes) &&
+      cached.attributes.length
+    ) {
+      return cached;
+    }
 
-    // Fallback to repository/Pinata lookup
+    // Fallback to repository/Pinata lookup when the cached asset is missing
+    // or does not include hydrated attributes yet.
     try {
       const asset = await repositoryRef.current.getAssetByTokenId(tokenId);
-      return asset;
+      if (asset) {
+        if (cached) {
+          return {
+            ...cached,
+            ...asset,
+            attributes:
+              Array.isArray(asset.attributes) && asset.attributes.length > 0
+                ? asset.attributes
+                : cached.attributes,
+          };
+        }
+        return asset;
+      }
+      return cached ?? null;
     } catch (err) {
       console.error('[PlatformProvider] Error fetching asset by tokenId:', err);
-      return null;
+      return cached ?? null;
     }
   }, []);
 
