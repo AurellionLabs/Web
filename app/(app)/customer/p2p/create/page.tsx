@@ -1810,8 +1810,8 @@ export default function CreateP2POfferPage() {
                   valueColor="gold"
                 />
                 <EvaDataRow
-                  label="Fee (2%)"
-                  value={`$${(parseFloat(formData.price) * 0.02).toLocaleString()}`}
+                  label="Fee (0%)"
+                  value={`$0`}
                   valueColor="crimson"
                 />
 

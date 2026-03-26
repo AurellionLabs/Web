@@ -37,9 +37,9 @@ export default function LandingPage() {
   const [bootComplete, setBootComplete] = useState(false);
 
   // Animated counters for hero stats
-  const tvlCount = useCounter(2400, 3000, mounted);
-  const assetsCount = useCounter(847, 2500, mounted);
-  const holdersCount = useCounter(12419, 3500, mounted);
+  const tvlCount = useCounter(5600, 3000, mounted);
+  const assetsCount = useCounter(10, 2500, mounted);
+  const holdersCount = useCounter(5, 3500, mounted);
   const complianceCount = useCounter(998, 2000, mounted);
 
   useEffect(() => {
@@ -179,18 +179,18 @@ export default function LandingPage() {
                     {[
                       {
                         label: 'Total Value Locked',
-                        value: `$${(tvlCount / 1000).toFixed(1)}B`,
+                        value: `$${(tvlCount / 1000).toFixed(1)}M`,
                         sub: '+12.3% 30d',
                       },
                       {
                         label: 'Assets Tokenized',
-                        value: String(assetsCount),
-                        sub: '+23 this week',
+                        value: `${String(assetsCount)}k+`,
+                        sub: '+10k this week',
                       },
                       {
-                        label: 'Active Holders',
+                        label: 'Created Orders',
                         value: holdersCount.toLocaleString(),
-                        sub: '94% retention',
+                        sub: '94% settled',
                       },
                       {
                         label: 'Compliance Rate',
@@ -238,12 +238,7 @@ export default function LandingPage() {
           {/* Bottom asset ticker */}
           <div className="border-t border-border/30 bg-card/30 backdrop-blur-sm">
             <div className="grid grid-cols-2 md:grid-cols-4">
-              {[
-                { label: 'Real Estate', val: '$890M' },
-                { label: 'Commodities', val: '$620M' },
-                { label: 'Private Credit', val: '$540M' },
-                { label: 'Fine Art', val: '$350M' },
-              ].map((item, i) => (
+              {[{ label: 'Commodities', val: '$5m+' }].map((item, i) => (
                 <div
                   key={item.label}
                   className={`px-6 py-4 flex items-center justify-between ${i < 3 ? 'border-r border-border/15' : ''}`}
@@ -480,27 +475,21 @@ export default function LandingPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-[1px] bg-border/15">
                 {[
                   {
-                    name: 'Manhattan RE Fund IV',
-                    type: 'Real Estate',
-                    apy: '8.2%',
-                    tvl: '$420M',
-                    id: 'RE-0041',
+                    name: 'Gemstones',
+                    type: 'Commodities',
+                    id: 'PR-0041',
                     power: 8,
                   },
                   {
-                    name: 'Sovereign Gold Reserve',
+                    name: 'Gold Bullion',
                     type: 'Commodities',
-                    apy: '4.1%',
-                    tvl: '$180M',
                     id: 'CM-0017',
                     power: 5,
                   },
                   {
-                    name: 'Renaissance Art Trust',
-                    type: 'Fine Art',
-                    apy: '12.7%',
-                    tvl: '$95M',
-                    id: 'FA-0008',
+                    name: 'Livestock',
+                    type: 'Commodities',
+                    id: 'LV-0008',
                     power: 9,
                   },
                 ].map((asset) => (
@@ -537,25 +526,6 @@ export default function LandingPage() {
                         color="gold"
                         segments={10}
                       />
-
-                      <div className="border-t border-border/25 pt-4 mt-4 flex justify-between items-end">
-                        <div>
-                          <span className="font-mono text-[11px] tracking-[0.2em] text-foreground/30 block mb-1">
-                            APY
-                          </span>
-                          <span className="font-mono text-2xl font-bold text-gold">
-                            {asset.apy}
-                          </span>
-                        </div>
-                        <div className="text-right">
-                          <span className="font-mono text-[11px] tracking-[0.2em] text-foreground/30 block mb-1">
-                            TVL
-                          </span>
-                          <span className="font-mono text-base text-foreground/60">
-                            {asset.tvl}
-                          </span>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 ))}
@@ -678,20 +648,20 @@ export default function LandingPage() {
                 items={[
                   {
                     label: 'Total Value Locked',
-                    target: 2847392,
+                    target: 5639349,
                     prefix: '$',
                     format: true,
                     duration: 3000,
                   },
                   {
                     label: 'Assets Tokenized',
-                    target: 847,
+                    target: 20582,
                     format: false,
                     duration: 2000,
                   },
                   {
                     label: 'Active Nodes',
-                    target: 342,
+                    target: 3,
                     format: false,
                     duration: 2500,
                   },

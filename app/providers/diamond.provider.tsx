@@ -63,8 +63,13 @@ interface DiamondContextType {
     status: 'Active' | 'Inactive',
   ) => Promise<void>;
 
-  // Asset operations (price set via CLOB orders, not during minting)
-  mintAsset: (nodeHash: string, asset: Asset, amount: number) => Promise<void>;
+  // Asset operations
+  mintAsset: (
+    nodeHash: string,
+    asset: Asset,
+    amount: number,
+    priceInput: string,
+  ) => Promise<void>;
   updateAssetCapacity: (
     nodeHash: string,
     assetToken: string,
@@ -313,13 +318,18 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     [nodeService],
   );
 
-  // Asset operations (price set via CLOB orders, not during minting)
+  // Asset operations
   const mintAsset = useCallback(
-    async (nodeHash: string, asset: Asset, amount: number): Promise<void> => {
+    async (
+      nodeHash: string,
+      asset: Asset,
+      amount: number,
+      priceInput: string,
+    ): Promise<void> => {
       if (!nodeAssetService) {
         throw new Error('Diamond not initialized');
       }
-      await nodeAssetService.mintAsset(nodeHash, asset, amount);
+      await nodeAssetService.mintAsset(nodeHash, asset, amount, priceInput);
     },
     [nodeAssetService],
   );
