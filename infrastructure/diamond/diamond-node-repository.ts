@@ -293,6 +293,12 @@ export class DiamondNodeRepository implements NodeRepository {
   private async fetchAssetMetadata(
     tokenId: string,
   ): Promise<{ name: string; class: string; fileHash: string }> {
+    const chainId =
+      typeof (this.context as { getChainId?: () => number }).getChainId ===
+      'function'
+        ? (this.context as { getChainId: () => number }).getChainId()
+        : undefined;
+
     // Try Redis cache first
     const cache = getCache();
     const cached = await cache.getIpfsMetadata(tokenId);
@@ -305,7 +311,10 @@ export class DiamondNodeRepository implements NodeRepository {
     }
 
     if (!this.pinata) {
-      const { asset, cid } = await fetchAssetByTokenIdFromMetadataApi(tokenId);
+      const { asset, cid } = await fetchAssetByTokenIdFromMetadataApi(
+        tokenId,
+        chainId,
+      );
       if (asset) {
         return {
           name: asset.name,
@@ -317,9 +326,22 @@ export class DiamondNodeRepository implements NodeRepository {
     }
 
     try {
-      const list = await this.withPinataRetry(() =>
-        this.pinata!.files.public.list().keyvalues({ tokenId }).all(),
-      );
+      const listBuilder = this.pinata!.files.public.list() as any;
+      const scopedListBuilder =
+        typeof listBuilder.group === 'function' && chainId
+          ? listBuilder.group(getIpfsGroupId(chainId))
+          : listBuilder;
+
+      let list: Array<{ cid: string }> = [];
+      const filters = chainId
+        ? [{ tokenId, chainId: String(chainId) }, { tokenId }]
+        : [{ tokenId }];
+      for (const filter of filters) {
+        list = await this.withPinataRetry(() =>
+          scopedListBuilder.keyvalues(filter).all(),
+        );
+        if (list.length > 0) break;
+      }
 
       if (!list || list.length === 0) {
         console.warn(
@@ -879,8 +901,17 @@ export class DiamondNodeRepository implements NodeRepository {
   async getAssetAttributes(
     fileHash: string,
   ): Promise<TokenizedAssetAttribute[]> {
+    const chainId =
+      typeof (this.context as { getChainId?: () => number }).getChainId ===
+      'function'
+        ? (this.context as { getChainId: () => number }).getChainId()
+        : 84532;
+
     if (!this.pinata) {
-      const records = await fetchAssetRecordsByHashFromMetadataApi(fileHash);
+      const records = await fetchAssetRecordsByHashFromMetadataApi(
+        fileHash,
+        chainId,
+      );
       const first = records[0];
       const attrs = first?.asset?.attributes || [];
       return attrs.map((a) => ({
@@ -892,11 +923,6 @@ export class DiamondNodeRepository implements NodeRepository {
 
     try {
       // Get chain-specific IPFS group
-      const chainId =
-        typeof (this.context as { getChainId?: () => number }).getChainId ===
-        'function'
-          ? (this.context as { getChainId: () => number }).getChainId()
-          : 84532;
       const groupId = getIpfsGroupId(chainId);
 
       // Prefer lookup by hash keyvalue when available; fall back to tokenId lookup if that fails

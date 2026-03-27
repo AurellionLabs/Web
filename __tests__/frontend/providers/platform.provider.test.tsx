@@ -152,6 +152,49 @@ describe('PlatformProvider', () => {
       const result = await capturedCtx!.getAssetByTokenId('99999');
       expect(result).toBeNull();
     });
+
+    it('should hydrate past cached assets with empty attributes', async () => {
+      mockGetSupportedAssets.mockResolvedValue([
+        {
+          assetClass: 'GOAT',
+          tokenId: '12345',
+          name: 'Cached Goat',
+          attributes: [],
+        },
+      ]);
+
+      const hydratedAsset: Asset = {
+        assetClass: 'GOAT',
+        tokenId: '12345',
+        name: 'Hydrated Goat',
+        attributes: [
+          {
+            name: 'weight',
+            values: ['M'],
+            description: 'Weight',
+          },
+        ],
+      };
+      mockGetAssetByTokenId.mockResolvedValue(hydratedAsset);
+
+      let capturedCtx: ReturnType<typeof usePlatform> | null = null;
+      render(
+        <PlatformProvider>
+          <TestConsumer onContext={(ctx) => (capturedCtx = ctx)} />
+        </PlatformProvider>,
+      );
+
+      await waitFor(() => {
+        expect(capturedCtx).not.toBeNull();
+      });
+
+      const result = await capturedCtx!.getAssetByTokenId('12345');
+
+      expect(mockGetAssetByTokenId).toHaveBeenCalledWith('12345');
+      expect(result?.name).toBe('Hydrated Goat');
+      expect(result?.attributes).toHaveLength(1);
+      expect(result?.attributes[0].name).toBe('weight');
+    });
   });
 
   describe('getClassTokenizableAssets', () => {

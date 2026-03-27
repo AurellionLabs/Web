@@ -291,21 +291,51 @@ export class DiamondNodeAssetService implements INodeAssetService {
             asset: contractAsset,
             className: asset.assetClass,
           };
+          const fileMetadataKeyvalues = {
+            tokenId: tokenId.toString(),
+            chainId: String(chainId),
+            className: asset.assetClass || '',
+            hash: assetHash,
+          };
 
-          await this.pinata.upload.public
+          const upload = await this.pinata.upload.public
             .json(metadataJson)
             .group(groupId)
             .name(`${tokenId}.json`)
-            .keyvalues({
-              tokenId: tokenId.toString(),
-              className: asset.assetClass || '',
-              hash: assetHash,
+            .keyvalues(fileMetadataKeyvalues);
+
+          if (
+            upload?.id &&
+            this.pinata.files?.public &&
+            typeof this.pinata.files.public.update === 'function'
+          ) {
+            await this.pinata.files.public.update({
+              id: upload.id,
+              keyvalues: fileMetadataKeyvalues,
             });
+          }
+
+          if (
+            upload?.id &&
+            this.pinata.groups?.public &&
+            typeof this.pinata.groups.public.addFiles === 'function'
+          ) {
+            await this.pinata.groups.public.addFiles({
+              groupId,
+              files: [upload.id],
+            });
+          }
         } catch (ipfsErr) {
           // Non-fatal — on-chain data is the source of truth
           console.warn(
             '[DiamondNodeAssetService] IPFS metadata upload failed (non-fatal):',
-            ipfsErr,
+            {
+              chainId: this.context.getChainId(),
+              groupId: getIpfsGroupId(this.context.getChainId()),
+              tokenId: tokenId.toString(),
+              assetHash: ethers.keccak256(encodedAsset),
+              error: ipfsErr,
+            },
           );
         }
       }
