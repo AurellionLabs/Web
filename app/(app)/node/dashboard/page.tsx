@@ -68,6 +68,7 @@ import type {
   SupportingDocument,
 } from '@/domain/node';
 import { useToast } from '@/hooks/use-toast';
+import { useWallet } from '@/hooks/useWallet';
 import { useQuoteTokenMetadata } from '@/hooks/useQuoteTokenMetadata';
 import { MapView } from '@/app/components/ui/map-view';
 import AssetSelectionForm from './asset-selection-form';
@@ -91,6 +92,7 @@ import {
   buildAssetNameLookup,
   resolveOrderAssetName,
 } from '@/utils/order-asset-resolution';
+import { isNodeDashboardReadOnly } from './access-mode';
 
 const tokenizeFormSchema = z.object({
   assetClass: z.string().min(1, { message: 'Please select an asset class.' }),
@@ -145,6 +147,7 @@ export default function NodeDashboardPage() {
   const { nodes: allNodes, refreshNodes } = useNodes();
   const router = useRouter();
   const { toast } = useToast();
+  const { address: walletAddress } = useWallet();
   const { decimals: quoteTokenDecimals, symbol: quoteTokenSymbol } =
     useQuoteTokenMetadata();
   const { isReadOnly: diamondIsReadOnly } = useDiamond();
@@ -152,8 +155,12 @@ export default function NodeDashboardPage() {
   const searchParams = new URLSearchParams(window.location.search);
   const nodeIdFromUrl = searchParams.get('nodeId');
   const viewMode = searchParams.get('view');
-  // Read-only if URL says public OR if Diamond context is in read-only mode (no wallet)
-  const isReadOnly = viewMode === 'public' || diamondIsReadOnly;
+  const isReadOnly = isNodeDashboardReadOnly({
+    viewMode,
+    diamondIsReadOnly,
+    walletAddress,
+    ownerAddress: currentNodeData?.owner,
+  });
 
   const [isAddAssetOpen, setIsAddAssetOpen] = useState(false);
   const [isTokenizing, setIsTokenizing] = useState(false);

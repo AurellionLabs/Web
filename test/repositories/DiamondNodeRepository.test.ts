@@ -44,13 +44,12 @@ const WALLET_ADDRESS = '0xfde9344cabfa9504eead8a3e4e2096da1316bbaf';
 
 // A different address (the counterparty)
 const COUNTERPARTY = '0x16a1e17144f10091d6da0eca7f336ccc76462e03';
+const ZERO_HASH =
+  '0x0000000000000000000000000000000000000000000000000000000000000000';
 
 // Token IDs used in test fixtures
 const TOKEN_ID_A =
   '11202153737908116169202123534399034039068322729981838674062226574848113217109';
-const TOKEN_ID_B =
-  '57945930255607318159603105946700134162444874503505598107919448384686533989738';
-
 // -------------------------------------------------------------------
 // Fixture factories
 // -------------------------------------------------------------------
@@ -137,35 +136,16 @@ function makeJourneyCreatedEvent(overrides: Record<string, any> = {}) {
   };
 }
 
-function makeSupportedAssetEvent(overrides: Record<string, any> = {}) {
-  return {
-    id: 'asset-evt-1',
-    node_hash: NODE_HASH,
-    token: '0xToken1',
-    token_id: TOKEN_ID_A,
-    price: '1000000000000000000',
-    capacity: '100',
-    block_number: '50',
-    block_timestamp: '1699990000',
-    transaction_hash: '0xTxAsset1',
-    ...overrides,
-  };
-}
-
 // -------------------------------------------------------------------
 // Empty GraphQL responses
 //
 // IMPORTANT: mocks must reflect the REAL API response shape.
 // GET_ALL_UNIFIED_ORDER_EVENTS uses GQL aliases: created / logistics /
 // journeyUpdates / settled — NOT raw table names.
-// GET_SUPPORTED_ASSET_ADDED_EVENTS uses: diamondSupportedAssetAddedEventss.
 // Tests that mock the wrong shape silently validate broken behaviour
 // (that's exactly how the original bugs were missed).
 // -------------------------------------------------------------------
 
-const EMPTY_SUPPORTED_ASSETS = {
-  diamondSupportedAssetAddedEventss: { items: [] },
-};
 const EMPTY_UNIFIED = {
   created: { items: [] },
   logistics: { items: [] },
@@ -183,32 +163,30 @@ const EMPTY_JOURNEY_STATUS = {
 };
 
 /**
- * Mock all 9 graphqlRequest calls in getNodeOrders (with ownerAddress).
+ * Mock all 8 graphqlRequest calls in getNodeOrders (with ownerAddress).
  *
  * Call layout:
- *   0: GET_SUPPORTED_ASSET_ADDED_EVENTS  ← NEW (node token-id cross-ref)
- *   1: GET_ALL_UNIFIED_ORDER_EVENTS      (replaces former calls 0+1)
- *   2: GET_P2P_OFFERS_BY_CREATOR
- *   3: GET_P2P_OFFERS_ACCEPTED_BY_USER
- *   4: GET_P2P_OFFER_DETAILS_BY_ORDER_IDS
- *   5: GET_ALL_P2P_OFFER_ACCEPTED_EVENTS
- *   6: GET_AUSYS_ORDER_STATUS_UPDATES
- *   7: GET_JOURNEYS_BY_ORDER
- *   8: GET_JOURNEY_STATUS_UPDATES_ALL
+ *   0: GET_ALL_UNIFIED_ORDER_EVENTS
+ *   1: GET_P2P_OFFERS_BY_CREATOR
+ *   2: GET_P2P_OFFERS_ACCEPTED_BY_USER
+ *   3: GET_P2P_OFFER_DETAILS_BY_ORDER_IDS
+ *   4: GET_ALL_P2P_OFFER_ACCEPTED_EVENTS
+ *   5: GET_AUSYS_ORDER_STATUS_UPDATES
+ *   6: GET_JOURNEYS_BY_ORDER
+ *   7: GET_JOURNEY_STATUS_UPDATES_ALL
  *
- * Without ownerAddress only calls 0+1 are made (early return before P2P).
+ * Without ownerAddress only call 0 is made (early return before P2P).
  */
 function setupEmptyMocks() {
   graphqlRequestMock
-    .mockResolvedValueOnce(EMPTY_SUPPORTED_ASSETS) // 0: node asset cross-ref
-    .mockResolvedValueOnce(EMPTY_UNIFIED) // 1: unified CLOB query
-    .mockResolvedValueOnce(EMPTY_P2P_CREATED) // 2
-    .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 3
-    .mockResolvedValueOnce(EMPTY_P2P_CREATED) // 4 (all p2p details)
-    .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 5 (all p2p accepted)
-    .mockResolvedValueOnce(EMPTY_STATUS) // 6
-    .mockResolvedValueOnce(EMPTY_JOURNEYS) // 7
-    .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 8
+    .mockResolvedValueOnce(EMPTY_UNIFIED) // 0: unified CLOB query
+    .mockResolvedValueOnce(EMPTY_P2P_CREATED) // 1
+    .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 2
+    .mockResolvedValueOnce(EMPTY_P2P_CREATED) // 3 (all p2p details)
+    .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 4 (all p2p accepted)
+    .mockResolvedValueOnce(EMPTY_STATUS) // 5
+    .mockResolvedValueOnce(EMPTY_JOURNEYS) // 6
+    .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 7
 }
 
 // -------------------------------------------------------------------
@@ -217,6 +195,10 @@ function setupEmptyMocks() {
 
 describe('DiamondNodeRepository.getNodeOrders', () => {
   let repository: DiamondNodeRepository;
+  let mockDiamond: {
+    getOwnerNodes: ReturnType<typeof vi.fn>;
+    getAuSysOrder: ReturnType<typeof vi.fn>;
+  };
 
   const mockContext = {
     getDiamond: vi.fn(),
@@ -225,9 +207,11 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockContext.getDiamond.mockReturnValue({
+    mockDiamond = {
       getOwnerNodes: vi.fn().mockResolvedValue([NODE_HASH, SECOND_NODE_HASH]),
-    });
+      getAuSysOrder: vi.fn().mockResolvedValue({ sellerNode: ZERO_HASH }),
+    };
+    mockContext.getDiamond.mockReturnValue(mockDiamond);
     repository = new DiamondNodeRepository(mockContext);
   });
 
@@ -246,49 +230,39 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
 
   it('should return P2P orders when ownerAddress is provided and the order is linked to this node', async () => {
     const p2pCreated = makeP2POfferCreatedEvent();
-    const journey = makeJourneyCreatedEvent({
-      order_id: '0xP2POrder1',
-      sender: NODE_HASH,
-    });
+    mockDiamond.getAuSysOrder.mockResolvedValueOnce({ sellerNode: NODE_HASH });
 
     graphqlRequestMock
-      .mockResolvedValueOnce(EMPTY_SUPPORTED_ASSETS) // 0
-      .mockResolvedValueOnce(EMPTY_UNIFIED) // 1: no CLOB/logistics
+      .mockResolvedValueOnce(EMPTY_UNIFIED) // 0: no CLOB/logistics
       .mockResolvedValueOnce({
-        // 2: P2P created by wallet
+        // 1: P2P created by wallet
         diamondP2POfferCreatedEventss: { items: [p2pCreated] },
       })
-      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 3
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 2
       .mockResolvedValueOnce({
-        // 4: all P2P details
+        // 3: all P2P details
         diamondP2POfferCreatedEventss: { items: [p2pCreated] },
       })
-      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 5: all accepted events
-      .mockResolvedValueOnce(EMPTY_STATUS) // 6
-      .mockResolvedValueOnce({
-        diamondJourneyCreatedEventss: { items: [journey] },
-      }) // 7
-      .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 8
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 4: all accepted events
+      .mockResolvedValueOnce(EMPTY_STATUS) // 5
+      .mockResolvedValueOnce(EMPTY_JOURNEYS) // 6
+      .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 7
 
     const orders = await repository.getNodeOrders(NODE_HASH, WALLET_ADDRESS);
 
     expect(orders.length).toBe(1);
     expect(orders[0].id).toBe('0xP2POrder1');
     expect(orders[0].isP2P).toBe(true);
+    expect(mockDiamond.getAuSysOrder).toHaveBeenCalledWith('0xP2POrder1');
   });
 
   it('should NOT return P2P orders when only nodeHash is provided (no wallet)', async () => {
-    // Without ownerAddress getNodeOrders returns early after supported assets
-    // and unified queries — no P2P queries are made at all.
-    graphqlRequestMock
-      .mockResolvedValueOnce(EMPTY_SUPPORTED_ASSETS) // 0
-      .mockResolvedValueOnce(EMPTY_UNIFIED); // 1 only
+    graphqlRequestMock.mockResolvedValueOnce(EMPTY_UNIFIED); // 0 only
 
     const orders = await repository.getNodeOrders(NODE_HASH);
 
     expect(orders).toEqual([]);
-    // Only 2 graphql calls should have been made
-    expect(graphqlRequestMock).toHaveBeenCalledTimes(2);
+    expect(graphqlRequestMock).toHaveBeenCalledTimes(1);
   });
 
   it('should return CLOB orders linked via logistics node field', async () => {
@@ -299,21 +273,20 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
     });
 
     graphqlRequestMock
-      .mockResolvedValueOnce(EMPTY_SUPPORTED_ASSETS) // 0
       .mockResolvedValueOnce({
-        // 1: CLOB order + logistics linking it to this node
+        // 0: CLOB order + logistics linking it to this node
         created: { items: [clobEvent] },
         logistics: { items: [logisticsEvent] },
         journeyUpdates: { items: [] },
         settled: { items: [] },
       })
-      .mockResolvedValueOnce(EMPTY_P2P_CREATED) // 2
-      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 3
-      .mockResolvedValueOnce(EMPTY_P2P_CREATED) // 4
-      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 5
-      .mockResolvedValueOnce(EMPTY_STATUS) // 6
-      .mockResolvedValueOnce(EMPTY_JOURNEYS) // 7
-      .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 8
+      .mockResolvedValueOnce(EMPTY_P2P_CREATED) // 1
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 2
+      .mockResolvedValueOnce(EMPTY_P2P_CREATED) // 3
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 4
+      .mockResolvedValueOnce(EMPTY_STATUS) // 5
+      .mockResolvedValueOnce(EMPTY_JOURNEYS) // 6
+      .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 7
 
     const orders = await repository.getNodeOrders(NODE_HASH, WALLET_ADDRESS);
 
@@ -325,21 +298,20 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
     const clobEvent = makeUnifiedOrderEvent({ seller: WALLET_ADDRESS });
 
     graphqlRequestMock
-      .mockResolvedValueOnce(EMPTY_SUPPORTED_ASSETS) // 0
       .mockResolvedValueOnce({
-        // 1: no logistics link to this node
+        // 0: no logistics link to this node
         created: { items: [clobEvent] },
         logistics: { items: [] },
         journeyUpdates: { items: [] },
         settled: { items: [] },
       })
-      .mockResolvedValueOnce(EMPTY_P2P_CREATED) // 2
-      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 3
-      .mockResolvedValueOnce(EMPTY_P2P_CREATED) // 4
-      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 5
-      .mockResolvedValueOnce(EMPTY_STATUS) // 6
-      .mockResolvedValueOnce(EMPTY_JOURNEYS) // 7
-      .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 8
+      .mockResolvedValueOnce(EMPTY_P2P_CREATED) // 1
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 2
+      .mockResolvedValueOnce(EMPTY_P2P_CREATED) // 3
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 4
+      .mockResolvedValueOnce(EMPTY_STATUS) // 5
+      .mockResolvedValueOnce(EMPTY_JOURNEYS) // 6
+      .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 7
 
     const orders = await repository.getNodeOrders(NODE_HASH, WALLET_ADDRESS);
 
@@ -354,21 +326,20 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
     });
 
     graphqlRequestMock
-      .mockResolvedValueOnce(EMPTY_SUPPORTED_ASSETS) // 0
       .mockResolvedValueOnce({
-        // 1: logistics links to a DIFFERENT node
+        // 0: logistics links to a DIFFERENT node
         created: { items: [otherClobEvent] },
         logistics: { items: [otherLogistics] },
         journeyUpdates: { items: [] },
         settled: { items: [] },
       })
-      .mockResolvedValueOnce(EMPTY_P2P_CREATED) // 2
-      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 3
-      .mockResolvedValueOnce(EMPTY_P2P_CREATED) // 4
-      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 5
-      .mockResolvedValueOnce(EMPTY_STATUS) // 6
-      .mockResolvedValueOnce(EMPTY_JOURNEYS) // 7
-      .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 8
+      .mockResolvedValueOnce(EMPTY_P2P_CREATED) // 1
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 2
+      .mockResolvedValueOnce(EMPTY_P2P_CREATED) // 3
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 4
+      .mockResolvedValueOnce(EMPTY_STATUS) // 5
+      .mockResolvedValueOnce(EMPTY_JOURNEYS) // 6
+      .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 7
 
     const orders = await repository.getNodeOrders(NODE_HASH, WALLET_ADDRESS);
 
@@ -385,23 +356,22 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
     });
 
     graphqlRequestMock
-      .mockResolvedValueOnce(EMPTY_SUPPORTED_ASSETS) // 0
-      .mockResolvedValueOnce(EMPTY_UNIFIED) // 1
+      .mockResolvedValueOnce(EMPTY_UNIFIED) // 0
       .mockResolvedValueOnce({
         diamondP2POfferCreatedEventss: { items: [p2pCreated] },
-      }) // 2
+      }) // 1
       .mockResolvedValueOnce({
         diamondP2POfferAcceptedEventss: { items: [p2pAccepted] },
-      }) // 3
+      }) // 2
       .mockResolvedValueOnce({
         diamondP2POfferCreatedEventss: { items: [p2pCreated] },
-      }) // 4
-      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 5
-      .mockResolvedValueOnce(EMPTY_STATUS) // 6
+      }) // 3
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 4
+      .mockResolvedValueOnce(EMPTY_STATUS) // 5
       .mockResolvedValueOnce({
         diamondJourneyCreatedEventss: { items: [journey] },
-      }) // 7
-      .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 8
+      }) // 6
+      .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 7
 
     const orders = await repository.getNodeOrders(NODE_HASH, WALLET_ADDRESS);
 
@@ -424,9 +394,8 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
     });
 
     graphqlRequestMock
-      .mockResolvedValueOnce(EMPTY_SUPPORTED_ASSETS) // 0
       .mockResolvedValueOnce({
-        // 1: CLOB order with logistics link
+        // 0: CLOB order with logistics link
         created: { items: [clobEvent] },
         logistics: { items: [logisticsEvent] },
         journeyUpdates: { items: [] },
@@ -434,17 +403,17 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
       })
       .mockResolvedValueOnce({
         diamondP2POfferCreatedEventss: { items: [p2pEvent] },
-      }) // 2
-      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 3
+      }) // 1
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 2
       .mockResolvedValueOnce({
         diamondP2POfferCreatedEventss: { items: [p2pEvent] },
-      }) // 4
-      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 5
-      .mockResolvedValueOnce(EMPTY_STATUS) // 6
+      }) // 3
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 4
+      .mockResolvedValueOnce(EMPTY_STATUS) // 5
       .mockResolvedValueOnce({
         diamondJourneyCreatedEventss: { items: [journey] },
-      }) // 7
-      .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 8
+      }) // 6
+      .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 7
 
     const orders = await repository.getNodeOrders(NODE_HASH, WALLET_ADDRESS);
 
@@ -452,86 +421,64 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
     expect(uniqueIds.size).toBe(orders.length);
   });
 
-  it('should show P2P orders on a node that supports the matching token_id (pre-scoping-change orders)', async () => {
-    // Simulates old AuSysOrderCreated orders: no explicit bytes32 node hash link,
-    // only the seller wallet address. Node cross-reference via supported token_ids.
+  it('should NOT show P2P orders without explicit node linkage', async () => {
     const p2pCreated = makeP2POfferCreatedEvent({
-      order_id: '0xOldOrder',
-      token_id: TOKEN_ID_A,
+      order_id: '0xUnlinkedOrder',
       creator: WALLET_ADDRESS,
     });
     const journey = makeJourneyCreatedEvent({
-      order_id: '0xOldOrder',
-      // journey sender is the wallet address, NOT the bytes32 node hash
+      order_id: '0xUnlinkedOrder',
       sender: WALLET_ADDRESS,
     });
 
     graphqlRequestMock
-      .mockResolvedValueOnce({
-        // 0: NODE_HASH supports TOKEN_ID_A
-        diamondSupportedAssetAddedEventss: {
-          items: [
-            makeSupportedAssetEvent({
-              node_hash: NODE_HASH,
-              token_id: TOKEN_ID_A,
-            }),
-          ],
-        },
-      })
-      .mockResolvedValueOnce(EMPTY_UNIFIED) // 1
+      .mockResolvedValueOnce(EMPTY_UNIFIED) // 0
       .mockResolvedValueOnce({
         diamondP2POfferCreatedEventss: { items: [p2pCreated] },
-      }) // 2
-      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 3
+      }) // 1
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 2
       .mockResolvedValueOnce({
         diamondP2POfferCreatedEventss: { items: [p2pCreated] },
-      }) // 4
-      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 5
-      .mockResolvedValueOnce(EMPTY_STATUS) // 6
+      }) // 3
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 4
+      .mockResolvedValueOnce(EMPTY_STATUS) // 5
       .mockResolvedValueOnce({
         diamondJourneyCreatedEventss: { items: [journey] },
-      }) // 7
-      .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 8
+      }) // 6
+      .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 7
 
     const orders = await repository.getNodeOrders(NODE_HASH, WALLET_ADDRESS);
 
-    // Should appear because NODE_HASH supports TOKEN_ID_A
-    expect(orders.some((o) => o.id === '0xOldOrder')).toBe(true);
+    expect(orders.some((o) => o.id === '0xUnlinkedOrder')).toBe(false);
   });
 
-  it('should NOT show P2P orders on a sibling node that does NOT support that token_id', async () => {
-    // SECOND_NODE_HASH supports no token_ids → order should NOT appear there
+  it('should NOT show P2P orders on sibling nodes when linked to a different node', async () => {
     const p2pCreated = makeP2POfferCreatedEvent({
-      order_id: '0xOldOrder',
-      token_id: TOKEN_ID_A,
+      order_id: '0xScopedOrder',
       creator: WALLET_ADDRESS,
     });
+    mockDiamond.getAuSysOrder.mockResolvedValueOnce({ sellerNode: NODE_HASH });
 
     graphqlRequestMock
-      .mockResolvedValueOnce({
-        // 0: SECOND_NODE_HASH has NO supported assets
-        diamondSupportedAssetAddedEventss: { items: [] },
-      })
-      .mockResolvedValueOnce(EMPTY_UNIFIED) // 1
+      .mockResolvedValueOnce(EMPTY_UNIFIED) // 0
       .mockResolvedValueOnce({
         diamondP2POfferCreatedEventss: { items: [p2pCreated] },
-      }) // 2
-      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 3
+      }) // 1
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 2
       .mockResolvedValueOnce({
         diamondP2POfferCreatedEventss: { items: [p2pCreated] },
-      }) // 4
-      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 5
-      .mockResolvedValueOnce(EMPTY_STATUS) // 6
-      .mockResolvedValueOnce(EMPTY_JOURNEYS) // 7
-      .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 8
+      }) // 3
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 4
+      .mockResolvedValueOnce(EMPTY_STATUS) // 5
+      .mockResolvedValueOnce(EMPTY_JOURNEYS) // 6
+      .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 7
 
     const orders = await repository.getNodeOrders(
       SECOND_NODE_HASH,
       WALLET_ADDRESS,
     );
 
-    // Should NOT appear because SECOND_NODE_HASH has no supported assets
-    expect(orders.some((o) => o.id === '0xOldOrder')).toBe(false);
+    expect(orders.some((o) => o.id === '0xScopedOrder')).toBe(false);
   });
 
   it('should handle mixed CLOB + P2P results correctly', async () => {
@@ -547,9 +494,8 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
     });
 
     graphqlRequestMock
-      .mockResolvedValueOnce(EMPTY_SUPPORTED_ASSETS) // 0
       .mockResolvedValueOnce({
-        // 1: CLOB order with logistics
+        // 0: CLOB order with logistics
         created: { items: [clobEvent] },
         logistics: { items: [logisticsEvent] },
         journeyUpdates: { items: [] },
@@ -557,17 +503,17 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
       })
       .mockResolvedValueOnce({
         diamondP2POfferCreatedEventss: { items: [p2pCreated] },
-      }) // 2
-      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 3
+      }) // 1
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 2
       .mockResolvedValueOnce({
         diamondP2POfferCreatedEventss: { items: [p2pCreated] },
-      }) // 4
-      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 5
-      .mockResolvedValueOnce(EMPTY_STATUS) // 6
+      }) // 3
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 4
+      .mockResolvedValueOnce(EMPTY_STATUS) // 5
       .mockResolvedValueOnce({
         diamondJourneyCreatedEventss: { items: [journey] },
-      }) // 7
-      .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 8
+      }) // 6
+      .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 7
 
     const orders = await repository.getNodeOrders(NODE_HASH, WALLET_ADDRESS);
 
@@ -596,9 +542,9 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
 
     await repository.getNodeOrders(NODE_HASH, WALLET_ADDRESS);
 
-    // Call index 2 is GET_P2P_OFFERS_BY_CREATOR
-    // (0=assets, 1=unified, 2=p2p creator)
-    const creatorCall = graphqlRequestMock.mock.calls[2];
+    // Call index 1 is GET_P2P_OFFERS_BY_CREATOR
+    // (0=unified, 1=p2p creator)
+    const creatorCall = graphqlRequestMock.mock.calls[1];
     expect(creatorCall).toBeDefined();
     const variables = creatorCall[2];
     expect(variables.creator).toBe(WALLET_ADDRESS);
@@ -612,20 +558,44 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
     });
 
     graphqlRequestMock
-      .mockResolvedValueOnce(EMPTY_SUPPORTED_ASSETS) // 0
-      .mockResolvedValueOnce(EMPTY_UNIFIED) // 1
-      .mockResolvedValueOnce(EMPTY_P2P_CREATED) // 2: no results for owner
-      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 3
+      .mockResolvedValueOnce(EMPTY_UNIFIED) // 0
+      .mockResolvedValueOnce(EMPTY_P2P_CREATED) // 1: no results for owner
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 2
       .mockResolvedValueOnce({
-        // 4: third party offer is visible globally but won't pass filter
+        // 3: third party offer is visible globally but won't pass filter
         diamondP2POfferCreatedEventss: { items: [thirdPartyOffer] },
       })
-      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 5
-      .mockResolvedValueOnce(EMPTY_STATUS) // 6
-      .mockResolvedValueOnce(EMPTY_JOURNEYS) // 7
-      .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 8
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 4
+      .mockResolvedValueOnce(EMPTY_STATUS) // 5
+      .mockResolvedValueOnce(EMPTY_JOURNEYS) // 6
+      .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 7
 
     const orders = await repository.getNodeOrders(NODE_HASH, WALLET_ADDRESS);
     expect(orders.some((o) => o.id === '0xThirdPartyOffer')).toBe(false);
+  });
+
+  it('should show newly created seller offers on the selected node via sellerNode fallback', async () => {
+    const p2pCreated = makeP2POfferCreatedEvent({
+      order_id: '0xFreshSellerOffer',
+    });
+    mockDiamond.getAuSysOrder.mockResolvedValueOnce({ sellerNode: NODE_HASH });
+
+    graphqlRequestMock
+      .mockResolvedValueOnce(EMPTY_UNIFIED) // 0
+      .mockResolvedValueOnce({
+        diamondP2POfferCreatedEventss: { items: [p2pCreated] },
+      }) // 1
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 2
+      .mockResolvedValueOnce({
+        diamondP2POfferCreatedEventss: { items: [p2pCreated] },
+      }) // 3
+      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 4
+      .mockResolvedValueOnce(EMPTY_STATUS) // 5
+      .mockResolvedValueOnce(EMPTY_JOURNEYS) // 6
+      .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 7
+
+    const orders = await repository.getNodeOrders(NODE_HASH, WALLET_ADDRESS);
+
+    expect(orders.some((o) => o.id === '0xFreshSellerOffer')).toBe(true);
   });
 });
