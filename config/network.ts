@@ -1,3 +1,9 @@
+import {
+  NEXT_PUBLIC_RPC_URL_42161,
+  NEXT_PUBLIC_RPC_URL_8453,
+  NEXT_PUBLIC_RPC_URL_84532,
+} from '@/chain-constants';
+
 // Keep chain IDs as numbers for simpler comparison
 export const SUPPORTED_CHAINS = [
   42161, // Arbitrum One
@@ -18,18 +24,41 @@ interface NetworkConfig {
   blockExplorer: string;
 }
 
-// Helper function to get RPC URL from environment or fallback to default
-const getRpcUrl = (chainId: number, fallback: string): string => {
-  const envKey = `NEXT_PUBLIC_RPC_URL_${chainId}`;
-  return process.env[envKey] || fallback;
+const EXPLICIT_RPC_URLS: Record<number, string> = {
+  42161: NEXT_PUBLIC_RPC_URL_42161,
+  84532: NEXT_PUBLIC_RPC_URL_84532,
+  8453: NEXT_PUBLIC_RPC_URL_8453,
 };
+
+// Helper function to get RPC URL from explicit public env constants first.
+// Dynamic process.env access is unreliable in client bundles.
+const getRpcUrl = (chainId: number, fallback: string): string => {
+  return EXPLICIT_RPC_URLS[chainId] || fallback;
+};
+
+export function getPublicRpcConfigurationError(
+  chainId: number | null | undefined,
+): string | null {
+  if (!chainId) return null;
+
+  const networkConfig = NETWORK_CONFIGS[chainId];
+  if (!networkConfig) {
+    return `Unsupported public chain: ${chainId}.`;
+  }
+
+  if (!networkConfig.rpcUrl) {
+    return `Public RPC is not configured for ${networkConfig.name}. Set NEXT_PUBLIC_RPC_URL_${chainId}.`;
+  }
+
+  return null;
+}
 
 // Keep numeric keys for network configs since they're used for display/RPC
 export const NETWORK_CONFIGS: { [chainId: number]: NetworkConfig } = {
   42161: {
     chainId: 42161,
     name: 'Arbitrum One',
-    rpcUrl: getRpcUrl(42161, 'https://arb1.arbitrum.io/rpc'),
+    rpcUrl: getRpcUrl(42161, ''),
     currency: {
       name: 'Ethereum',
       symbol: 'ETH',

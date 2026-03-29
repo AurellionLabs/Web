@@ -28,12 +28,17 @@ const FALLBACK_QUOTE_TOKEN_METADATA: QuoteTokenMetadata = {
 export function useQuoteTokenMetadata(): QuoteTokenMetadata & {
   refresh: () => Promise<QuoteTokenMetadata>;
 } {
-  const { p2pService } = useDiamond();
+  const { p2pService, isReadOnly } = useDiamond();
   const [metadata, setMetadata] = useState<QuoteTokenMetadata>(
     FALLBACK_QUOTE_TOKEN_METADATA,
   );
 
   const refresh = useCallback(async (): Promise<QuoteTokenMetadata> => {
+    if (isReadOnly) {
+      setMetadata(FALLBACK_QUOTE_TOKEN_METADATA);
+      return FALLBACK_QUOTE_TOKEN_METADATA;
+    }
+
     const service = p2pService as P2PServiceWithQuoteTokenMetadata | null;
     if (!service || typeof service.getQuoteTokenMetadata !== 'function') {
       setMetadata(FALLBACK_QUOTE_TOKEN_METADATA);
@@ -52,11 +57,16 @@ export function useQuoteTokenMetadata(): QuoteTokenMetadata & {
       setMetadata(FALLBACK_QUOTE_TOKEN_METADATA);
       return FALLBACK_QUOTE_TOKEN_METADATA;
     }
-  }, [p2pService]);
+  }, [isReadOnly, p2pService]);
 
   useEffect(() => {
+    if (isReadOnly) {
+      setMetadata(FALLBACK_QUOTE_TOKEN_METADATA);
+      return;
+    }
+
     void refresh();
-  }, [refresh]);
+  }, [isReadOnly, refresh]);
 
   return {
     ...metadata,

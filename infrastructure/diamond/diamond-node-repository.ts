@@ -117,6 +117,20 @@ function mapOrderStatus(status: AggregatedUnifiedOrder['status']): OrderStatus {
   }
 }
 
+function isRpcTransportError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+
+  return (
+    message.includes('Too Many Requests') ||
+    message.includes('missing response for request') ||
+    message.includes('BAD_DATA') ||
+    message.includes('failed to detect network') ||
+    message.includes('Failed to fetch') ||
+    message.includes('ERR_FAILED') ||
+    message.includes('Public RPC is not configured')
+  );
+}
+
 /**
  * Diamond-based implementation of NodeRepository
  * Uses Diamond proxy for on-chain queries and GraphQL for indexed data
@@ -124,7 +138,7 @@ function mapOrderStatus(status: AggregatedUnifiedOrder['status']): OrderStatus {
 export class DiamondNodeRepository implements NodeRepository {
   private context: DiamondContext;
   private get graphQLEndpoint() {
-    return getCurrentIndexerUrl();
+    return getCurrentIndexerUrl(this.context.getChainId());
   }
   private pinata: PinataSDK | null = null;
 
@@ -267,7 +281,7 @@ export class DiamondNodeRepository implements NodeRepository {
       };
 
       const resp = await graphqlRequest<MintedResp>(
-        getCurrentIndexerUrl(),
+        getCurrentIndexerUrl(this.context.getChainId()),
         GET_MINTED_ASSET_CLASS_BY_TOKEN_IDS,
         { tokenIds: [tokenId], limit: 1 },
       );
@@ -453,6 +467,10 @@ export class DiamondNodeRepository implements NodeRepository {
       };
     } catch (error) {
       console.error('[DiamondNodeRepository] Error getting node:', error);
+      if (isRpcTransportError(error)) {
+        throw error;
+      }
+
       return null;
     }
   }
@@ -472,6 +490,9 @@ export class DiamondNodeRepository implements NodeRepository {
         '[DiamondNodeRepository] Error getting owned nodes:',
         error,
       );
+      if (isRpcTransportError(error)) {
+        throw error;
+      }
       return [];
     }
   }

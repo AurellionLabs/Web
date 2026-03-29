@@ -228,9 +228,7 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
       // Check if Diamond is initialized
       if (!diamondInitialized) {
         console.warn('Diamond not initialized, cannot select node');
-        throw new Error(
-          'Diamond not initialized. Please ensure wallet is connected.',
-        );
+        throw new Error('Node data is still initializing. Please try again.');
       }
 
       setLoading(true);
@@ -320,6 +318,10 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
     setOrders([]);
     setAssets([]);
     setSupportingDocuments([]);
+    setLoading(false);
+    setOrdersLoading(false);
+    setAssetsLoading(false);
+    setDocumentsLoading(false);
     setError(null);
   }, []);
 

@@ -38,6 +38,12 @@ const nextConfig = {
         'process.env.NEXT_PUBLIC_RPC_URL_84532': JSON.stringify(
           process.env.NEXT_PUBLIC_RPC_URL_84532 ?? '',
         ),
+        'process.env.NEXT_PUBLIC_RPC_URL_42161': JSON.stringify(
+          process.env.NEXT_PUBLIC_RPC_URL_42161 ?? '',
+        ),
+        'process.env.NEXT_PUBLIC_RPC_URL_8453': JSON.stringify(
+          process.env.NEXT_PUBLIC_RPC_URL_8453 ?? '',
+        ),
       }),
     );
     // Add a rule to handle typechain-types

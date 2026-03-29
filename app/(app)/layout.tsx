@@ -1,5 +1,6 @@
 'use client';
 
+import { usePathname, useSearchParams } from 'next/navigation';
 import { RepositoryProvider } from '@/app/providers/RepositoryProvider';
 import { PlatformProvider } from '@/app/providers/platform.provider';
 import { NodesProvider } from '@/app/providers/nodes.provider';
@@ -8,12 +9,14 @@ import { CustomerProvider } from '@/app/providers/customer.provider';
 import { DriverProvider } from '@/app/providers/driver.provider';
 import { TradeProvider } from '@/app/providers/trade.provider';
 import { SettlementGate } from '@/app/components/settlement/SettlementGate';
+import { useWallet } from '@/hooks/useWallet';
 
 /**
- * (app) route group layout — authenticated routes only.
+ * (app) route group layout.
  *
- * This layout wraps customer/, node/, and driver/ routes with
- * the full provider stack that requires wallet connection.
+ * Most routes use the full authenticated provider stack, but the
+ * public node explorer and view-only node dashboard intentionally
+ * bypass wallet-gated providers so they are accessible anonymously.
  * The landing page (app/page.tsx) sits outside this group
  * and renders without requiring authentication.
  *
@@ -22,6 +25,25 @@ import { SettlementGate } from '@/app/components/settlement/SettlementGate';
  * an order settles while the buyer is offline (driver signs last).
  */
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { isConnected } = useWallet();
+
+  const isPublicNodeExplorer = pathname === '/node/explorer';
+  const isPublicNodeDashboard =
+    pathname === '/node/dashboard' &&
+    (searchParams.get('view') === 'public' || !isConnected);
+
+  if (isPublicNodeExplorer || isPublicNodeDashboard) {
+    return (
+      <PlatformProvider>
+        <NodesProvider>
+          <SelectedNodeProvider>{children}</SelectedNodeProvider>
+        </NodesProvider>
+      </PlatformProvider>
+    );
+  }
+
   return (
     <RepositoryProvider>
       <PlatformProvider>
