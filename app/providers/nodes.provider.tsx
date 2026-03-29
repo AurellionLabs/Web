@@ -59,7 +59,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
 
       try {
         // Get node hashes owned by wallet from Diamond
-        const ownedNodeHashes = await getDiamondOwnedNodes();
+        const ownedNodeHashes = await getDiamondOwnedNodes(walletAddress);
 
         // Load full node data for each hash
         const nodeDataPromises = ownedNodeHashes.map((nodeHash) =>
