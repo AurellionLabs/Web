@@ -57,7 +57,7 @@ interface DiamondContextType {
   // Node operations
   registerNode: (nodeData: Node) => Promise<string>;
   getNode: (nodeHash: string) => Promise<Node | null>;
-  getOwnedNodes: () => Promise<string[]>;
+  getOwnedNodes: (ownerAddress?: string) => Promise<string[]>;
   updateNodeStatus: (
     nodeHash: string,
     status: 'Active' | 'Inactive',
@@ -301,12 +301,16 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     [nodeRepository],
   );
 
-  const getOwnedNodes = useCallback(async (): Promise<string[]> => {
-    if (!nodeRepository || !address) {
-      return [];
-    }
-    return nodeRepository.getOwnedNodes(address);
-  }, [nodeRepository, address]);
+  const getOwnedNodes = useCallback(
+    async (ownerAddress?: string): Promise<string[]> => {
+      const queryAddress = ownerAddress ?? address;
+      if (!nodeRepository || !queryAddress) {
+        return [];
+      }
+      return nodeRepository.getOwnedNodes(queryAddress);
+    },
+    [nodeRepository, address],
+  );
 
   const updateNodeStatus = useCallback(
     async (nodeHash: string, status: 'Active' | 'Inactive'): Promise<void> => {

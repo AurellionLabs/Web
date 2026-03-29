@@ -271,10 +271,6 @@ export default function CreateP2POfferPage() {
     return selectedSellNode?.assets || [];
   }, [selectedSellNode]);
 
-  const selectedSellNodeOwnerAddress = useMemo(() => {
-    return selectedSellNode?.ownerAddress || '';
-  }, [selectedSellNode]);
-
   // Derive unique asset classes the user actually owns (for sell class dropdown)
   const ownedAssetClasses = useMemo(() => {
     const classes = new Set<string>();
@@ -651,10 +647,6 @@ export default function CreateP2POfferPage() {
             )
           : selectedTokenId;
 
-      const selectedNodeAddresses =
-        formData.offerType === 'sell' && selectedSellNodeOwnerAddress
-          ? [selectedSellNodeOwnerAddress]
-          : undefined;
       const selectedPickupNodeRef =
         formData.offerType === 'sell'
           ? String(selectedSellNode?.nodeHash || '').trim()
@@ -674,7 +666,6 @@ export default function CreateP2POfferPage() {
         quantity: BigInt(formData.quantity),
         price: parseUnits(formData.price, quoteTokenMetadata.decimals),
         isSellOffer: formData.offerType === 'sell',
-        nodes: selectedNodeAddresses,
         pickupNodeRef: selectedPickupNodeRef,
         targetCounterparty:
           formData.targetType === 'targeted'
@@ -708,7 +699,6 @@ export default function CreateP2POfferPage() {
     selectedAsset,
     selectedBuyFilters,
     selectedSellNode,
-    selectedSellNodeOwnerAddress,
     classAssets,
     validateDetailsStep,
     refreshQuoteTokenMetadata,
