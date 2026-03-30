@@ -6,7 +6,7 @@ const SUPPORTED_PUBLIC_NODE_CHAIN_IDS = [84532, 42161] as const;
 export type PublicNodeChainId =
   (typeof SUPPORTED_PUBLIC_NODE_CHAIN_IDS)[number];
 
-type SearchParamsLike = {
+export type SearchParamsLike = {
   get(name: string): string | null;
 };
 
@@ -45,6 +45,29 @@ export function resolvePublicNodeChain(searchParams: SearchParamsLike): {
   error: string | null;
   wasDefaulted: boolean;
 } {
+  const rawChainId = searchParams.get('chainId');
+
+  if (rawChainId !== null) {
+    const parsedChainId = Number(rawChainId);
+
+    if (
+      !Number.isInteger(parsedChainId) ||
+      !isSupportedPublicNodeChainId(parsedChainId)
+    ) {
+      return {
+        chainId: null,
+        error: `Unsupported public chain: ${rawChainId}.`,
+        wasDefaulted: false,
+      };
+    }
+
+    return {
+      chainId: parsedChainId,
+      error: null,
+      wasDefaulted: false,
+    };
+  }
+
   if (DEFAULT_PUBLIC_NODE_EXPLORER_CHAIN_ID === null) {
     return {
       chainId: null,
@@ -53,12 +76,9 @@ export function resolvePublicNodeChain(searchParams: SearchParamsLike): {
     };
   }
 
-  const rawChainId = searchParams.get('chainId');
-  const wasDefaulted = rawChainId !== String(DEFAULT_PUBLIC_NODE_EXPLORER_CHAIN_ID);
-
   return {
     chainId: DEFAULT_PUBLIC_NODE_EXPLORER_CHAIN_ID,
     error: null,
-    wasDefaulted,
+    wasDefaulted: true,
   };
 }
