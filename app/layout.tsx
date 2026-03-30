@@ -7,7 +7,6 @@ import {
 import './globals.css';
 import { MainProvider } from './providers/main.provider';
 import { ClientLayout } from '@/app/components/layout/client-layout';
-import { DiamondProvider } from './providers/diamond.provider';
 import { PrivyProviderWrapper } from './providers/privy.provider';
 import { Toaster } from './components/ui/toaster';
 import { getMetadataBase, getSiteUrl } from '@/lib/site-url';
@@ -164,10 +163,8 @@ export default function RootLayout({
       <body className={`${plusJakartaSans.className} antialiased`}>
         <PrivyProviderWrapper>
           <MainProvider>
-            <DiamondProvider>
-              <ClientLayout>{children}</ClientLayout>
-              <Toaster />
-            </DiamondProvider>
+            <ClientLayout>{children}</ClientLayout>
+            <Toaster />
           </MainProvider>
         </PrivyProviderWrapper>
       </body>

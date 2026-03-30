@@ -108,6 +108,38 @@ function makeP2PAcceptedEvent(overrides: Record<string, any> = {}) {
   };
 }
 
+function makeJourneyCreatedEvent(overrides: Record<string, any> = {}) {
+  return {
+    id: 'journey-1',
+    journey_id: '0xJourneyP2P1',
+    sender: '0xSender1',
+    receiver: '0xReceiver1',
+    driver: '0xDriver1',
+    bounty: '25',
+    e_t_a: '1700060600',
+    order_id: '0xP2P1',
+    block_number: '260',
+    block_timestamp: '1700060500',
+    transaction_hash: '0xJourneyTx1',
+    ...overrides,
+  };
+}
+
+function makeJourneyStatusUpdateEvent(overrides: Record<string, any> = {}) {
+  return {
+    id: 'journey-status-1',
+    journey_id: '0xJourneyP2P1',
+    new_status: '2',
+    sender: '0xSender1',
+    receiver: '0xReceiver1',
+    driver: '0xDriver1',
+    block_number: '261',
+    block_timestamp: '1700060700',
+    transaction_hash: '0xJourneyStatusTx1',
+    ...overrides,
+  };
+}
+
 // Empty responses
 //
 // EMPTY_UNIFIED_SINGLE: for queries that return a single collection
@@ -387,6 +419,115 @@ describe('OrderRepository', () => {
       const ids = orders.map((o) => o.id);
       const unique = new Set(ids);
       expect(unique.size).toBe(ids.length);
+    });
+  });
+
+  // =====================================================================
+  // getUnifiedOrderById
+  // =====================================================================
+  describe('getUnifiedOrderById', () => {
+    it('should return a unified order for a specific order id', async () => {
+      const orderEvent = makeUnifiedOrderEvent();
+      const logEvent = makeLogisticsEvent({ node: '0xNodeSpecific' });
+
+      graphqlRequestMock
+        .mockResolvedValueOnce({
+          diamondUnifiedOrderCreatedEventss: { items: [orderEvent] },
+        })
+        .mockResolvedValueOnce({
+          diamondLogisticsOrderCreatedEventss: { items: [logEvent] },
+        });
+
+      const order = await repo.getUnifiedOrderById('0xOrder1');
+
+      expect(order).not.toBeNull();
+      expect(order?.id).toBe('0xorder1');
+      expect(order?.nodes).toContain('0xNodeSpecific');
+    });
+
+    it('should return null when the unified order does not exist', async () => {
+      graphqlRequestMock
+        .mockResolvedValueOnce(EMPTY_UNIFIED)
+        .mockResolvedValueOnce(EMPTY_LOGISTICS);
+
+      const order = await repo.getUnifiedOrderById('0xMissingUnified');
+      expect(order).toBeNull();
+    });
+  });
+
+  // =====================================================================
+  // getP2POrderById
+  // =====================================================================
+  describe('getP2POrderById', () => {
+    it('should return a P2P order for a created order id', async () => {
+      const created = makeP2PCreatedEvent();
+      const journey = makeJourneyCreatedEvent({ order_id: created.order_id });
+      const journeyStatus = makeJourneyStatusUpdateEvent({
+        journey_id: journey.journey_id,
+      });
+
+      graphqlRequestMock
+        .mockResolvedValueOnce({
+          diamondP2POfferCreatedEventss: { items: [created] },
+        })
+        .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED)
+        .mockResolvedValueOnce(EMPTY_STATUS)
+        .mockResolvedValueOnce({
+          diamondJourneyCreatedEventss: { items: [journey] },
+        })
+        .mockResolvedValueOnce({
+          diamondAuSysJourneyStatusUpdatedEventss: { items: [journeyStatus] },
+        });
+
+      const order = await repo.getP2POrderById(created.order_id);
+
+      expect(order).not.toBeNull();
+      expect(order?.id).toBe(created.order_id);
+      expect(order?.isP2P).toBe(true);
+      expect(order?.seller).toBe(USER_ADDRESS);
+      expect(order?.buyer).toBe('0xCounterparty');
+      expect(order?.journeyIds).toEqual([journey.journey_id]);
+      expect(order?.journeyStatus).toBe(2);
+    });
+
+    it('should resolve buyer and seller correctly for an accepted buyer-initiated offer', async () => {
+      const created = makeP2PCreatedEvent({
+        order_id: '0xP2PAccepted1',
+        creator: '0xBuyerP2P',
+        is_seller_initiated: false,
+      });
+      const accepted = makeP2PAcceptedEvent({
+        order_id: created.order_id,
+        acceptor: '0xSellerP2P',
+      });
+
+      graphqlRequestMock
+        .mockResolvedValueOnce({
+          diamondP2POfferCreatedEventss: { items: [created] },
+        })
+        .mockResolvedValueOnce({
+          diamondP2POfferAcceptedEventss: { items: [accepted] },
+        })
+        .mockResolvedValueOnce(EMPTY_STATUS)
+        .mockResolvedValueOnce(EMPTY_JOURNEYS_BY_ORDER);
+
+      const order = await repo.getP2POrderById(created.order_id);
+
+      expect(order).not.toBeNull();
+      expect(order?.buyer).toBe('0xbuyerp2p');
+      expect(order?.seller).toBe('0xSellerP2P');
+      expect(order?.isP2P).toBe(true);
+    });
+
+    it('should return null when the P2P order does not exist', async () => {
+      graphqlRequestMock
+        .mockResolvedValueOnce(EMPTY_P2P_CREATED)
+        .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED)
+        .mockResolvedValueOnce(EMPTY_STATUS)
+        .mockResolvedValueOnce(EMPTY_JOURNEYS_BY_ORDER);
+
+      const order = await repo.getP2POrderById('0xMissingP2P');
+      expect(order).toBeNull();
     });
   });
 

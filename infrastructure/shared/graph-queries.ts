@@ -1494,11 +1494,86 @@ export const GET_P2P_OFFER_DETAILS_BY_ORDER_IDS = gql`
 `;
 
 /**
+ * Get a specific P2P offer by order ID.
+ */
+export const GET_P2P_OFFER_BY_ORDER_ID = gql`
+  query GetP2POfferByOrderId($orderId: String!) {
+    diamondP2POfferCreatedEventss(where: { order_id: $orderId }, limit: 1) {
+      items {
+        id
+        order_id
+        creator
+        is_seller_initiated
+        token
+        token_id
+        token_quantity
+        price
+        target_counterparty
+        expires_at
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;
+
+/**
+ * Get P2P accept events for a specific order ID.
+ */
+export const GET_P2P_ACCEPTED_EVENTS_BY_ORDER_ID = gql`
+  query GetP2PAcceptedEventsByOrderId($orderId: String!, $limit: Int = 50) {
+    diamondP2POfferAcceptedEventss(
+      where: { order_id: $orderId }
+      limit: $limit
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        order_id
+        acceptor
+        is_seller_initiated
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;
+
+/**
  * Get AuSys order status updates (to determine current status of P2P orders).
  */
 export const GET_AUSYS_ORDER_STATUS_UPDATES = gql`
   query GetAuSysOrderStatusUpdates($limit: Int = 500) {
     diamondAuSysOrderStatusUpdatedEventss(
+      limit: $limit
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        order_id
+        new_status
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;
+
+/**
+ * Get AuSys order status updates for a specific order ID.
+ */
+export const GET_AUSYS_ORDER_STATUS_UPDATES_BY_ORDER_ID = gql`
+  query GetAuSysOrderStatusUpdatesByOrderId(
+    $orderId: String!
+    $limit: Int = 50
+  ) {
+    diamondAuSysOrderStatusUpdatedEventss(
+      where: { order_id: $orderId }
       limit: $limit
       orderBy: "block_timestamp"
       orderDirection: "desc"
@@ -1570,7 +1645,21 @@ export interface P2POfferDetailsResponse {
   diamondP2POfferCreatedEventss: { items: P2POfferCreatedRawEvent[] };
 }
 
+export interface P2POfferByOrderIdResponse {
+  diamondP2POfferCreatedEventss: { items: P2POfferCreatedRawEvent[] };
+}
+
 export interface AuSysOrderStatusUpdatesResponse {
+  diamondAuSysOrderStatusUpdatedEventss: {
+    items: AuSysOrderStatusUpdatedRawEvent[];
+  };
+}
+
+export interface P2PAcceptedEventsByOrderIdResponse {
+  diamondP2POfferAcceptedEventss: { items: P2POfferAcceptedRawEvent[] };
+}
+
+export interface AuSysOrderStatusUpdatesByOrderIdResponse {
   diamondAuSysOrderStatusUpdatedEventss: {
     items: AuSysOrderStatusUpdatedRawEvent[];
   };
@@ -1609,11 +1698,68 @@ export const GET_JOURNEYS_BY_ORDER = gql`
 `;
 
 /**
+ * Get journeys linked to a specific AuSys order.
+ */
+export const GET_P2P_JOURNEYS_BY_ORDER_ID = gql`
+  query GetP2PJourneysByOrderId($orderId: String!, $limit: Int = 50) {
+    diamondJourneyCreatedEventss(
+      where: { order_id: $orderId }
+      limit: $limit
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        journey_id
+        sender
+        receiver
+        driver
+        bounty
+        e_t_a
+        order_id
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;
+
+/**
  * Get journey status updates to determine current journey phase.
  */
 export const GET_JOURNEY_STATUS_UPDATES_ALL = gql`
   query GetJourneyStatusUpdatesAll($limit: Int = 500) {
     diamondAuSysJourneyStatusUpdatedEventss(
+      limit: $limit
+      orderBy: "block_timestamp"
+      orderDirection: "desc"
+    ) {
+      items {
+        id
+        journey_id
+        new_status
+        sender
+        receiver
+        driver
+        block_number
+        block_timestamp
+        transaction_hash
+      }
+    }
+  }
+`;
+
+/**
+ * Get journey status updates for a specific set of journey IDs.
+ */
+export const GET_JOURNEY_STATUS_UPDATES_BY_IDS = gql`
+  query GetJourneyStatusUpdatesByIds(
+    $journeyIds: [String!]!
+    $limit: Int = 100
+  ) {
+    diamondAuSysJourneyStatusUpdatedEventss(
+      where: { journey_id_in: $journeyIds }
       limit: $limit
       orderBy: "block_timestamp"
       orderDirection: "desc"
@@ -1697,7 +1843,17 @@ export interface JourneysByOrderResponse {
   diamondJourneyCreatedEventss: { items: JourneyCreatedForOrderRawEvent[] };
 }
 
+export interface P2PJourneysByOrderIdResponse {
+  diamondJourneyCreatedEventss: { items: JourneyCreatedForOrderRawEvent[] };
+}
+
 export interface JourneyStatusUpdatesAllResponse {
+  diamondAuSysJourneyStatusUpdatedEventss: {
+    items: JourneyStatusUpdateRawEvent[];
+  };
+}
+
+export interface JourneyStatusUpdatesByIdsResponse {
   diamondAuSysJourneyStatusUpdatedEventss: {
     items: JourneyStatusUpdateRawEvent[];
   };

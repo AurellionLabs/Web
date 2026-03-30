@@ -8,7 +8,7 @@ import {
   useCallback,
   useEffect,
 } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Node } from '@/domain/node/node';
 import { useWallet } from '@/hooks/useWallet';
 import { useMainProvider } from './main.provider';
@@ -39,6 +39,11 @@ export function NodesProvider({ children }: { children: ReactNode }) {
   const { address } = useWallet();
   const { connected } = useMainProvider();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const isPublicReadOnlyRoute =
+    pathname === '/node/explorer' ||
+    (pathname === '/node/dashboard' && searchParams.get('view') === 'public');
 
   // Use Diamond system for node management
   const {
@@ -59,7 +64,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
 
       try {
         // Get node hashes owned by wallet from Diamond
-        const ownedNodeHashes = await getDiamondOwnedNodes();
+        const ownedNodeHashes = await getDiamondOwnedNodes(walletAddress);
 
         // Load full node data for each hash
         const nodeDataPromises = ownedNodeHashes.map((nodeHash) =>
@@ -91,7 +96,7 @@ export function NodesProvider({ children }: { children: ReactNode }) {
         return await getDiamondNode(nodeHash);
       } catch (err) {
         console.error('[NodesProvider] Error getting node from Diamond:', err);
-        return null;
+        throw err;
       }
     },
     [diamondInitialized, getDiamondNode],
@@ -139,10 +144,16 @@ export function NodesProvider({ children }: { children: ReactNode }) {
 
   // Load nodes when wallet connects
   useEffect(() => {
-    if (connected && address && diamondInitialized) {
+    if (!isPublicReadOnlyRoute && connected && address && diamondInitialized) {
       loadNodes(address);
     }
-  }, [connected, address, diamondInitialized, loadNodes]);
+  }, [
+    connected,
+    address,
+    diamondInitialized,
+    isPublicReadOnlyRoute,
+    loadNodes,
+  ]);
 
   const value: NodesContextType = {
     // State

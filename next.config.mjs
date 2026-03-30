@@ -23,9 +23,11 @@ const nextConfig = {
     unoptimized: true,
   },
   experimental: {
-    webpackBuildWorker: true,
-    parallelServerBuildTraces: true,
-    parallelServerCompiles: true,
+    // These parallel build features are currently causing incomplete route
+    // manifests during production builds in this app.
+    webpackBuildWorker: false,
+    parallelServerBuildTraces: false,
+    parallelServerCompiles: false,
   },
   webpack: (config, { isServer, webpack }) => {
     // Force-inline NEXT_PUBLIC_* vars so they work even with webpackBuildWorker
@@ -37,6 +39,12 @@ const nextConfig = {
         ),
         'process.env.NEXT_PUBLIC_RPC_URL_84532': JSON.stringify(
           process.env.NEXT_PUBLIC_RPC_URL_84532 ?? '',
+        ),
+        'process.env.NEXT_PUBLIC_RPC_URL_42161': JSON.stringify(
+          process.env.NEXT_PUBLIC_RPC_URL_42161 ?? '',
+        ),
+        'process.env.NEXT_PUBLIC_RPC_URL_8453': JSON.stringify(
+          process.env.NEXT_PUBLIC_RPC_URL_8453 ?? '',
         ),
       }),
     );

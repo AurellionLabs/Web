@@ -31,7 +31,7 @@ export class PlatformRepository implements IPlatformRepository {
   pinata: PinataSDK | null;
   private chainId: number;
   private get graphEndpoint() {
-    return getCurrentIndexerUrl();
+    return getCurrentIndexerUrl(this.chainId || undefined);
   }
   private processedTokenIds = new Set<string>();
   private assetByTokenIdCache = new Map<string, Asset | null>();
