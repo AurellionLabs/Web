@@ -246,6 +246,58 @@ describe('aggregateP2POrdersForUser with journey data', () => {
     expect(orders[0].journeyStatus).toBe(2); // Delivered (latest)
   });
 
+  it('should set updatedAt from the latest lifecycle event', () => {
+    const orderId = '0x01';
+    const journeyId = '0xjourney_latest_update';
+    const created = [
+      makeCreatedEvent({
+        order_id: orderId,
+        creator: USER_ADDR,
+        block_timestamp: '1700000000',
+      }),
+    ];
+    const accepted = [
+      makeAcceptedEvent({
+        order_id: orderId,
+        block_timestamp: '1700000100',
+      }),
+    ];
+    const statuses = [
+      makeStatusUpdate({
+        order_id: orderId,
+        block_timestamp: '1700000200',
+      }),
+    ];
+    const journeys = [
+      makeJourneyCreated({
+        order_id: orderId,
+        journey_id: journeyId,
+        block_timestamp: '1700000300',
+      }),
+    ];
+    const journeyStatuses = [
+      makeJourneyStatusUpdate({
+        journey_id: journeyId,
+        new_status: '1',
+        block_timestamp: '1700000400',
+      }),
+    ];
+
+    const orders = aggregateP2POrdersForUser(
+      created,
+      accepted,
+      created,
+      accepted,
+      statuses,
+      USER_ADDR,
+      journeys,
+      journeyStatuses,
+    );
+
+    expect(orders).toHaveLength(1);
+    expect(orders[0].updatedAt).toBe(1700000400);
+  });
+
   it('should handle accepted orders with journey data', () => {
     const orderId = '0x02';
     const journeyId = '0xjourney_ghi';

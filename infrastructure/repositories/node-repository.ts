@@ -130,6 +130,8 @@ function aggregatedUnifiedOrderToDomain(
     locationData: undefined,
     currentStatus: mapOrderStatus(order.status),
     contractualAgreement: '',
+    createdAt: Number(order.createdAt) || 0,
+    updatedAt: Number(order.updatedAt) || Number(order.createdAt) || 0,
   };
 }
 

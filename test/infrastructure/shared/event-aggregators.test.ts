@@ -496,23 +496,22 @@ describe('aggregateUnifiedOrders', () => {
   });
 
   it('should transition to matched when logistics are created', () => {
+    const created = {
+      ...makeBaseEvent({ block_timestamp: '1000' }),
+      unified_order_id: '0xunified1',
+      clob_order_id: '0xclob1',
+      buyer: '0xbuyer',
+      seller: '0xseller',
+      token: '0xtoken',
+      token_id: '1',
+      quantity: '100',
+      price: '1000',
+    };
     const sources: UnifiedOrderEventSources = {
-      created: [
-        {
-          ...makeBaseEvent(),
-          unified_order_id: '0xunified1',
-          clob_order_id: '0xclob1',
-          buyer: '0xbuyer',
-          seller: '0xseller',
-          token: '0xtoken',
-          token_id: '1',
-          quantity: '100',
-          price: '1000',
-        },
-      ],
+      created: [created],
       logistics: [
         {
-          ...makeBaseEvent(),
+          ...makeBaseEvent({ block_timestamp: '1500' }),
           unified_order_id: '0xunified1',
           ausys_order_id: '0xausys1',
           journey_ids: '0xjourney1',
@@ -526,6 +525,7 @@ describe('aggregateUnifiedOrders', () => {
 
     const result = aggregateUnifiedOrders(sources);
     expect(result[0].status).toBe('matched');
+    expect(result[0].updatedAt).toBe('1500');
   });
 
   it('should transition to settled when settlement event occurs', () => {

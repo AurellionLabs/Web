@@ -63,6 +63,7 @@ import {
   SupportedAssetAddedEvent,
 } from '@/infrastructure/shared/indexer-types';
 import { OrderStatus } from '@/domain/orders/order';
+import { sortOrdersWithPinnedActivity } from '@/lib/order-sorting';
 
 interface GraphQLResponse<T> {
   items: T[];
@@ -99,6 +100,7 @@ function aggregatedUnifiedOrderToDomain(
     currentStatus: mapOrderStatus(order.status),
     contractualAgreement: '',
     createdAt: Number(order.createdAt) || 0,
+    updatedAt: Number(order.updatedAt) || Number(order.createdAt) || 0,
   };
 }
 
@@ -857,9 +859,7 @@ export class DiamondNodeRepository implements NodeRepository {
         allOrders.push(order);
       }
 
-      allOrders.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
-
-      return allOrders;
+      return sortOrdersWithPinnedActivity(allOrders);
     } catch (error) {
       console.error(
         '[DiamondNodeRepository] Error getting node orders:',

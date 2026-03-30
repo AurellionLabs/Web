@@ -143,6 +143,8 @@ function aggregatedUnifiedOrderToDomain(
     locationData: undefined,
     currentStatus: mapOrderStatus(order.status),
     contractualAgreement: '',
+    createdAt: Number(order.createdAt) || 0,
+    updatedAt: Number(order.updatedAt) || Number(order.createdAt) || 0,
   };
 }
 
@@ -580,33 +582,29 @@ export class OrderRepository implements IOrderRepository {
     try {
       const orderIdStr = orderId.toString();
 
-      const [
-        createdResp,
-        acceptedResp,
-        statusResp,
-        journeysResp,
-      ] = await Promise.all([
-        graphqlRequest<P2POfferByOrderIdResponse>(
-          this.graphQLEndpoint,
-          GET_P2P_OFFER_BY_ORDER_ID,
-          { orderId: orderIdStr },
-        ),
-        graphqlRequest<P2PAcceptedEventsByOrderIdResponse>(
-          this.graphQLEndpoint,
-          GET_P2P_ACCEPTED_EVENTS_BY_ORDER_ID,
-          { orderId: orderIdStr, limit: 50 },
-        ),
-        graphqlRequest<AuSysOrderStatusUpdatesByOrderIdResponse>(
-          this.graphQLEndpoint,
-          GET_AUSYS_ORDER_STATUS_UPDATES_BY_ORDER_ID,
-          { orderId: orderIdStr, limit: 50 },
-        ),
-        graphqlRequest<P2PJourneysByOrderIdResponse>(
-          this.graphQLEndpoint,
-          GET_P2P_JOURNEYS_BY_ORDER_ID,
-          { orderId: orderIdStr, limit: 50 },
-        ),
-      ]);
+      const [createdResp, acceptedResp, statusResp, journeysResp] =
+        await Promise.all([
+          graphqlRequest<P2POfferByOrderIdResponse>(
+            this.graphQLEndpoint,
+            GET_P2P_OFFER_BY_ORDER_ID,
+            { orderId: orderIdStr },
+          ),
+          graphqlRequest<P2PAcceptedEventsByOrderIdResponse>(
+            this.graphQLEndpoint,
+            GET_P2P_ACCEPTED_EVENTS_BY_ORDER_ID,
+            { orderId: orderIdStr, limit: 50 },
+          ),
+          graphqlRequest<AuSysOrderStatusUpdatesByOrderIdResponse>(
+            this.graphQLEndpoint,
+            GET_AUSYS_ORDER_STATUS_UPDATES_BY_ORDER_ID,
+            { orderId: orderIdStr, limit: 50 },
+          ),
+          graphqlRequest<P2PJourneysByOrderIdResponse>(
+            this.graphQLEndpoint,
+            GET_P2P_JOURNEYS_BY_ORDER_ID,
+            { orderId: orderIdStr, limit: 50 },
+          ),
+        ]);
 
       const created = createdResp.diamondP2POfferCreatedEventss?.items[0];
       if (!created) {
