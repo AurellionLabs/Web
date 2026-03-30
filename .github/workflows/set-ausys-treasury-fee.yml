@@ -1,0 +1,89 @@
+name: Set AuSys Treasury Fee
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      network:
+        description: 'Network to update'
+        required: true
+        default: 'arbitrumOne'
+        type: choice
+        options:
+          - baseSepolia
+          - base
+          - sepolia
+          - arbitrumOne
+          - hyperliquid
+      bps:
+        description: 'Treasury fee in basis points (5 = 0.05%)'
+        required: true
+        default: '5'
+        type: string
+      dry_run:
+        description: 'Dry-run without sending transactions'
+        required: true
+        default: true
+        type: boolean
+      diamond_address:
+        description: 'Optional Diamond address override'
+        required: false
+        default: ''
+        type: string
+
+jobs:
+  set-ausys-treasury-fee:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Compile contracts
+        run: bunx --bun hardhat compile
+
+      - name: Generate ABIs & selectors
+        run: bun scripts/gen-all.ts
+
+      - name: Set AuSys treasury fee
+        env:
+          BASE_TEST_RPC_URL: https://lb.drpc.live/base-sepolia/AlCxy0Sf_0uwk16xDiJkYx08AntCBacR8bS5ehXRfUMv
+          SEP_PRIVATE_KEY: ${{ secrets.SEP_PRIVATE_KEY }}
+          PROD_PRIVATE_KEY: ${{ secrets.PROD_PRIVATE_KEY }}
+          ARB_RPC_URL: ${{ secrets.ARB_RPC_URL }}
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+          HYPE_RPC_URL: ${{ secrets.HYPE_RPC_URL }}
+          SEP_RPC_URL: ${{ secrets.SEP_RPC_URL }}
+          PRIVATE_KEY: ${{ secrets.SEP_PRIVATE_KEY }}
+          DIAMOND_ADDRESS: ${{ github.event.inputs.diamond_address }}
+        run: |
+          set -euo pipefail
+
+          NETWORK=${{ github.event.inputs.network }}
+          BPS=${{ github.event.inputs.bps }}
+          ARGS=("--bps" "${BPS}")
+
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            ARGS+=("--dry-run")
+          fi
+
+          if [ -n "${DIAMOND_ADDRESS}" ]; then
+            ARGS+=("--diamond" "${DIAMOND_ADDRESS}")
+          fi
+
+          HARDHAT_NETWORK="$NETWORK" bun scripts/set-ausys-treasury-fee.ts "${ARGS[@]}"
