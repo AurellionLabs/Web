@@ -36,6 +36,7 @@ import { useSelectedNode } from '@/app/providers/selected-node.provider';
 import { usePlatform } from '@/app/providers/platform.provider';
 import { OrderWithAsset } from '@/app/types/shared';
 import { formatTokenAmount } from '@/lib/formatters';
+import { sortOrdersWithPinnedActivity } from '@/lib/order-sorting';
 import { cn } from '@/lib/utils';
 import { useQuoteTokenMetadata } from '@/hooks/useQuoteTokenMetadata';
 import {
@@ -220,25 +221,25 @@ function OrdersContent({
       result = result.filter((order) => order.currentStatus === filters.status);
     }
 
-    if (sortConfig.key) {
-      result = [...result].sort((a, b) => {
-        if (sortConfig.key === 'quantity') {
-          const aQuantity = Number(a.tokenQuantity);
-          const bQuantity = Number(b.tokenQuantity);
-          return sortConfig.direction === 'asc'
-            ? aQuantity - bQuantity
-            : bQuantity - aQuantity;
-        }
-        if (sortConfig.key === 'value') {
+    const compareWithinGroup = sortConfig.key
+      ? (a: OrderWithAsset, b: OrderWithAsset) => {
+          if (sortConfig.key === 'quantity') {
+            const aQuantity = Number(a.tokenQuantity);
+            const bQuantity = Number(b.tokenQuantity);
+            return sortConfig.direction === 'asc'
+              ? aQuantity - bQuantity
+              : bQuantity - aQuantity;
+          }
+
           const aValue = parseFloat(a.price);
           const bValue = parseFloat(b.price);
           return sortConfig.direction === 'asc'
             ? aValue - bValue
             : bValue - aValue;
         }
-        return 0;
-      });
-    }
+      : undefined;
+
+    result = sortOrdersWithPinnedActivity(result, compareWithinGroup);
 
     setFilteredOrders(result);
     setCurrentPage(1);

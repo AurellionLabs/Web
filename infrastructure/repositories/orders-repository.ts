@@ -26,18 +26,28 @@ import {
   GET_P2P_OFFERS_ACCEPTED_BY_USER,
   GET_ALL_P2P_OFFER_ACCEPTED_EVENTS,
   GET_P2P_OFFER_DETAILS_BY_ORDER_IDS,
+  GET_P2P_OFFER_BY_ORDER_ID,
+  GET_P2P_ACCEPTED_EVENTS_BY_ORDER_ID,
   GET_AUSYS_ORDER_STATUS_UPDATES,
+  GET_AUSYS_ORDER_STATUS_UPDATES_BY_ORDER_ID,
   GET_JOURNEYS_BY_ORDER,
+  GET_P2P_JOURNEYS_BY_ORDER_ID,
   GET_JOURNEY_STATUS_UPDATES_ALL,
+  GET_JOURNEY_STATUS_UPDATES_BY_IDS,
 } from '../shared/graph-queries';
 import type {
   AllP2POfferAcceptedEventsResponse,
   P2POffersByCreatorResponse,
   P2POffersAcceptedByUserResponse,
   P2POfferDetailsResponse,
+  P2POfferByOrderIdResponse,
+  P2PAcceptedEventsByOrderIdResponse,
   AuSysOrderStatusUpdatesResponse,
+  AuSysOrderStatusUpdatesByOrderIdResponse,
   JourneysByOrderResponse,
+  P2PJourneysByOrderIdResponse,
   JourneyStatusUpdatesAllResponse,
+  JourneyStatusUpdatesByIdsResponse,
   // Aliased response type for GET_ALL_UNIFIED_ORDER_EVENTS (uses GQL aliases:
   // created / logistics / journeyUpdates / settled — NOT raw table names)
   UnifiedOrderEventsResponse as AllUnifiedOrderEventsResponse,
@@ -133,6 +143,8 @@ function aggregatedUnifiedOrderToDomain(
     locationData: undefined,
     currentStatus: mapOrderStatus(order.status),
     contractualAgreement: '',
+    createdAt: Number(order.createdAt) || 0,
+    updatedAt: Number(order.updatedAt) || Number(order.createdAt) || 0,
   };
 }
 
@@ -419,16 +431,16 @@ export class OrderRepository implements IOrderRepository {
         graphqlRequest<LogisticsEventsResponse>(
           this.graphQLEndpoint,
           `query GetLogisticsByJourneyId($journeyId: String!) {
-            diamondLogisticsOrderCreatedEventss(where: { journeyIds: $journeyId }, limit: 1) {
+            diamondLogisticsOrderCreatedEventss(where: { journey_ids: $journeyId }, limit: 1) {
               items {
                 id
-                unifiedOrderId
-                ausysOrderId
-                journeyIds
+                unified_order_id
+                ausys_order_id
+                journey_ids
                 bounty
                 node
-                blockTimestamp
-                transactionHash
+                block_timestamp
+                transaction_hash
               }
             }
           }`,
@@ -489,6 +501,145 @@ export class OrderRepository implements IOrderRepository {
     } catch (error) {
       handleContractError(error, `get order ID for journey ${journeyId}`);
       throw error;
+    }
+  }
+
+  async getUnifiedOrderById(orderId: BytesLike): Promise<Order | null> {
+    try {
+      const orderIdStr = orderId.toString();
+
+      const [orderResponse, logisticsResponse] = await Promise.all([
+        graphqlRequest<UnifiedOrderEventsResponse>(
+          this.graphQLEndpoint,
+          `query GetUnifiedOrderById($orderId: String!) {
+            diamondUnifiedOrderCreatedEventss(where: { unified_order_id: $orderId }, limit: 1) {
+              items {
+                id
+                unified_order_id
+                clob_order_id
+                buyer
+                seller
+                token
+                token_id
+                quantity
+                price
+                block_number
+                block_timestamp
+                transaction_hash
+              }
+            }
+          }`,
+          { orderId: orderIdStr },
+        ),
+        graphqlRequest<LogisticsEventsResponse>(
+          this.graphQLEndpoint,
+          `query GetUnifiedLogisticsByOrderId($orderId: String!) {
+            diamondLogisticsOrderCreatedEventss(where: { unified_order_id: $orderId }, limit: 1) {
+              items {
+                id
+                unified_order_id
+                ausys_order_id
+                journey_ids
+                bounty
+                node
+                block_timestamp
+              }
+            }
+          }`,
+          { orderId: orderIdStr },
+        ),
+      ]);
+
+      const order = orderResponse.diamondUnifiedOrderCreatedEventss?.items[0];
+      const logistics =
+        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items[0];
+
+      if (!order) {
+        return null;
+      }
+
+      const aggregatedOrders = aggregateUnifiedOrders({
+        created: [order],
+        logistics: logistics ? [logistics] : [],
+        journeyUpdates: [],
+        settled: [],
+      });
+
+      const aggregatedOrder = aggregatedOrders[0];
+      return aggregatedOrder
+        ? aggregatedUnifiedOrderToDomain(aggregatedOrder, logistics)
+        : null;
+    } catch (error) {
+      console.error(
+        '[OrderRepository] Error fetching unified order by ID:',
+        error,
+      );
+      return null;
+    }
+  }
+
+  async getP2POrderById(orderId: BytesLike): Promise<Order | null> {
+    try {
+      const orderIdStr = orderId.toString();
+
+      const [createdResp, acceptedResp, statusResp, journeysResp] =
+        await Promise.all([
+          graphqlRequest<P2POfferByOrderIdResponse>(
+            this.graphQLEndpoint,
+            GET_P2P_OFFER_BY_ORDER_ID,
+            { orderId: orderIdStr },
+          ),
+          graphqlRequest<P2PAcceptedEventsByOrderIdResponse>(
+            this.graphQLEndpoint,
+            GET_P2P_ACCEPTED_EVENTS_BY_ORDER_ID,
+            { orderId: orderIdStr, limit: 50 },
+          ),
+          graphqlRequest<AuSysOrderStatusUpdatesByOrderIdResponse>(
+            this.graphQLEndpoint,
+            GET_AUSYS_ORDER_STATUS_UPDATES_BY_ORDER_ID,
+            { orderId: orderIdStr, limit: 50 },
+          ),
+          graphqlRequest<P2PJourneysByOrderIdResponse>(
+            this.graphQLEndpoint,
+            GET_P2P_JOURNEYS_BY_ORDER_ID,
+            { orderId: orderIdStr, limit: 50 },
+          ),
+        ]);
+
+      const created = createdResp.diamondP2POfferCreatedEventss?.items[0];
+      if (!created) {
+        return null;
+      }
+
+      const journeyIds =
+        journeysResp.diamondJourneyCreatedEventss?.items.map(
+          (journey) => journey.journey_id,
+        ) || [];
+
+      const journeyStatusResp =
+        journeyIds.length > 0
+          ? await graphqlRequest<JourneyStatusUpdatesByIdsResponse>(
+              this.graphQLEndpoint,
+              GET_JOURNEY_STATUS_UPDATES_BY_IDS,
+              { journeyIds, limit: Math.max(journeyIds.length * 5, 20) },
+            )
+          : { diamondAuSysJourneyStatusUpdatedEventss: { items: [] } };
+
+      const orders = aggregateP2POrdersForUser(
+        [created],
+        [],
+        [created],
+        acceptedResp.diamondP2POfferAcceptedEventss?.items || [],
+        statusResp.diamondAuSysOrderStatusUpdatedEventss?.items || [],
+        created.creator.toLowerCase(),
+        journeysResp.diamondJourneyCreatedEventss?.items || [],
+        journeyStatusResp.diamondAuSysJourneyStatusUpdatedEventss?.items || [],
+      );
+
+      return orders[0] || null;
+    } catch (error) {
+      console.error('[OrderRepository] Error fetching P2P order by ID:', error);
+      return null;
     }
   }
 
@@ -580,71 +731,12 @@ export class OrderRepository implements IOrderRepository {
 
   async getOrderById(orderId: BytesLike): Promise<Order> {
     try {
-      const orderIdStr = orderId.toString();
-
-      const [orderResponse, logisticsResponse] = await Promise.all([
-        graphqlRequest<UnifiedOrderEventsResponse>(
-          this.graphQLEndpoint,
-          `query GetOrderById($orderId: String!) {
-            diamondUnifiedOrderCreatedEventss(where: { unifiedOrderId: $orderId }, limit: 1) {
-              items {
-                id
-                unifiedOrderId
-                clobOrderId
-                buyer
-                seller
-                token
-                tokenId
-                quantity
-                price
-                blockNumber
-                blockTimestamp
-                transactionHash
-              }
-            }
-          }`,
-          { orderId: orderIdStr },
-        ),
-        graphqlRequest<LogisticsEventsResponse>(
-          this.graphQLEndpoint,
-          `query GetLogisticsByOrderId($orderId: String!) {
-            diamondLogisticsOrderCreatedEventss(where: { unifiedOrderId: $orderId }, limit: 1) {
-              items {
-                id
-                unifiedOrderId
-                ausysOrderId
-                journeyIds
-                bounty
-                node
-                blockTimestamp
-              }
-            }
-          }`,
-          { orderId: orderIdStr },
-        ),
-      ]);
-
-      const order = orderResponse.diamondUnifiedOrderCreatedEventss?.items[0];
-      const logistics =
-        logisticsResponse.diamondLogisticsOrderCreatedEventss?.items[0];
-
-      if (!order) {
-        throw new Error(`Order ${orderId} not found`);
+      const orderResult = await this.getUnifiedOrderById(orderId);
+      if (orderResult) {
+        return orderResult;
       }
 
-      const aggregatedOrders = aggregateUnifiedOrders({
-        created: [order],
-        logistics: logistics ? [logistics] : [],
-        journeyUpdates: [],
-        settled: [],
-      });
-
-      const aggregatedOrder = aggregatedOrders[0];
-      if (!aggregatedOrder) {
-        throw new Error(`Failed to aggregate order ${orderId}`);
-      }
-
-      return aggregatedUnifiedOrderToDomain(aggregatedOrder, logistics);
+      throw new Error(`Order ${orderId.toString()} not found`);
     } catch (error) {
       console.error('[OrderRepository] Error fetching order by ID:', error);
       await this.waitForInitialization();

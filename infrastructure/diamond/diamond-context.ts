@@ -81,8 +81,12 @@ export class DiamondContext {
    * Initialize the context in read-only mode using a public RPC provider
    * This allows reading data without a connected wallet
    */
-  async initializeReadOnly(rpcUrl: string): Promise<void> {
-    this.provider = new ethers.JsonRpcProvider(rpcUrl);
+  async initializeReadOnly(rpcUrl: string, chainId: number): Promise<void> {
+    const provider = new ethers.JsonRpcProvider(rpcUrl, chainId, {
+      staticNetwork: true,
+    });
+    await provider.getBlockNumber();
+    this.provider = provider;
 
     // Connect to Diamond proxy in read-only mode (no signer)
     this.diamond = new ethers.Contract(
@@ -93,6 +97,7 @@ export class DiamondContext {
 
     this.initialized = true;
     this.readOnly = true;
+    this.chainId = chainId;
   }
 
   /**

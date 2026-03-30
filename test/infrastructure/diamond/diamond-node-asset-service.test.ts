@@ -71,6 +71,7 @@ function createMockContext(overrides: Record<string, any> = {}) {
     getAuraAsset: vi.fn().mockReturnValue(auraAsset),
     getDiamondAddress: vi.fn().mockReturnValue(DIAMOND_ADDR),
     getSignerAddress: vi.fn().mockResolvedValue(OWNER),
+    getChainId: vi.fn().mockReturnValue(overrides.chainId ?? 42161),
     _diamond: diamond,
     _provider: provider,
     _auraAsset: auraAsset,
@@ -275,6 +276,124 @@ describe('DiamondNodeAssetService', () => {
       );
 
       expect(context._diamond.addNodeItem).not.toHaveBeenCalled();
+    });
+
+    it('should upload metadata with chain-aware Pinata keyvalues', async () => {
+      const context = createMockContext({ chainId: 42161 });
+      const keyvalues = vi.fn().mockResolvedValue({
+        id: 'file-123',
+        cid: 'bafy-test',
+        is_duplicate: false,
+      });
+      const name = vi.fn().mockReturnValue({ keyvalues });
+      const group = vi.fn().mockReturnValue({ name });
+      const json = vi.fn().mockReturnValue({ group });
+      const addFiles = vi.fn().mockResolvedValue(undefined);
+      const update = vi.fn().mockResolvedValue(undefined);
+      const pinata = {
+        upload: {
+          public: {
+            json,
+          },
+        },
+        files: {
+          public: {
+            update,
+          },
+        },
+        groups: {
+          public: {
+            addFiles,
+          },
+        },
+      } as any;
+      const service = new DiamondNodeAssetService(context, pinata);
+
+      await service.mintAsset(
+        NODE_HASH,
+        {
+          name: 'AUGOAT',
+          assetClass: 'GOAT',
+          attributes: [
+            { name: 'weight', values: ['S', 'M', 'L'], description: 'Weight' },
+          ],
+        },
+        100,
+        '25.5',
+      );
+
+      expect(json).toHaveBeenCalledTimes(1);
+      expect(group).toHaveBeenCalledWith('test-group-id');
+      expect(keyvalues).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tokenId: expect.any(String),
+          chainId: '42161',
+          className: 'GOAT',
+        }),
+      );
+      expect(json.mock.calls[0][0]).toEqual(
+        expect.objectContaining({
+          className: 'GOAT',
+          asset: expect.objectContaining({
+            name: 'AUGOAT',
+            assetClass: 'GOAT',
+          }),
+        }),
+      );
+      expect(json.mock.calls[0][0]).not.toHaveProperty('chainId');
+      expect(update).toHaveBeenCalledWith({
+        id: 'file-123',
+        keyvalues: expect.objectContaining({
+          tokenId: expect.any(String),
+          chainId: '42161',
+          className: 'GOAT',
+        }),
+      });
+      expect(addFiles).toHaveBeenCalledWith({
+        groupId: 'test-group-id',
+        files: ['file-123'],
+      });
+    });
+
+    it('should log upload diagnostics when Pinata upload fails', async () => {
+      const context = createMockContext({ chainId: 42161 });
+      const pinata = {
+        upload: {
+          public: {
+            json: vi.fn().mockReturnValue({
+              group: vi.fn(() => {
+                throw new Error('Pinata down');
+              }),
+            }),
+          },
+        },
+      } as any;
+      const service = new DiamondNodeAssetService(context, pinata);
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      await service.mintAsset(
+        NODE_HASH,
+        {
+          name: 'AUGOAT',
+          assetClass: 'GOAT',
+          attributes: [],
+        },
+        100,
+        '25.5',
+      );
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[DiamondNodeAssetService] IPFS metadata upload failed (non-fatal):',
+        expect.objectContaining({
+          chainId: 42161,
+          groupId: 'test-group-id',
+          tokenId: expect.any(String),
+          assetHash: expect.stringMatching(/^0x[0-9a-f]{64}$/i),
+          error: expect.any(Error),
+        }),
+      );
+
+      warnSpy.mockRestore();
     });
   });
 

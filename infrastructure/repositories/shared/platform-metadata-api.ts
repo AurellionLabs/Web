@@ -26,13 +26,26 @@ async function parseJsonResponse<T>(response: Response): Promise<T | null> {
   return (await response.json()) as T;
 }
 
+function buildMetadataApiUrl(
+  params: Record<string, string | number | undefined>,
+): string {
+  const searchParams = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== '') {
+      searchParams.set(key, String(value));
+    }
+  }
+
+  return `/api/platform/metadata?${searchParams.toString()}`;
+}
+
 export async function fetchAssetByTokenIdFromMetadataApi(
   tokenId: string,
+  chainId?: number,
 ): Promise<AssetLookupResponse> {
   try {
-    const response = await fetch(
-      `/api/platform/metadata?tokenId=${encodeURIComponent(tokenId)}`,
-    );
+    const response = await fetch(buildMetadataApiUrl({ tokenId, chainId }));
     const body = await parseJsonResponse<AssetLookupResponse>(response);
     return body ?? { asset: null, cid: null };
   } catch (error) {
@@ -43,10 +56,11 @@ export async function fetchAssetByTokenIdFromMetadataApi(
 
 export async function fetchClassAssetsFromMetadataApi(
   assetClass: string,
+  chainId?: number,
 ): Promise<Asset[]> {
   try {
     const response = await fetch(
-      `/api/platform/metadata?className=${encodeURIComponent(assetClass)}`,
+      buildMetadataApiUrl({ className: assetClass, chainId }),
     );
     const body = await parseJsonResponse<ClassLookupResponse>(response);
     return body?.assets ?? [];
@@ -58,6 +72,7 @@ export async function fetchClassAssetsFromMetadataApi(
 
 export async function fetchAssetsByTokenIdsFromMetadataApi(
   tokenIds: string[],
+  chainId?: number,
 ): Promise<Asset[]> {
   if (tokenIds.length === 0) {
     return [];
@@ -65,7 +80,7 @@ export async function fetchAssetsByTokenIdsFromMetadataApi(
 
   try {
     const response = await fetch(
-      `/api/platform/metadata?tokenIds=${encodeURIComponent(tokenIds.join(','))}`,
+      buildMetadataApiUrl({ tokenIds: tokenIds.join(','), chainId }),
     );
     const body = await parseJsonResponse<BatchAssetLookupResponse>(response);
     return body?.assets ?? [];
@@ -77,11 +92,10 @@ export async function fetchAssetsByTokenIdsFromMetadataApi(
 
 export async function fetchAssetRecordsByHashFromMetadataApi(
   hash: string,
+  chainId?: number,
 ): Promise<AssetIpfsRecord[]> {
   try {
-    const response = await fetch(
-      `/api/platform/metadata?hash=${encodeURIComponent(hash)}`,
-    );
+    const response = await fetch(buildMetadataApiUrl({ hash, chainId }));
     const body = await parseJsonResponse<HashLookupResponse>(response);
     return body?.records ?? [];
   } catch (error) {

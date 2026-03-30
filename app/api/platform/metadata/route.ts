@@ -6,6 +6,8 @@ import {
   getClassAssetsFromServerCache,
 } from '@/infrastructure/repositories/shared/platform-metadata-server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const chainIdParam = request.nextUrl.searchParams.get('chainId');

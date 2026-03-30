@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Search,
   Server,
@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Loader2,
   AlertCircle,
+  CheckCircle2,
 } from 'lucide-react';
 import {
   EvaPanel,
@@ -25,6 +26,15 @@ import {
 import { Input } from '@/app/components/ui/input';
 import { cn } from '@/lib/utils';
 import { useDiamond } from '@/app/providers/diamond.provider';
+import {
+  DEFAULT_PUBLIC_NODE_EXPLORER_CHAIN_ID,
+  getPublicNodeChainOptions,
+  resolvePublicNodeChain,
+} from '@/lib/public-node-chain';
+import {
+  getPublicRpcConfigurationError,
+  NETWORK_CONFIGS,
+} from '@/config/network';
 
 interface NodeSummary {
   nodeHash: string;
@@ -40,6 +50,8 @@ interface NodeSummary {
  */
 export default function NodeExplorerPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const rawChainId = searchParams.get('chainId');
   const [searchAddress, setSearchAddress] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +61,38 @@ export default function NodeExplorerPage() {
   const [showResults, setShowResults] = useState(false);
   const [searchedAddress, setSearchedAddress] = useState<string | null>(null);
 
-  const { initialized: diamondInitialized, nodeRepository } = useDiamond();
+  const {
+    initialized: diamondInitialized,
+    loading: diamondLoading,
+    error: diamondError,
+    nodeRepository,
+  } = useDiamond();
+  const publicChain = resolvePublicNodeChain(searchParams);
+  const selectedChainId = publicChain.chainId;
+  const publicChainOptions = getPublicNodeChainOptions();
+  const selectedChainLabel =
+    selectedChainId === null
+      ? 'Unsupported Chain'
+      : (NETWORK_CONFIGS[selectedChainId]?.name ?? String(selectedChainId));
+  const publicRpcError =
+    selectedChainId === null
+      ? null
+      : getPublicRpcConfigurationError(selectedChainId);
+  const displayError =
+    error ||
+    publicChain.error ||
+    publicRpcError ||
+    diamondError?.message ||
+    null;
+
+  useEffect(() => {
+    if (DEFAULT_PUBLIC_NODE_EXPLORER_CHAIN_ID === null) return;
+    if (rawChainId === String(DEFAULT_PUBLIC_NODE_EXPLORER_CHAIN_ID)) return;
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('chainId', String(DEFAULT_PUBLIC_NODE_EXPLORER_CHAIN_ID));
+    router.replace(`/node/explorer?${params.toString()}`);
+  }, [rawChainId, router, searchParams]);
 
   const isWalletAddress = (address: string): boolean => {
     return address.length === 42;
@@ -59,11 +102,33 @@ export default function NodeExplorerPage() {
     return address.length === 66;
   };
 
+  const isRpcTransportFailure = (message: string): boolean => {
+    return (
+      message.includes('Too Many Requests') ||
+      message.includes('missing response for request') ||
+      message.includes('BAD_DATA') ||
+      message.includes('failed to detect network') ||
+      message.includes('Failed to fetch') ||
+      message.includes('ERR_FAILED') ||
+      message.includes('Public RPC is not configured')
+    );
+  };
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setSearchResults([]);
     setShowResults(false);
+
+    if (selectedChainId === null) {
+      setError(publicChain.error || 'Unsupported public chain.');
+      return;
+    }
+
+    if (publicRpcError) {
+      setError(publicRpcError);
+      return;
+    }
 
     const trimmedAddress = searchAddress.trim();
 
@@ -91,12 +156,14 @@ export default function NodeExplorerPage() {
     try {
       if (isNodeHash(trimmedAddress)) {
         // Direct node ID - navigate to dashboard
-        router.push(`/node/dashboard?nodeId=${trimmedAddress}&view=public`);
+        router.push(
+          `/node/dashboard?nodeId=${trimmedAddress}&view=public&chainId=${selectedChainId}`,
+        );
       } else {
         // Wallet address - fetch owned nodes
-        if (!diamondInitialized || !nodeRepository) {
+        if (diamondLoading || !diamondInitialized || !nodeRepository) {
           setError(
-            'Please wait for the connection to initialize and try again.',
+            'Please wait for the explorer chain to finish loading and try again.',
           );
           setIsSearching(false);
           return;
@@ -143,14 +210,21 @@ export default function NodeExplorerPage() {
       }
     } catch (err) {
       console.error('Search error:', err);
-      setError('Failed to search. Please try again.');
+      const message = err instanceof Error ? err.message : String(err);
+      setError(
+        isRpcTransportFailure(message)
+          ? message
+          : 'Failed to search. Please try again.',
+      );
     } finally {
       setIsSearching(false);
     }
   };
 
   const handleNodeSelect = (nodeHash: string) => {
-    router.push(`/node/dashboard?nodeId=${nodeHash}&view=public`);
+    router.push(
+      `/node/dashboard?nodeId=${nodeHash}&view=public&chainId=${selectedChainId}`,
+    );
   };
 
   const truncateHash = (hash: string) => {
@@ -182,12 +256,44 @@ export default function NodeExplorerPage() {
           <p className="font-mono text-sm tracking-[0.15em] uppercase text-foreground/50 mt-2">
             Search for nodes by wallet address or node ID
           </p>
+          <p className="font-mono text-xs tracking-[0.15em] uppercase text-foreground/35 mt-3">
+            Public chain: {selectedChainLabel}
+          </p>
           <GreekKeyStrip width="full" color="gold" />
         </div>
 
         {/* Search Panel */}
         <EvaPanel label="Node Search" sysId="SYS-EXPL" accent="gold">
           <form onSubmit={handleSearch} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {publicChainOptions.map((chain) => (
+                <TrapButton
+                  key={chain.id}
+                  type="button"
+                  variant="gold"
+                  className={cn(
+                    'h-auto w-full border px-5 py-4 text-left',
+                    'border-gold/60 bg-gold/18 text-gold shadow-[0_0_0_1px_rgba(212,175,55,0.18)]',
+                  )}
+                  disabled
+                >
+                  <span className="flex items-center justify-between gap-4">
+                    <span className="flex flex-col items-start gap-1">
+                      <span className="text-sm tracking-[0.15em] uppercase">
+                        {chain.label}
+                      </span>
+                      <span className="text-[10px] tracking-[0.18em] uppercase text-gold/75">
+                        Default explorer chain
+                      </span>
+                    </span>
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full border border-gold/70 bg-gold/15 text-gold transition-colors">
+                      <CheckCircle2 className="h-4 w-4" />
+                    </span>
+                  </span>
+                </TrapButton>
+              ))}
+            </div>
+
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-foreground/30 z-10" />
               <Input
@@ -212,18 +318,19 @@ export default function NodeExplorerPage() {
               />
             </div>
 
-            {error && (
+            {displayError && (
               <p className="font-mono text-sm tracking-[0.05em] text-crimson flex items-center gap-2">
                 <AlertCircle className="w-4 h-4" />
-                {error}
+                {displayError}
               </p>
             )}
 
             <TrapButton
               variant="gold"
+              type="submit"
               size="lg"
               className="w-full"
-              disabled={isSearching}
+              disabled={isSearching || !!publicRpcError}
             >
               {isSearching ? (
                 <span className="flex items-center justify-center gap-2">

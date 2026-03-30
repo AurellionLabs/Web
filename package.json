@@ -7,6 +7,14 @@
     "codegen": "cd indexer && npm run codegen",
     "generate:indexer": "cd indexer && npm run generate:indexer",
     "dev": "next dev",
+    "core:dev": "npm run dev -w aurellion-core",
+    "core:smoke": "npm run smoke -w aurellion-core",
+    "core:smoke:health": "npm run smoke:health -w aurellion-core",
+    "core:smoke:discover": "npm run smoke:discover -w aurellion-core",
+    "core:smoke:auth": "npm run smoke:auth -w aurellion-core",
+    "core:smoke:rate-limit": "npm run smoke:rate-limit -w aurellion-core",
+    "core:typecheck": "npm run typecheck -w aurellion-core",
+    "core:test": "npm run test -w aurellion-core",
     "typecheck": "tsc --noEmit",
     "build": "npm run typecheck && next build",
     "build:full": "npm run contract:update && npm run typecheck && next build",
@@ -200,6 +208,7 @@
     "vitest": "^3.1.2"
   },
   "workspaces": [
-    "indexer"
+    "indexer",
+    "aurellion-core"
   ]
 }
