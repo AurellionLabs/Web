@@ -150,7 +150,7 @@ describe('ausys treasury fee update flow', () => {
       txHash: '0xtxhash',
     });
 
-    expect(contract.setTreasuryFeeBps).toHaveBeenCalledWith(5, undefined);
+    expect(contract.setTreasuryFeeBps).toHaveBeenCalledWith(5);
     expect(wait).toHaveBeenCalledTimes(1);
   });
 
@@ -178,11 +178,7 @@ describe('ausys treasury fee update flow', () => {
       logger: console,
     });
 
-    expect(contract.setTreasuryFeeBps).toHaveBeenNthCalledWith(
-      1,
-      10,
-      undefined,
-    );
+    expect(contract.setTreasuryFeeBps).toHaveBeenNthCalledWith(1, 10);
     expect(contract.setTreasuryFeeBps).toHaveBeenNthCalledWith(2, 10, {
       nonce: 44,
     });
