@@ -55,7 +55,6 @@ export default function NodeExplorerPage() {
   const [searchAddress, setSearchAddress] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pendingChainId, setPendingChainId] = useState<number | null>(null);
 
   // Results state for wallet address searches
   const [searchResults, setSearchResults] = useState<NodeSummary[]>([]);
@@ -69,10 +68,7 @@ export default function NodeExplorerPage() {
     nodeRepository,
   } = useDiamond();
   const publicChain = resolvePublicNodeChain(searchParams);
-  const selectedChainId =
-    pendingChainId ??
-    publicChain.chainId ??
-    (rawChainId ? null : DEFAULT_PUBLIC_NODE_EXPLORER_CHAIN_ID);
+  const selectedChainId = publicChain.chainId;
   const publicChainOptions = getPublicNodeChainOptions();
   const selectedChainLabel =
     selectedChainId === null
@@ -90,19 +86,13 @@ export default function NodeExplorerPage() {
     null;
 
   useEffect(() => {
-    if (rawChainId) return;
+    if (DEFAULT_PUBLIC_NODE_EXPLORER_CHAIN_ID === null) return;
+    if (rawChainId === String(DEFAULT_PUBLIC_NODE_EXPLORER_CHAIN_ID)) return;
 
     const params = new URLSearchParams(searchParams.toString());
     params.set('chainId', String(DEFAULT_PUBLIC_NODE_EXPLORER_CHAIN_ID));
     router.replace(`/node/explorer?${params.toString()}`);
   }, [rawChainId, router, searchParams]);
-
-  useEffect(() => {
-    if (pendingChainId === null) return;
-    if (publicChain.chainId === pendingChainId) {
-      setPendingChainId(null);
-    }
-  }, [pendingChainId, publicChain.chainId]);
 
   const isWalletAddress = (address: string): boolean => {
     return address.length === 42;
@@ -171,14 +161,9 @@ export default function NodeExplorerPage() {
         );
       } else {
         // Wallet address - fetch owned nodes
-        if (
-          pendingChainId !== null ||
-          diamondLoading ||
-          !diamondInitialized ||
-          !nodeRepository
-        ) {
+        if (diamondLoading || !diamondInitialized || !nodeRepository) {
           setError(
-            'Please wait for the selected chain to finish loading and try again.',
+            'Please wait for the explorer chain to finish loading and try again.',
           );
           setIsSearching(false);
           return;
@@ -242,16 +227,6 @@ export default function NodeExplorerPage() {
     );
   };
 
-  const handleChainChange = (chainId: number) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('chainId', String(chainId));
-    setPendingChainId(chainId);
-    setError(null);
-    setSearchResults([]);
-    setShowResults(false);
-    router.push(`/node/explorer?${params.toString()}`);
-  };
-
   const truncateHash = (hash: string) => {
     return `${hash.slice(0, 10)}...${hash.slice(-8)}`;
   };
@@ -298,38 +273,20 @@ export default function NodeExplorerPage() {
                   variant="gold"
                   className={cn(
                     'h-auto w-full border px-5 py-4 text-left',
-                    selectedChainId === chain.id
-                      ? 'border-gold/60 bg-gold/18 text-gold shadow-[0_0_0_1px_rgba(212,175,55,0.18)]'
-                      : 'border-white/10 bg-background/35 text-foreground/70 hover:border-gold/30 hover:bg-gold/8 hover:text-gold',
+                    'border-gold/60 bg-gold/18 text-gold shadow-[0_0_0_1px_rgba(212,175,55,0.18)]',
                   )}
-                  onClick={() => handleChainChange(chain.id)}
+                  disabled
                 >
                   <span className="flex items-center justify-between gap-4">
                     <span className="flex flex-col items-start gap-1">
                       <span className="text-sm tracking-[0.15em] uppercase">
                         {chain.label}
                       </span>
-                      <span
-                        className={cn(
-                          'text-[10px] tracking-[0.18em] uppercase',
-                          selectedChainId === chain.id
-                            ? 'text-gold/75'
-                            : 'text-foreground/35',
-                        )}
-                      >
-                        {selectedChainId === chain.id
-                          ? 'Selected chain'
-                          : 'Switch chain'}
+                      <span className="text-[10px] tracking-[0.18em] uppercase text-gold/75">
+                        Default explorer chain
                       </span>
                     </span>
-                    <span
-                      className={cn(
-                        'flex h-6 w-6 items-center justify-center rounded-full border transition-colors',
-                        selectedChainId === chain.id
-                          ? 'border-gold/70 bg-gold/15 text-gold'
-                          : 'border-white/15 text-transparent',
-                      )}
-                    >
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full border border-gold/70 bg-gold/15 text-gold transition-colors">
                       <CheckCircle2 className="h-4 w-4" />
                     </span>
                   </span>

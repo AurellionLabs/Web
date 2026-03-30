@@ -1,23 +1,34 @@
 import { NEXT_PUBLIC_DEFAULT_CHAIN_ID } from '@/chain-constants';
 import { NETWORK_CONFIGS } from '@/config/network';
 
-export const PUBLIC_NODE_CHAIN_IDS = [84532, 42161] as const;
+const SUPPORTED_PUBLIC_NODE_CHAIN_IDS = [84532, 42161] as const;
 
-export type PublicNodeChainId = (typeof PUBLIC_NODE_CHAIN_IDS)[number];
-
-export const DEFAULT_PUBLIC_NODE_EXPLORER_CHAIN_ID: PublicNodeChainId = 42161;
+export type PublicNodeChainId =
+  (typeof SUPPORTED_PUBLIC_NODE_CHAIN_IDS)[number];
 
 type SearchParamsLike = {
   get(name: string): string | null;
 };
 
-const PUBLIC_NODE_CHAIN_ID_SET = new Set<number>(PUBLIC_NODE_CHAIN_IDS);
+const PUBLIC_NODE_CHAIN_ID_SET = new Set<number>(
+  SUPPORTED_PUBLIC_NODE_CHAIN_IDS,
+);
 
 export function isSupportedPublicNodeChainId(
   chainId: number,
 ): chainId is PublicNodeChainId {
   return PUBLIC_NODE_CHAIN_ID_SET.has(chainId);
 }
+
+export const DEFAULT_PUBLIC_NODE_EXPLORER_CHAIN_ID: PublicNodeChainId | null =
+  isSupportedPublicNodeChainId(NEXT_PUBLIC_DEFAULT_CHAIN_ID)
+    ? NEXT_PUBLIC_DEFAULT_CHAIN_ID
+    : null;
+
+export const PUBLIC_NODE_CHAIN_IDS: PublicNodeChainId[] =
+  DEFAULT_PUBLIC_NODE_EXPLORER_CHAIN_ID === null
+    ? []
+    : [DEFAULT_PUBLIC_NODE_EXPLORER_CHAIN_ID];
 
 export function getPublicNodeChainOptions(): Array<{
   id: PublicNodeChainId;
@@ -34,17 +45,7 @@ export function resolvePublicNodeChain(searchParams: SearchParamsLike): {
   error: string | null;
   wasDefaulted: boolean;
 } {
-  const rawChainId = searchParams.get('chainId');
-
-  if (!rawChainId) {
-    if (isSupportedPublicNodeChainId(NEXT_PUBLIC_DEFAULT_CHAIN_ID)) {
-      return {
-        chainId: NEXT_PUBLIC_DEFAULT_CHAIN_ID,
-        error: null,
-        wasDefaulted: true,
-      };
-    }
-
+  if (DEFAULT_PUBLIC_NODE_EXPLORER_CHAIN_ID === null) {
     return {
       chainId: null,
       error: `Unsupported default public chain: ${NEXT_PUBLIC_DEFAULT_CHAIN_ID}.`,
@@ -52,21 +53,12 @@ export function resolvePublicNodeChain(searchParams: SearchParamsLike): {
     };
   }
 
-  const parsedChainId = Number(rawChainId);
-  if (
-    !Number.isInteger(parsedChainId) ||
-    !isSupportedPublicNodeChainId(parsedChainId)
-  ) {
-    return {
-      chainId: null,
-      error: `Unsupported public chain ID: ${rawChainId}.`,
-      wasDefaulted: false,
-    };
-  }
+  const rawChainId = searchParams.get('chainId');
+  const wasDefaulted = rawChainId !== String(DEFAULT_PUBLIC_NODE_EXPLORER_CHAIN_ID);
 
   return {
-    chainId: parsedChainId,
+    chainId: DEFAULT_PUBLIC_NODE_EXPLORER_CHAIN_ID,
     error: null,
-    wasDefaulted: false,
+    wasDefaulted,
   };
 }
