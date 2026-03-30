@@ -169,7 +169,9 @@ export async function updateTreasuryFeeBps(
     getPendingNonce: options.getPendingNonce,
     logger: options.logger,
     send: (overrides) =>
-      options.contract.setTreasuryFeeBps(options.requestedBps, overrides),
+      overrides
+        ? options.contract.setTreasuryFeeBps(options.requestedBps, overrides)
+        : options.contract.setTreasuryFeeBps(options.requestedBps),
   });
   const receipt = await tx.wait();
   const update = decodeTreasuryFeeUpdate(receipt);
