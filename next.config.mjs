@@ -23,9 +23,11 @@ const nextConfig = {
     unoptimized: true,
   },
   experimental: {
-    webpackBuildWorker: true,
-    parallelServerBuildTraces: true,
-    parallelServerCompiles: true,
+    // These parallel build features are currently causing incomplete route
+    // manifests during production builds in this app.
+    webpackBuildWorker: false,
+    parallelServerBuildTraces: false,
+    parallelServerCompiles: false,
   },
   webpack: (config, { isServer, webpack }) => {
     // Force-inline NEXT_PUBLIC_* vars so they work even with webpackBuildWorker
