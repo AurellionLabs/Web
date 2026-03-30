@@ -78,6 +78,12 @@ import { NETWORK_CONFIGS } from '@/config/network';
 
 type AttributeValue = string | number | boolean;
 import { Order, OrderStatus } from '@/domain/orders';
+import {
+  getP2PActivitySnapshot,
+  isP2POrderExpanded,
+  reconcileP2PExpansionOverrides,
+  toggleP2POrderExpansion,
+} from '@/lib/order-expansion';
 import { formatTokenAmount } from '@/lib/formatters';
 import { sortOrdersWithPinnedActivity } from '@/lib/order-sorting';
 import { cn } from '@/lib/utils';
@@ -310,6 +316,7 @@ export default function NodeDashboardPage() {
   const [expandedP2POrders, setExpandedP2POrders] = useState<
     Record<string, boolean>
   >({});
+  const previousP2PActivityRef = useRef<Record<string, boolean>>({});
   const [activePublicSelectionKey, setActivePublicSelectionKey] = useState<
     string | null
   >(null);
@@ -341,11 +348,25 @@ export default function NodeDashboardPage() {
   };
 
   const toggleP2PExpand = (orderId: string) => {
-    setExpandedP2POrders((prev) => ({
-      ...prev,
-      [orderId]: !prev[orderId],
-    }));
+    const order = orders.find((candidate) => candidate.id === orderId);
+    if (!order) return;
+
+    setExpandedP2POrders((prev) => toggleP2POrderExpansion(order, prev));
   };
+
+  useEffect(() => {
+    const nextActivity = getP2PActivitySnapshot(orders);
+
+    setExpandedP2POrders((prev) =>
+      reconcileP2PExpansionOverrides(
+        prev,
+        previousP2PActivityRef.current,
+        nextActivity,
+      ),
+    );
+
+    previousP2PActivityRef.current = nextActivity;
+  }, [orders]);
 
   /**
    * Fetch live signature states for a P2P order's journey.
@@ -1687,7 +1708,10 @@ export default function NodeDashboardPage() {
                 <tbody className="divide-y divide-glass-border">
                   {currentOrders.map((order) => {
                     const isP2P = Boolean(order.isP2P);
-                    const isExpanded = expandedP2POrders[order.id];
+                    const isExpanded = isP2POrderExpanded(
+                      order,
+                      expandedP2POrders,
+                    );
 
                     return (
                       <React.Fragment key={order.id}>

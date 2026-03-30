@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useCustomer } from '@/app/providers/customer.provider';
 import {
@@ -73,6 +73,12 @@ import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
 import { getDefaultP2PDeliveryBountyWei } from '@/config/p2p';
 import { useWallet } from '@/hooks/useWallet';
 import { AUSYS_ABI } from '@/lib/constants/contracts';
+import {
+  getP2PActivitySnapshot,
+  isP2POrderExpanded,
+  reconcileP2PExpansionOverrides,
+  toggleP2POrderExpansion,
+} from '@/lib/order-expansion';
 import { formatTokenAmount } from '@/lib/formatters';
 import { sortOrdersWithPinnedActivity } from '@/lib/order-sorting';
 import { getJourneyRoleConflictMessage } from '@/utils/journey-role-conflicts';
@@ -259,6 +265,7 @@ export default function CustomerDashboard() {
   const [expandedP2POrders, setExpandedP2POrders] = useState<
     Record<string, boolean>
   >({});
+  const previousP2PActivityRef = useRef<Record<string, boolean>>({});
   const [p2pActionLoading, setP2PActionLoading] = useState(false);
   // State for scheduling delivery on stuck P2P orders
   const [scheduleDeliveryOrderId, setScheduleDeliveryOrderId] = useState<
@@ -366,6 +373,20 @@ export default function CustomerDashboard() {
     setCurrentPage(1);
   }, [filters, sortConfig]);
 
+  useEffect(() => {
+    const nextActivity = getP2PActivitySnapshot(orders);
+
+    setExpandedP2POrders((prev) =>
+      reconcileP2PExpansionOverrides(
+        prev,
+        previousP2PActivityRef.current,
+        nextActivity,
+      ),
+    );
+
+    previousP2PActivityRef.current = nextActivity;
+  }, [orders]);
+
   const handleSort = (key: 'tokenQuantity' | 'price') => {
     setSortConfig((prevSort) => ({
       key,
@@ -390,11 +411,12 @@ export default function CustomerDashboard() {
     }
   };
 
-  const toggleP2PExpand = (orderId: string) => {
-    setExpandedP2POrders((prev) => ({
-      ...prev,
-      [orderId]: !prev[orderId],
-    }));
+  const toggleP2PExpand = (order: {
+    id: string;
+    currentStatus: OrderStatus;
+    isP2P?: boolean;
+  }) => {
+    setExpandedP2POrders((prev) => toggleP2POrderExpansion(order, prev));
   };
 
   const handleSignP2PDelivery = async (orderId: string, journeyId: string) => {
@@ -952,7 +974,10 @@ export default function CustomerDashboard() {
               <tbody className="divide-y divide-glass-border">
                 {currentOrders.map((order) => {
                   const isP2P = Boolean(order.isP2P);
-                  const isExpanded = expandedP2POrders[order.id];
+                  const isExpanded = isP2POrderExpanded(
+                    order,
+                    expandedP2POrders,
+                  );
 
                   return (
                     <React.Fragment key={order.id}>
@@ -963,7 +988,7 @@ export default function CustomerDashboard() {
                           isExpanded && 'bg-glass-hover',
                         )}
                         onClick={
-                          isP2P ? () => toggleP2PExpand(order.id) : undefined
+                          isP2P ? () => toggleP2PExpand(order) : undefined
                         }
                       >
                         <td className="px-4 py-4 text-sm font-mono text-foreground">
@@ -998,7 +1023,7 @@ export default function CustomerDashboard() {
                                 : order.currentStatus ===
                                       OrderStatus.PROCESSING &&
                                     order.journeyStatus === 1
-                                  ? 'active'
+                                  ? 'processing'
                                   : order.currentStatus ===
                                       OrderStatus.PROCESSING
                                     ? 'processing'
@@ -1074,7 +1099,7 @@ export default function CustomerDashboard() {
                                   order.currentStatus !==
                                     OrderStatus.CANCELLED && (
                                     <DropdownMenuItem
-                                      onClick={() => toggleP2PExpand(order.id)}
+                                      onClick={() => toggleP2PExpand(order)}
                                     >
                                       <Package className="w-4 h-4 mr-2" />
                                       {isExpanded
