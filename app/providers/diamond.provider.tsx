@@ -8,6 +8,7 @@ import {
   useCallback,
   useEffect,
 } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useWallet } from '@/hooks/useWallet';
 import { useMainProvider } from './main.provider';
 import { useE2EAuth } from './e2e-auth.provider';
@@ -40,7 +41,16 @@ import { Asset } from '@/domain/shared';
 import { BrowserProvider } from 'ethers';
 import { PinataSDK } from 'pinata';
 import { getSettlementService } from '@/infrastructure/services/settlement-service';
-import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
+import {
+  NEXT_PUBLIC_DEFAULT_CHAIN_ID,
+  NEXT_PUBLIC_DIAMOND_ADDRESS,
+} from '@/chain-constants';
+import {
+  getPublicRpcConfigurationError,
+  NETWORK_CONFIGS,
+} from '@/config/network';
+import { setCurrentChainId } from '@/infrastructure/config/indexer-endpoint';
+import { resolvePublicNodeChain } from '@/lib/public-node-chain';
 
 interface DiamondContextType {
   // Context state
@@ -57,7 +67,7 @@ interface DiamondContextType {
   // Node operations
   registerNode: (nodeData: Node) => Promise<string>;
   getNode: (nodeHash: string) => Promise<Node | null>;
-  getOwnedNodes: () => Promise<string[]>;
+  getOwnedNodes: (ownerAddress?: string) => Promise<string[]>;
   updateNodeStatus: (
     nodeHash: string,
     status: 'Active' | 'Inactive',
@@ -150,6 +160,8 @@ const DiamondProviderContext = createContext<DiamondContextType | undefined>(
 );
 
 export function DiamondProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [initialized, setInitialized] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -171,6 +183,18 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
   const { connectedWallet, address, isConnected } = useWallet();
   const { connected: mainConnected } = useMainProvider();
   const IS_E2E = process.env.NEXT_PUBLIC_E2E_TEST_MODE === 'true';
+  const forceReadOnly =
+    pathname === '/node/explorer' ||
+    (pathname === '/node/dashboard' && searchParams.get('view') === 'public');
+  const publicChain = resolvePublicNodeChain(searchParams);
+  const requestedReadOnlyChainId = forceReadOnly ? publicChain.chainId : null;
+  const fallbackReadOnlyChainId = forceReadOnly
+    ? requestedReadOnlyChainId
+    : NEXT_PUBLIC_DEFAULT_CHAIN_ID;
+  const currentContextChainId =
+    diamondContext && diamondContext.isInitialized()
+      ? diamondContext.getChainId()
+      : null;
   // E2E signer comes directly from E2EAuthProvider — do NOT go through
   // RepositoryContext.getSigner() which requires full initialization first.
   const { signer: e2eSigner, provider: e2eProvider } = useE2EAuth();
@@ -195,10 +219,26 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     async function initializeDiamond() {
       // Check if we need to re-initialize due to wallet connection change
       const needsWalletUpgrade =
-        initialized && isReadOnly && isConnected && connectedWallet && address;
+        initialized &&
+        isReadOnly &&
+        !forceReadOnly &&
+        isConnected &&
+        connectedWallet &&
+        address;
+      const needsModeSwitch = initialized && isReadOnly !== forceReadOnly;
+      const needsReadOnlyChainSwitch =
+        initialized &&
+        forceReadOnly &&
+        requestedReadOnlyChainId !== null &&
+        currentContextChainId !== requestedReadOnlyChainId;
       const needsInitialInit = !initialized || !diamondContext?.isInitialized();
 
-      if (!needsInitialInit && !needsWalletUpgrade) {
+      if (
+        !needsInitialInit &&
+        !needsWalletUpgrade &&
+        !needsModeSwitch &&
+        !needsReadOnlyChainSwitch
+      ) {
         return;
       }
 
@@ -207,6 +247,22 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
 
       try {
         const context = getDiamondContext();
+
+        if (forceReadOnly && requestedReadOnlyChainId === null) {
+          context.disconnect();
+          setCurrentChainId(null);
+          setDiamondContext(null);
+          setNodeRepository(null);
+          setNodeService(null);
+          setNodeAssetService(null);
+          setP2PService(null);
+          setP2PRepository(null);
+          setInitialized(false);
+          setIsReadOnly(true);
+          setError(new Error(publicChain.error || 'Unsupported public chain.'));
+          setLoading(false);
+          return;
+        }
 
         if (IS_E2E) {
           // E2E mode: signer comes directly from E2EAuthProvider (no RepositoryContext needed).
@@ -217,16 +273,41 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
           }
           await context.initializeWithSigner(e2eSigner, e2eProvider);
           setIsReadOnly(false);
-        } else if (isConnected && connectedWallet && address) {
+        } else if (
+          !forceReadOnly &&
+          isConnected &&
+          connectedWallet &&
+          address
+        ) {
           // Full initialization with wallet signer
           const ethereumProvider = await connectedWallet.getEthereumProvider();
           const browserProvider = new BrowserProvider(ethereumProvider);
           await context.initialize(browserProvider);
           setIsReadOnly(false);
         } else {
-          // Read-only initialization using public RPC from env
-          const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL_84532 || '';
-          await context.initializeReadOnly(rpcUrl);
+          if (!fallbackReadOnlyChainId) {
+            throw new Error('Read-only chain is not available.');
+          }
+
+          const rpcConfigurationError = getPublicRpcConfigurationError(
+            fallbackReadOnlyChainId,
+          );
+          if (rpcConfigurationError) {
+            throw new Error(rpcConfigurationError);
+          }
+
+          const networkConfig = NETWORK_CONFIGS[fallbackReadOnlyChainId];
+          if (!networkConfig?.rpcUrl) {
+            throw new Error(
+              `No RPC configured for read-only chain ${fallbackReadOnlyChainId}.`,
+            );
+          }
+
+          setCurrentChainId(fallbackReadOnlyChainId);
+          await context.initializeReadOnly(
+            networkConfig.rpcUrl,
+            fallbackReadOnlyChainId,
+          );
           setIsReadOnly(true);
         }
 
@@ -272,9 +353,13 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     isConnected,
     connectedWallet,
     address,
+    forceReadOnly,
+    publicChain.error,
     initialized,
     diamondContext,
     isReadOnly,
+    requestedReadOnlyChainId,
+    currentContextChainId,
     mainConnected, // re-run when E2E wallet signals ready
     e2eSigner, // re-run when E2E signer becomes available
     e2eProvider, // re-run when E2E provider becomes available
@@ -301,12 +386,16 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     [nodeRepository],
   );
 
-  const getOwnedNodes = useCallback(async (): Promise<string[]> => {
-    if (!nodeRepository || !address) {
-      return [];
-    }
-    return nodeRepository.getOwnedNodes(address);
-  }, [nodeRepository, address]);
+  const getOwnedNodes = useCallback(
+    async (ownerAddress?: string): Promise<string[]> => {
+      const queryAddress = ownerAddress ?? address;
+      if (!nodeRepository || !queryAddress) {
+        return [];
+      }
+      return nodeRepository.getOwnedNodes(queryAddress);
+    },
+    [nodeRepository, address],
+  );
 
   const updateNodeStatus = useCallback(
     async (nodeHash: string, status: 'Active' | 'Inactive'): Promise<void> => {

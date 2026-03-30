@@ -9,10 +9,16 @@ import React, {
   useMemo,
   useRef,
 } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { Asset } from '@/domain/shared';
-import { AssetClass } from '@/domain/platform';
+import { AssetClass, IPlatformRepository } from '@/domain/platform';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { CLOBV2Repository } from '@/infrastructure/repositories/clob-v2-repository';
+import { PlatformRepository } from '@/infrastructure/repositories/platform-repository';
+import { NEXT_PUBLIC_DEFAULT_CHAIN_ID } from '@/chain-constants';
+import { setCurrentChainId } from '@/infrastructure/config/indexer-endpoint';
+import { resolvePublicNodeChain } from '@/lib/public-node-chain';
+import { useWallet } from '@/hooks/useWallet';
 
 // =============================================================================
 // TYPES
@@ -76,6 +82,17 @@ const PlatformContext = createContext<PlatformContextType | undefined>(
 // =============================================================================
 
 export function PlatformProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { chainId: walletChainId } = useWallet();
+  const isPublicNodeRoute =
+    pathname === '/node/explorer' ||
+    (pathname === '/node/dashboard' && searchParams.get('view') === 'public');
+  const publicChain = resolvePublicNodeChain(searchParams);
+  const activePlatformChainId = isPublicNodeRoute
+    ? publicChain.chainId
+    : (walletChainId ?? NEXT_PUBLIC_DEFAULT_CHAIN_ID);
+
   // State
   const [supportedAssets, setSupportedAssets] = useState<Asset[]>([]);
   const [supportedAssetClasses, setSupportedAssetClasses] = useState<string[]>(
@@ -98,10 +115,27 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
   supportedAssetsRef.current = supportedAssets;
 
   // Repository access
-  const repositoryRef = useRef(
-    RepositoryContext.getInstance().getPlatformRepository(),
-  );
+  const repositoryRef = useRef<IPlatformRepository | null>(null);
   const clobRepoRef = useRef(new CLOBV2Repository());
+
+  const getRepository = useCallback((): IPlatformRepository => {
+    if (repositoryRef.current) {
+      return repositoryRef.current;
+    }
+
+    try {
+      repositoryRef.current =
+        RepositoryContext.getInstance().getPlatformRepository();
+    } catch {
+      repositoryRef.current = new PlatformRepository(
+        undefined,
+        undefined,
+        activePlatformChainId ?? NEXT_PUBLIC_DEFAULT_CHAIN_ID,
+      );
+    }
+
+    return repositoryRef.current;
+  }, [activePlatformChainId]);
 
   // Computed: isLoading and error for backwards compatibility
   const isLoading = loadState.status === 'loading';
@@ -153,60 +187,73 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
     classAssetsCache.current.clear();
   }, []);
 
+  useEffect(() => {
+    repositoryRef.current = null;
+    invalidateCache();
+    setCurrentChainId(activePlatformChainId ?? null);
+  }, [activePlatformChainId, invalidateCache]);
+
   /**
    * Get asset by token ID.
    * First checks the already-loaded supportedAssets in memory for an instant match,
    * then falls back to the repository (Pinata/IPFS) lookup.
    */
-  const getAssetByTokenId = useCallback(async (tokenId: string) => {
-    // Normalize tokenId to decimal for consistent comparison
-    const normalizedId = (() => {
-      try {
-        return BigInt(tokenId).toString(10);
-      } catch {
-        return tokenId;
-      }
-    })();
-
-    // Check in-memory supported assets first (fast path)
-    const cached = supportedAssetsRef.current.find((a) => {
-      try {
-        return BigInt(a.tokenId).toString(10) === normalizedId;
-      } catch {
-        return a.tokenId === tokenId;
-      }
-    });
-    if (
-      cached &&
-      Array.isArray(cached.attributes) &&
-      cached.attributes.length
-    ) {
-      return cached;
-    }
-
-    // Fallback to repository/Pinata lookup when the cached asset is missing
-    // or does not include hydrated attributes yet.
-    try {
-      const asset = await repositoryRef.current.getAssetByTokenId(tokenId);
-      if (asset) {
-        if (cached) {
-          return {
-            ...cached,
-            ...asset,
-            attributes:
-              Array.isArray(asset.attributes) && asset.attributes.length > 0
-                ? asset.attributes
-                : cached.attributes,
-          };
+  const getAssetByTokenId = useCallback(
+    async (tokenId: string) => {
+      // Normalize tokenId to decimal for consistent comparison
+      const normalizedId = (() => {
+        try {
+          return BigInt(tokenId).toString(10);
+        } catch {
+          return tokenId;
         }
-        return asset;
+      })();
+
+      // Check in-memory supported assets first (fast path)
+      const cached = supportedAssetsRef.current.find((a) => {
+        try {
+          return BigInt(a.tokenId).toString(10) === normalizedId;
+        } catch {
+          return a.tokenId === tokenId;
+        }
+      });
+      if (
+        cached &&
+        Array.isArray(cached.attributes) &&
+        cached.attributes.length
+      ) {
+        return cached;
       }
-      return cached ?? null;
-    } catch (err) {
-      console.error('[PlatformProvider] Error fetching asset by tokenId:', err);
-      return cached ?? null;
-    }
-  }, []);
+
+      // Fallback to repository/Pinata lookup when the cached asset is missing
+      // or does not include hydrated attributes yet.
+      try {
+        const repository = getRepository();
+        const asset = await repository.getAssetByTokenId(tokenId);
+        if (asset) {
+          if (cached) {
+            return {
+              ...cached,
+              ...asset,
+              attributes:
+                Array.isArray(asset.attributes) && asset.attributes.length > 0
+                  ? asset.attributes
+                  : cached.attributes,
+            };
+          }
+          return asset;
+        }
+        return cached ?? null;
+      } catch (err) {
+        console.error(
+          '[PlatformProvider] Error fetching asset by tokenId:',
+          err,
+        );
+        return cached ?? null;
+      }
+    },
+    [getRepository],
+  );
 
   /**
    * Refresh all platform data
@@ -216,11 +263,11 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
 
     try {
       // Fetch both in parallel
+      const repository = getRepository();
       const results = await Promise.allSettled([
-        repositoryRef.current.getSupportedAssets(),
-        repositoryRef.current.getSupportedAssetClasses(),
+        repository.getSupportedAssets(),
+        repository.getSupportedAssetClasses(),
       ]);
-
       const [assetsResult, classesResult] = results;
       const errors: string[] = [];
 
@@ -273,7 +320,7 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       console.error('[PlatformProvider] Unexpected error:', err);
       setLoadState({ status: 'error', error: msg });
     }
-  }, [invalidateCache]);
+  }, [getRepository, invalidateCache]);
 
   /**
    * Get assets for a specific class (with caching)
@@ -290,7 +337,7 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       }
 
       try {
-        const assets = await repositoryRef.current.getClassAssets(assetClass);
+        const assets = await getRepository().getClassAssets(assetClass);
 
         // Update cache
         classAssetsCache.current.set(key, {
@@ -307,7 +354,7 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
         throw err;
       }
     },
-    [isCacheValid],
+    [getRepository, isCacheValid],
   );
 
   /**
@@ -333,9 +380,20 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
 
   // Initial data fetch
   useEffect(() => {
-    refreshPlatformData();
+    if (isPublicNodeRoute && activePlatformChainId === null) {
+      setSupportedAssets([]);
+      setSupportedAssetClasses([]);
+      setVolumeByTokenId(new Map());
+      setLoadState({
+        status: 'error',
+        error: publicChain.error || 'Unsupported public chain.',
+      });
+      return;
+    }
+
+    void refreshPlatformData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [activePlatformChainId, isPublicNodeRoute, publicChain.error]);
 
   // Context value
   const contextValue = useMemo<PlatformContextType>(

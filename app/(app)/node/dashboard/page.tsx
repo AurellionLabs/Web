@@ -58,7 +58,7 @@ import { Form } from '@/app/components/ui/form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useSelectedNode } from '@/app/providers/selected-node.provider';
 import { useNodes } from '@/app/providers/nodes.provider';
 import { useDiamond } from '@/app/providers/diamond.provider';
@@ -68,11 +68,13 @@ import type {
   SupportingDocument,
 } from '@/domain/node';
 import { useToast } from '@/hooks/use-toast';
+import { useWallet } from '@/hooks/useWallet';
 import { useQuoteTokenMetadata } from '@/hooks/useQuoteTokenMetadata';
 import { MapView } from '@/app/components/ui/map-view';
 import AssetSelectionForm from './asset-selection-form';
 import { usePlatform } from '@/app/providers/platform.provider';
 import type { Asset } from '@/domain/shared';
+import { NETWORK_CONFIGS } from '@/config/network';
 
 type AttributeValue = string | number | boolean;
 import { Order, OrderStatus } from '@/domain/orders';
@@ -91,6 +93,8 @@ import {
   buildAssetNameLookup,
   resolveOrderAssetName,
 } from '@/utils/order-asset-resolution';
+import { isNodeDashboardReadOnly } from './access-mode';
+import { resolvePublicNodeChain } from '@/lib/public-node-chain';
 
 const tokenizeFormSchema = z.object({
   assetClass: z.string().min(1, { message: 'Please select an asset class.' }),
@@ -128,6 +132,7 @@ export default function NodeDashboardPage() {
     supportingDocuments,
     loading: nodeLoading,
     documentsLoading,
+    error: selectedNodeError,
     selectNode,
     mintAsset,
     updateNodeStatus,
@@ -140,20 +145,41 @@ export default function NodeDashboardPage() {
     packageSign,
     startJourney,
     refreshOrders,
+    clearSelection,
   } = useSelectedNode();
 
-  const { nodes: allNodes, refreshNodes } = useNodes();
+  const { nodes: allNodes, loadNodes } = useNodes();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
+  const { address: walletAddress } = useWallet();
   const { decimals: quoteTokenDecimals, symbol: quoteTokenSymbol } =
     useQuoteTokenMetadata();
-  const { isReadOnly: diamondIsReadOnly } = useDiamond();
+  const {
+    initialized: diamondInitialized,
+    error: diamondError,
+    isReadOnly: diamondIsReadOnly,
+  } = useDiamond();
 
-  const searchParams = new URLSearchParams(window.location.search);
   const nodeIdFromUrl = searchParams.get('nodeId');
   const viewMode = searchParams.get('view');
-  // Read-only if URL says public OR if Diamond context is in read-only mode (no wallet)
-  const isReadOnly = viewMode === 'public' || diamondIsReadOnly;
+  const publicChain = resolvePublicNodeChain(searchParams);
+  const publicChainId = publicChain.chainId;
+  const preservePublicView = viewMode === 'public' || !walletAddress;
+  const publicSelectionKey =
+    preservePublicView && nodeIdFromUrl && publicChainId !== null
+      ? `${publicChainId}:${nodeIdFromUrl}`
+      : null;
+  const publicChainLabel =
+    publicChainId === null
+      ? null
+      : (NETWORK_CONFIGS[publicChainId]?.name ?? String(publicChainId));
+  const isReadOnly = isNodeDashboardReadOnly({
+    viewMode,
+    diamondIsReadOnly,
+    walletAddress,
+    ownerAddress: currentNodeData?.owner,
+  });
 
   const [isAddAssetOpen, setIsAddAssetOpen] = useState(false);
   const [isTokenizing, setIsTokenizing] = useState(false);
@@ -228,6 +254,26 @@ export default function NodeDashboardPage() {
       directName: order.asset?.name,
       lookups: [nodeAssetNameByTokenId],
     });
+  const publicRpcErrorMessage = (() => {
+    const candidateMessages = [
+      selectedNodeError?.message,
+      diamondError?.message,
+    ].filter(Boolean) as string[];
+
+    const rpcFailure = candidateMessages.find((message) => {
+      return (
+        message.includes('Too Many Requests') ||
+        message.includes('missing response for request') ||
+        message.includes('BAD_DATA') ||
+        message.includes('failed to detect network') ||
+        message.includes('Failed to fetch') ||
+        message.includes('ERR_FAILED') ||
+        message.includes('Public RPC is not configured')
+      );
+    });
+
+    return rpcFailure ?? null;
+  })();
 
   // Document management state
   const [isAddDocumentOpen, setIsAddDocumentOpen] = useState(false);
@@ -263,6 +309,35 @@ export default function NodeDashboardPage() {
   const [expandedP2POrders, setExpandedP2POrders] = useState<
     Record<string, boolean>
   >({});
+  const [activePublicSelectionKey, setActivePublicSelectionKey] = useState<
+    string | null
+  >(null);
+  const [failedPublicSelectionKey, setFailedPublicSelectionKey] = useState<
+    string | null
+  >(null);
+  const isAwaitingPublicSelection =
+    preservePublicView &&
+    publicSelectionKey !== null &&
+    activePublicSelectionKey !== publicSelectionKey &&
+    failedPublicSelectionKey !== publicSelectionKey;
+
+  const buildDashboardHref = (nodeId: string) => {
+    const params = new URLSearchParams({ nodeId });
+    if (preservePublicView) {
+      params.set('view', 'public');
+      if (publicChainId !== null) {
+        params.set('chainId', String(publicChainId));
+      }
+    }
+    return `/node/dashboard?${params.toString()}`;
+  };
+
+  const buildExplorerHref = () => {
+    if (publicChainId === null) {
+      return '/node/explorer';
+    }
+    return `/node/explorer?chainId=${publicChainId}`;
+  };
 
   const toggleP2PExpand = (orderId: string) => {
     setExpandedP2POrders((prev) => ({
@@ -312,7 +387,7 @@ export default function NodeDashboardPage() {
       try {
         const sigResponse =
           await graphqlRequest<EmitSigEventsByJourneyResponse>(
-            getCurrentIndexerUrl(),
+            getCurrentIndexerUrl(publicChainId ?? undefined),
             GET_EMIT_SIG_EVENTS_BY_JOURNEY,
             { journeyId, limit: 50 },
           );
@@ -388,29 +463,110 @@ export default function NodeDashboardPage() {
   });
 
   useEffect(() => {
-    if (nodeIdFromUrl && nodeIdFromUrl !== selectedNodeAddress) {
-      const attemptSelection = async () => {
-        try {
-          await selectNode(nodeIdFromUrl);
-        } catch (error) {
-          console.error('Error selecting node from URL:', error);
-          toast({
-            title: 'Error',
-            description:
-              'Failed to load node data. Please ensure your wallet is connected and try again.',
-            variant: 'destructive',
-          });
-        }
-      };
-
-      attemptSelection();
+    if (!preservePublicView) {
+      setActivePublicSelectionKey(null);
+      setFailedPublicSelectionKey(null);
+      return;
     }
+
+    if (publicSelectionKey === null) {
+      clearSelection();
+      setActivePublicSelectionKey(null);
+      setFailedPublicSelectionKey(null);
+      return;
+    }
+
+    if (
+      activePublicSelectionKey !== null &&
+      activePublicSelectionKey !== publicSelectionKey
+    ) {
+      clearSelection();
+      setActivePublicSelectionKey(null);
+    }
+
+    if (
+      failedPublicSelectionKey !== null &&
+      failedPublicSelectionKey !== publicSelectionKey
+    ) {
+      setFailedPublicSelectionKey(null);
+    }
+  }, [
+    activePublicSelectionKey,
+    clearSelection,
+    failedPublicSelectionKey,
+    preservePublicView,
+    publicSelectionKey,
+  ]);
+
+  useEffect(() => {
+    if (!diamondInitialized) return;
+    if (!nodeIdFromUrl) return;
+
+    if (preservePublicView && publicSelectionKey !== null) {
+      if (activePublicSelectionKey === publicSelectionKey) return;
+      if (failedPublicSelectionKey === publicSelectionKey) return;
+      if (selectedNodeAddress === nodeIdFromUrl) return;
+    } else if (nodeIdFromUrl === selectedNodeAddress) {
+      return;
+    }
+
+    const attemptSelection = async () => {
+      try {
+        await selectNode(nodeIdFromUrl);
+        if (publicSelectionKey !== null) {
+          setActivePublicSelectionKey(publicSelectionKey);
+          setFailedPublicSelectionKey(null);
+        }
+      } catch (error) {
+        console.error('Error selecting node from URL:', error);
+        if (publicSelectionKey !== null) {
+          setActivePublicSelectionKey(null);
+          setFailedPublicSelectionKey(publicSelectionKey);
+        }
+        const message = error instanceof Error ? error.message : String(error);
+        const isRateLimited =
+          message.includes('Too Many Requests') ||
+          message.includes('missing response for request') ||
+          message.includes('BAD_DATA') ||
+          message.includes('Failed to fetch') ||
+          message.includes('ERR_FAILED');
+        const isRpcFailure =
+          isRateLimited ||
+          message.includes('failed to detect network') ||
+          message.includes('Public RPC is not configured');
+
+        toast({
+          title: 'Error',
+          description: isRpcFailure
+            ? 'The selected chain RPC is unavailable or misconfigured. Please verify the public RPC configuration and try again.'
+            : 'Failed to load node data. Please verify the node ID and try again.',
+          variant: 'destructive',
+        });
+      }
+    };
+
+    attemptSelection();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodeIdFromUrl, selectedNodeAddress, selectNode]); // toast excluded: stable callback, including would cause infinite re-render
+  }, [
+    activePublicSelectionKey,
+    diamondInitialized,
+    failedPublicSelectionKey,
+    nodeIdFromUrl,
+    preservePublicView,
+    publicSelectionKey,
+    selectedNodeAddress,
+    selectNode,
+  ]); // toast excluded: stable callback, including would cause infinite re-render
+
+  useEffect(() => {
+    if (!isReadOnly || !currentNodeData?.owner) return;
+    void loadNodes(currentNodeData.owner);
+  }, [isReadOnly, currentNodeData?.owner, loadNodes]);
 
   // When returning to this page with an already-selected node, force a fresh load
   // so newly created offers/orders appear without requiring a hard browser reload.
   useEffect(() => {
+    if (isReadOnly) return;
     if (!nodeIdFromUrl || !selectedNodeAddress) return;
     if (nodeIdFromUrl !== selectedNodeAddress) return;
 
@@ -427,7 +583,7 @@ export default function NodeDashboardPage() {
     };
 
     refreshOnEntry();
-  }, [nodeIdFromUrl, selectedNodeAddress, refreshOrders]);
+  }, [isReadOnly, nodeIdFromUrl, selectedNodeAddress, refreshOrders]);
 
   const onSubmit = async (values: z.infer<typeof tokenizeFormSchema>) => {
     if (!selectedNodeAddress || !currentNodeData) return;
@@ -1022,7 +1178,32 @@ export default function NodeDashboardPage() {
   const activeDocuments = supportingDocuments.filter((doc) => !doc.isRemoved);
   const removedDocuments = supportingDocuments.filter((doc) => doc.isRemoved);
 
-  if (nodeLoading || (!currentNodeData && nodeIdFromUrl)) {
+  if (preservePublicView && publicChainId === null) {
+    return (
+      <div className="p-6">
+        <EvaPanel label="Public Dashboard" sysId="SYS-ERR" accent="crimson">
+          <div className="space-y-4 text-center py-10">
+            <TargetRings size={40} />
+            <p className="font-mono text-sm tracking-[0.08em] uppercase text-crimson">
+              {publicChain.error || 'Unsupported public chain.'}
+            </p>
+            <TrapButton
+              variant="gold"
+              onClick={() => router.push('/node/explorer')}
+            >
+              Go to Node Explorer
+            </TrapButton>
+          </div>
+        </EvaPanel>
+      </div>
+    );
+  }
+
+  if (
+    nodeLoading ||
+    isAwaitingPublicSelection ||
+    (!preservePublicView && !currentNodeData && nodeIdFromUrl)
+  ) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -1040,6 +1221,65 @@ export default function NodeDashboardPage() {
     );
   }
 
+  if (
+    !currentNodeData &&
+    nodeIdFromUrl &&
+    preservePublicView &&
+    publicRpcErrorMessage
+  ) {
+    return (
+      <div className="p-6">
+        <EvaPanel label="RPC Error" sysId="SYS-RPC" accent="crimson">
+          <div className="space-y-4 text-center py-10">
+            <TargetRings size={40} />
+            <p className="font-mono text-sm tracking-[0.08em] uppercase text-crimson">
+              Public RPC unavailable for {publicChainLabel || 'selected chain'}.
+            </p>
+            <p className="font-mono text-xs tracking-[0.08em] uppercase text-foreground/45">
+              {publicRpcErrorMessage}
+            </p>
+            <TrapButton
+              variant="gold"
+              onClick={() => router.push(buildExplorerHref())}
+            >
+              Go to Node Explorer
+            </TrapButton>
+          </div>
+        </EvaPanel>
+      </div>
+    );
+  }
+
+  if (!currentNodeData && nodeIdFromUrl) {
+    return (
+      <div className="p-6">
+        <EvaPanel label="Node Lookup" sysId="SYS-MISS" accent="crimson">
+          <div className="space-y-4 text-center py-10">
+            <TargetRings size={40} />
+            <p className="font-mono text-sm tracking-[0.08em] uppercase text-crimson">
+              {preservePublicView && publicChainLabel
+                ? `Node not found on ${publicChainLabel}.`
+                : 'Node not found.'}
+            </p>
+            <p className="font-mono text-xs tracking-[0.08em] uppercase text-foreground/45">
+              {preservePublicView
+                ? 'Verify the node ID and selected chain, then try again.'
+                : 'Verify the node ID and try again.'}
+            </p>
+            <TrapButton
+              variant="gold"
+              onClick={() =>
+                router.push(isReadOnly ? buildExplorerHref() : '/node/overview')
+              }
+            >
+              {isReadOnly ? 'Go to Node Explorer' : 'Go to Node Overview'}
+            </TrapButton>
+          </div>
+        </EvaPanel>
+      </div>
+    );
+  }
+
   if (!currentNodeData && !nodeIdFromUrl) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -1051,9 +1291,11 @@ export default function NodeDashboardPage() {
             </p>
             <TrapButton
               variant="gold"
-              onClick={() => router.push('/node/overview')}
+              onClick={() =>
+                router.push(isReadOnly ? buildExplorerHref() : '/node/overview')
+              }
             >
-              Go to Node Overview
+              {isReadOnly ? 'Go to Node Explorer' : 'Go to Node Overview'}
             </TrapButton>
           </div>
         </EvaPanel>
@@ -1382,31 +1624,33 @@ export default function NodeDashboardPage() {
             sysId="ORD.TRK"
             accent="crimson"
           >
-            <div className="flex items-center justify-end mb-4">
-              <TrapButton
-                variant="gold"
-                size="sm"
-                onClick={async () => {
-                  setIsViewingOrders(true);
-                  try {
-                    if (!selectedNodeAddress) {
-                      toast({
-                        title: 'Error',
-                        description: 'No node selected to view orders.',
-                        variant: 'destructive',
-                      });
-                      return;
+            {!isReadOnly && (
+              <div className="flex items-center justify-end mb-4">
+                <TrapButton
+                  variant="gold"
+                  size="sm"
+                  onClick={async () => {
+                    setIsViewingOrders(true);
+                    try {
+                      if (!selectedNodeAddress) {
+                        toast({
+                          title: 'Error',
+                          description: 'No node selected to view orders.',
+                          variant: 'destructive',
+                        });
+                        return;
+                      }
+                      await router.push(`/node/${selectedNodeAddress}/orders`);
+                    } finally {
+                      setIsViewingOrders(false);
                     }
-                    await router.push(`/node/${selectedNodeAddress}/orders`);
-                  } finally {
-                    setIsViewingOrders(false);
-                  }
-                }}
-                disabled={isViewingOrders}
-              >
-                View All Orders
-              </TrapButton>
-            </div>
+                  }}
+                  disabled={isViewingOrders}
+                >
+                  View All Orders
+                </TrapButton>
+              </div>
+            )}
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -1518,7 +1762,8 @@ export default function NodeDashboardPage() {
                                   Awaiting driver signature
                                 </span>
                               </div>
-                            ) : !isP2P &&
+                            ) : !isReadOnly &&
+                              !isP2P &&
                               (order.currentStatus === OrderStatus.CREATED ||
                                 (order.currentStatus ===
                                   OrderStatus.PROCESSING &&
@@ -1573,8 +1818,9 @@ export default function NodeDashboardPage() {
                                 order={order}
                                 fetchSignatureState={getP2PSignatureState}
                                 onSignPickup={
+                                  !isReadOnly &&
                                   order.seller?.toLowerCase() ===
-                                  currentNodeData?.owner?.toLowerCase()
+                                    currentNodeData?.owner?.toLowerCase()
                                     ? async (orderId) => {
                                         const matchedOrder = orders.find(
                                           (o) => o.id === orderId,
@@ -1701,9 +1947,11 @@ export default function NodeDashboardPage() {
             selectedAddress={selectedNodeAddress || undefined}
             onNodeClick={(addr) => {
               selectNode(addr);
-              router.push(`/node/dashboard?nodeId=${addr}`);
+              router.push(buildDashboardHref(addr));
             }}
-            onAddNode={() => router.push('/node/register')}
+            onAddNode={
+              !isReadOnly ? () => router.push('/node/register') : undefined
+            }
           />
         </EvaPanel>
 

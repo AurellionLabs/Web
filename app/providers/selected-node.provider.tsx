@@ -7,7 +7,6 @@ import React, {
   useState,
   useCallback,
   useEffect,
-  useRef,
 } from 'react';
 import {
   Node,
@@ -140,16 +139,14 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
 
   // Load orders for selected node (from GraphQL indexer via Diamond repository)
   const loadOrders = useCallback(
-    async (nodeAddress: string) => {
+    async (nodeAddress: string, ownerAddress?: string) => {
       if (!nodeRepository) return;
 
       setOrdersLoading(true);
       try {
-        // Pass both the node hash and the wallet address (owner)
-        // so the repository can match orders by logistics node field AND by wallet
         const nodeOrders = await nodeRepository.getNodeOrders(
           nodeAddress,
-          address || undefined,
+          ownerAddress,
         );
 
         // Fetch asset details for each order
@@ -182,7 +179,7 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
         setOrdersLoading(false);
       }
     },
-    [nodeRepository, getAssetByTokenId, address],
+    [nodeRepository, getAssetByTokenId],
   );
 
   // Load assets for selected node
@@ -231,9 +228,7 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
       // Check if Diamond is initialized
       if (!diamondInitialized) {
         console.warn('Diamond not initialized, cannot select node');
-        throw new Error(
-          'Diamond not initialized. Please ensure wallet is connected.',
-        );
+        throw new Error('Node data is still initializing. Please try again.');
       }
 
       setLoading(true);
@@ -250,7 +245,7 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
 
         // Load node-specific data in parallel
         await Promise.all([
-          loadOrders(nodeAddress),
+          loadOrders(nodeAddress, node.owner),
           loadAssets(nodeAddress),
           loadDocuments(nodeAddress),
         ]);
@@ -274,23 +269,6 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
       diamondInitialized,
     ],
   );
-
-  // Clear selection
-  // Re-load orders when wallet address becomes available for an already-selected node.
-  // This handles the race condition where selectNode runs before the wallet connects,
-  // causing P2P queries to use the node hash instead of the wallet address.
-  const prevAddressRef = useRef<string | null | undefined>(undefined);
-  useEffect(() => {
-    if (
-      selectedNodeAddress &&
-      address &&
-      prevAddressRef.current !== address &&
-      nodeRepository
-    ) {
-      loadOrders(selectedNodeAddress);
-    }
-    prevAddressRef.current = address ?? null;
-  }, [address, selectedNodeAddress, nodeRepository, loadOrders]);
 
   useEffect(() => {
     if (
@@ -340,6 +318,10 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
     setOrders([]);
     setAssets([]);
     setSupportingDocuments([]);
+    setLoading(false);
+    setOrdersLoading(false);
+    setAssetsLoading(false);
+    setDocumentsLoading(false);
     setError(null);
   }, []);
 
@@ -357,9 +339,9 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
 
   // Refresh orders
   const refreshOrders = useCallback(async () => {
-    if (!selectedNodeAddress) return;
-    await loadOrders(selectedNodeAddress);
-  }, [selectedNodeAddress, loadOrders]);
+    if (!selectedNodeAddress || !nodeData) return;
+    await loadOrders(selectedNodeAddress, nodeData.owner);
+  }, [selectedNodeAddress, nodeData, loadOrders]);
 
   // Refresh assets
   const refreshAssets = useCallback(async () => {
@@ -505,12 +487,13 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
       // Refresh orders with indexer polling for eventual consistency
       if (selectedNodeAddress) {
         await new Promise((r) => setTimeout(r, 2000));
-        await loadOrders(selectedNodeAddress);
+        await loadOrders(selectedNodeAddress, nodeData?.owner);
       }
     },
     [
       diamondInitialized,
       selectedNodeAddress,
+      nodeData,
       loadOrders,
       getAlignedAusysContract,
     ],
@@ -528,18 +511,19 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
 
       // Refresh orders with indexer polling for eventual consistency
       await new Promise((r) => setTimeout(r, 3000));
-      await loadOrders(selectedNodeAddress);
+      await loadOrders(selectedNodeAddress, nodeData?.owner);
 
       // Follow-up refresh in case indexer was slow
       setTimeout(() => {
         if (selectedNodeAddress) {
-          loadOrders(selectedNodeAddress);
+          loadOrders(selectedNodeAddress, nodeData?.owner);
         }
       }, 5000);
     },
     [
       diamondInitialized,
       selectedNodeAddress,
+      nodeData,
       loadOrders,
       getAlignedAusysContract,
     ],
