@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { RoleSelector } from '@/app/components/ui/role-selector';
 import { WalletConnection } from '@/app/components/ui/wallet-connection';
 import { useMainProvider } from '@/app/providers/main.provider';
+import { resolvePublicDashboardEnvironmentLabel } from '@/app/components/layout/public-dashboard-network-badge';
 import { useWallet } from '@/hooks/useWallet';
 import { cn } from '@/lib/utils';
 import ConnectButton from '../ConnectButtont';
@@ -149,7 +150,14 @@ export function ClientHeader() {
   const { currentUserRole } = useMainProvider();
   const { chainId } = useWallet();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const isMainnet = chainId === MAINNET_CHAIN_ID;
+  const publicDashboardEnvironmentLabel =
+    resolvePublicDashboardEnvironmentLabel({
+      pathname,
+      searchParams,
+      walletChainId: chainId,
+    });
 
   // Show prompt to switch chain if on unsupported non-testnet chain
   const needsSwitch =
@@ -347,7 +355,8 @@ export function ClientHeader() {
                 <div className="w-2 h-2 rounded-full bg-emerald-500" />
                 <div className="absolute inset-0 w-2 h-2 rounded-full bg-emerald-500 animate-ping opacity-30" />
               </div>
-              {isMainnet ? 'Mainnet' : 'Testnet'}
+              {publicDashboardEnvironmentLabel ||
+                (isMainnet ? 'Mainnet' : 'Testnet')}
             </div>
           )}
           <div className="hidden sm:block">
