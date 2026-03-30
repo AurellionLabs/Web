@@ -74,6 +74,8 @@ type CustomerContextType = {
   ) => Promise<void>;
 };
 
+const getOptimisticUpdatedAt = () => Math.floor(Date.now() / 1000);
+
 // Create context
 const CustomerContext = createContext<CustomerContextType | undefined>(
   undefined,
@@ -244,7 +246,11 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         setOrders((prevOrders) =>
           prevOrders.map((order) =>
             order.id === orderId
-              ? { ...order, currentStatus: OrderStatus.CANCELLED }
+              ? {
+                  ...order,
+                  currentStatus: OrderStatus.CANCELLED,
+                  updatedAt: getOptimisticUpdatedAt(),
+                }
               : order,
           ),
         );
@@ -303,7 +309,11 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
             setOrders((prevOrders) =>
               prevOrders.map((order) =>
                 order.id === orderId
-                  ? { ...order, currentStatus: OrderStatus.SETTLED }
+                  ? {
+                      ...order,
+                      currentStatus: OrderStatus.SETTLED,
+                      updatedAt: getOptimisticUpdatedAt(),
+                    }
                   : order,
               ),
             );
@@ -403,7 +413,11 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
             setOrders((prev) =>
               prev.map((o) =>
                 o.id === orderId
-                  ? { ...o, currentStatus: OrderStatus.SETTLED }
+                  ? {
+                      ...o,
+                      currentStatus: OrderStatus.SETTLED,
+                      updatedAt: getOptimisticUpdatedAt(),
+                    }
                   : o,
               ),
             );
@@ -508,7 +522,11 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
           setOrders((prev) =>
             prev.map((o) =>
               o.id === orderId
-                ? { ...o, currentStatus: OrderStatus.SETTLED }
+                ? {
+                    ...o,
+                    currentStatus: OrderStatus.SETTLED,
+                    updatedAt: getOptimisticUpdatedAt(),
+                  }
                 : o,
             ),
           );
@@ -523,7 +541,13 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         // Update local state optimistically
         setOrders((prev) =>
           prev.map((o) =>
-            o.id === orderId ? { ...o, currentStatus: OrderStatus.SETTLED } : o,
+            o.id === orderId
+              ? {
+                  ...o,
+                  currentStatus: OrderStatus.SETTLED,
+                  updatedAt: getOptimisticUpdatedAt(),
+                }
+              : o,
           ),
         );
 
@@ -552,7 +576,11 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
           setOrders((prev) =>
             prev.map((o) =>
               o.id === orderId
-                ? { ...o, currentStatus: OrderStatus.SETTLED }
+                ? {
+                    ...o,
+                    currentStatus: OrderStatus.SETTLED,
+                    updatedAt: getOptimisticUpdatedAt(),
+                  }
                 : o,
             ),
           );

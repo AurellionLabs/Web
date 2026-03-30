@@ -765,9 +765,11 @@ export function aggregateP2POrdersForUser(
   journeyStatusUpdates: JourneyStatusUpdateRawEvent[] = [],
 ): Order[] {
   const addr = userAddress.toLowerCase();
+  const getTimestamp = (value?: string) => Number(value || 0) || 0;
 
   // Build lookup: order_id → latest status
   const statusMap = new Map<string, number>();
+  const statusUpdatedAtMap = new Map<string, number>();
   for (const su of statusUpdates) {
     const oid = su.order_id.toLowerCase();
     const status = Number(su.new_status);
@@ -775,6 +777,13 @@ export function aggregateP2POrdersForUser(
     if (!statusMap.has(oid)) {
       statusMap.set(oid, status);
     }
+    statusUpdatedAtMap.set(
+      oid,
+      Math.max(
+        statusUpdatedAtMap.get(oid) ?? 0,
+        getTimestamp(su.block_timestamp),
+      ),
+    );
   }
 
   // Build lookup: order_id → created event details
@@ -784,30 +793,51 @@ export function aggregateP2POrdersForUser(
   }
 
   const acceptedMap = new Map<string, P2POfferAcceptedRawEvent>();
+  const acceptedAtMap = new Map<string, number>();
   for (const ae of allAcceptedEvents) {
     const oid = ae.order_id.toLowerCase();
     if (!acceptedMap.has(oid)) {
       acceptedMap.set(oid, ae);
     }
+    acceptedAtMap.set(
+      oid,
+      Math.max(acceptedAtMap.get(oid) ?? 0, getTimestamp(ae.block_timestamp)),
+    );
   }
 
   // Build lookup: order_id → journey IDs
   const orderJourneyMap = new Map<string, string[]>();
+  const journeyCreatedAtByOrderMap = new Map<string, number>();
   for (const je of journeyEvents) {
     const oid = je.order_id.toLowerCase();
     const existing = orderJourneyMap.get(oid) ?? [];
     existing.push(je.journey_id);
     orderJourneyMap.set(oid, existing);
+    journeyCreatedAtByOrderMap.set(
+      oid,
+      Math.max(
+        journeyCreatedAtByOrderMap.get(oid) ?? 0,
+        getTimestamp(je.block_timestamp),
+      ),
+    );
   }
 
   // Build lookup: journey_id → latest status
   const journeyStatusMap = new Map<string, number>();
+  const journeyStatusUpdatedAtMap = new Map<string, number>();
   for (const jsu of journeyStatusUpdates) {
     const jid = jsu.journey_id.toLowerCase();
     const status = Number(jsu.new_status);
     if (!journeyStatusMap.has(jid)) {
       journeyStatusMap.set(jid, status);
     }
+    journeyStatusUpdatedAtMap.set(
+      jid,
+      Math.max(
+        journeyStatusUpdatedAtMap.get(jid) ?? 0,
+        getTimestamp(jsu.block_timestamp),
+      ),
+    );
   }
 
   const orders: Order[] = [];
@@ -823,16 +853,32 @@ export function aggregateP2POrdersForUser(
     const oid = orderId.toLowerCase();
     const contractStatus = statusMap.get(oid) ?? defaultStatus;
     const journeyIds = orderJourneyMap.get(oid) ?? [];
+    const createdAt = getTimestamp(created.block_timestamp);
 
     // Get the latest journey status for this order (use the most recent journey)
     let journeyStatus: number | null = null;
+    let latestJourneyUpdateAt = 0;
     for (const jid of journeyIds) {
       const jStatus = journeyStatusMap.get(jid.toLowerCase());
       if (jStatus !== undefined) {
         journeyStatus = jStatus;
-        break; // First journey (most recent) wins
+      }
+      latestJourneyUpdateAt = Math.max(
+        latestJourneyUpdateAt,
+        journeyStatusUpdatedAtMap.get(jid.toLowerCase()) ?? 0,
+      );
+      if (journeyStatus !== null && latestJourneyUpdateAt > 0) {
+        break; // Queries are newest-first; once both are found, stop.
       }
     }
+
+    const updatedAt = Math.max(
+      createdAt,
+      acceptedAtMap.get(oid) ?? 0,
+      statusUpdatedAtMap.get(oid) ?? 0,
+      journeyCreatedAtByOrderMap.get(oid) ?? 0,
+      latestJourneyUpdateAt,
+    );
 
     return {
       id: created.order_id,
@@ -849,7 +895,8 @@ export function aggregateP2POrdersForUser(
       contractualAgreement: '',
       isP2P: true,
       journeyStatus,
-      createdAt: Number(created.block_timestamp) || 0,
+      createdAt,
+      updatedAt,
     };
   }
 

@@ -79,6 +79,7 @@ import { NETWORK_CONFIGS } from '@/config/network';
 type AttributeValue = string | number | boolean;
 import { Order, OrderStatus } from '@/domain/orders';
 import { formatTokenAmount } from '@/lib/formatters';
+import { sortOrdersWithPinnedActivity } from '@/lib/order-sorting';
 import { cn } from '@/lib/utils';
 import { P2POrderFlow } from '@/app/components/p2p/p2p-order-flow';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
@@ -790,10 +791,15 @@ export default function NodeDashboardPage() {
     }));
   }, [uniqueAssets]);
 
-  const totalPages = Math.ceil(orders.length / ordersPerPage);
+  const sortedOrders = useMemo(
+    () => sortOrdersWithPinnedActivity(orders),
+    [orders],
+  );
+
+  const totalPages = Math.ceil(sortedOrders.length / ordersPerPage);
   const startIndex = (currentPage - 1) * ordersPerPage;
   const endIndex = startIndex + ordersPerPage;
-  const currentOrders = orders.slice(startIndex, endIndex);
+  const currentOrders = sortedOrders.slice(startIndex, endIndex);
 
   const goToFirstPage = () => setCurrentPage(1);
   const goToLastPage = () => setCurrentPage(totalPages);
@@ -1850,7 +1856,7 @@ export default function NodeDashboardPage() {
                 </tbody>
               </table>
 
-              {orders.length === 0 && (
+              {sortedOrders.length === 0 && (
                 <div className="text-center py-12">
                   <Package className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
                   <p className="text-muted-foreground">No orders found</p>
@@ -1858,12 +1864,12 @@ export default function NodeDashboardPage() {
               )}
 
               {/* Pagination Controls */}
-              {orders.length > ordersPerPage && (
+              {sortedOrders.length > ordersPerPage && (
                 <div className="mt-4 flex items-center justify-between px-2 pt-4 border-t border-border/15">
                   <div className="font-mono text-xs text-foreground/30 tracking-wider">
                     Showing {startIndex + 1} to{' '}
-                    {Math.min(endIndex, orders.length)} of {orders.length}{' '}
-                    orders
+                    {Math.min(endIndex, sortedOrders.length)} of{' '}
+                    {sortedOrders.length} orders
                   </div>
                   <div className="flex items-center gap-1">
                     <button

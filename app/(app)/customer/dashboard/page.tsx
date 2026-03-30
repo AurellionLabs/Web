@@ -74,6 +74,7 @@ import { getDefaultP2PDeliveryBountyWei } from '@/config/p2p';
 import { useWallet } from '@/hooks/useWallet';
 import { AUSYS_ABI } from '@/lib/constants/contracts';
 import { formatTokenAmount } from '@/lib/formatters';
+import { sortOrdersWithPinnedActivity } from '@/lib/order-sorting';
 import { getJourneyRoleConflictMessage } from '@/utils/journey-role-conflicts';
 import { useQuoteTokenMetadata } from '@/hooks/useQuoteTokenMetadata';
 import {
@@ -82,7 +83,7 @@ import {
 } from '@/utils/order-asset-resolution';
 
 type SortConfig = {
-  key: 'tokenQuantity' | 'price' | 'createdAt' | null;
+  key: 'tokenQuantity' | 'price' | null;
   direction: 'asc' | 'desc';
 };
 
@@ -238,9 +239,9 @@ export default function CustomerDashboard() {
     status: 'all',
   });
 
-  // Sort state — default newest first
+  // Sort state — default active-first, then most recently updated first
   const [sortConfig, setSortConfig] = useState<SortConfig>({
-    key: 'createdAt',
+    key: null,
     direction: 'desc',
   });
 
@@ -306,30 +307,26 @@ export default function CustomerDashboard() {
   });
 
   // Apply sorting
-  const sortedOrders = [...filteredOrders].sort((a, b) => {
-    if (sortConfig.key === null) return 0;
+  const sortedOrders = sortOrdersWithPinnedActivity(
+    filteredOrders,
+    sortConfig.key
+      ? (a, b) => {
+          if (sortConfig.key === 'price') {
+            const aValue = parseFloat((a.price ?? '0') as string);
+            const bValue = parseFloat((b.price ?? '0') as string);
+            return sortConfig.direction === 'asc'
+              ? aValue - bValue
+              : bValue - aValue;
+          }
 
-    // Coerce to a comparable number/string based on sort key
-    let aVal: number | string;
-    let bVal: number | string;
-
-    if (sortConfig.key === 'price') {
-      aVal = parseFloat((a.price ?? '0') as string);
-      bVal = parseFloat((b.price ?? '0') as string);
-    } else if (sortConfig.key === 'createdAt') {
-      aVal = Number(a.createdAt ?? 0);
-      bVal = Number(b.createdAt ?? 0);
-    } else {
-      aVal = ((a as Record<string, unknown>)[sortConfig.key] as string) ?? '';
-      bVal = ((b as Record<string, unknown>)[sortConfig.key] as string) ?? '';
-    }
-
-    if (sortConfig.direction === 'asc') {
-      return aVal > bVal ? 1 : -1;
-    } else {
-      return aVal < bVal ? 1 : -1;
-    }
-  });
+          const aQuantity = Number(a.tokenQuantity ?? 0);
+          const bQuantity = Number(b.tokenQuantity ?? 0);
+          return sortConfig.direction === 'asc'
+            ? aQuantity - bQuantity
+            : bQuantity - aQuantity;
+        }
+      : undefined,
+  );
 
   // Calculate statistics from filtered orders
   const activeOrders = filteredOrders.filter(

@@ -44,6 +44,8 @@ export type Order = {
   journeyStatus?: number | null;
   /** Block timestamp (seconds since epoch) for chronological sorting */
   createdAt?: number;
+  /** Latest lifecycle update timestamp (seconds since epoch) for active-first sorting */
+  updatedAt?: number;
 };
 /**
  * Interface defining the data access methods for orders and journeys.
