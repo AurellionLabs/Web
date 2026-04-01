@@ -10,7 +10,6 @@ import { useMainProvider } from '@/app/providers/main.provider';
 import { useWallet } from '@/hooks/useWallet';
 import {
   usePrivy,
-  useWallets,
   useFundWallet,
   FundWalletConfig,
   MoonpayConfig,
@@ -73,9 +72,15 @@ function WalletConnectionPrivy() {
   const { setIsWalletConnected } = useMainProvider();
   const { ready, authenticated } = usePrivy();
   const { fundWallet } = useFundWallet();
-  const { wallets, ready: walletsReady } = useWallets();
-  const { connect, disconnect, address, error, repository, isConnected } =
-    useWallet();
+  const {
+    connect,
+    disconnect,
+    address,
+    error,
+    repository,
+    isConnected,
+    connectedWallet,
+  } = useWallet();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [currentChainId, setCurrentChainId] = useState<number>();
@@ -99,15 +104,15 @@ function WalletConnectionPrivy() {
     if (ready) {
       setIsWalletConnected(isConnected);
     }
-    if (isConnected && wallets?.length > 0) {
+    if (isConnected && connectedWallet) {
       checkConnection();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, isConnected, address, setIsWalletConnected, wallets]);
+  }, [ready, isConnected, address, setIsWalletConnected, connectedWallet]);
 
   const checkConnection = async () => {
     if (!ready || !authenticated) return;
-    const wallet = wallets?.[0];
+    const wallet = connectedWallet;
     if (!wallet) return;
 
     const numericChainId = parseInt(wallet.chainId.split(':')[1]);
@@ -116,11 +121,11 @@ function WalletConnectionPrivy() {
   };
 
   useEffect(() => {
-    if (authenticated && wallets?.length > 0) {
+    if (authenticated && connectedWallet) {
       checkConnection();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authenticated, wallets]);
+  }, [authenticated, connectedWallet]);
 
   useEffect(() => {
     const fetchAllBalances = async () => {
@@ -167,7 +172,7 @@ function WalletConnectionPrivy() {
       fetchAllBalances();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, address, walletsReady, wallets, currentChainId]); // repository excluded: stable reference from context, would cause unnecessary re-runs
+  }, [isOpen, address, connectedWallet, currentChainId]); // repository excluded: stable reference from context, would cause unnecessary re-runs
 
   const handleAccountsChanged = async () => {
     if (!repository) return;
@@ -220,7 +225,7 @@ function WalletConnectionPrivy() {
   };
 
   const switchNetwork = async () => {
-    const wallet = wallets?.[0];
+    const wallet = connectedWallet;
     if (!wallet) {
       toast({
         title: 'Error',
@@ -243,7 +248,7 @@ function WalletConnectionPrivy() {
   };
 
   const addNetwork = async (chainIdToAdd: number) => {
-    const wallet = wallets?.[0];
+    const wallet = connectedWallet;
     if (!wallet) {
       toast({
         title: 'Error',
@@ -273,7 +278,7 @@ function WalletConnectionPrivy() {
   };
 
   const handleButtonClick = async () => {
-    if (address && wallets[0]) {
+    if (address && connectedWallet) {
       setIsOpen(true);
     } else {
       await connectWallet();
@@ -294,8 +299,6 @@ function WalletConnectionPrivy() {
     }
 
     let fundingChainIdForMoonpay: number;
-    const connectedWallet = wallets?.[0];
-
     if (connectedWallet && connectedWallet.chainId) {
       const chainIdParts = connectedWallet.chainId.split(':');
       const parsedChainId = parseInt(chainIdParts[1]);
@@ -405,7 +408,9 @@ function WalletConnectionPrivy() {
         <button
           onClick={() => handleFundAsset(assetType)}
           className="text-sm font-medium text-amber-400 hover:text-amber-300 disabled:text-white/70 disabled:cursor-not-allowed transition-colors"
-          disabled={isLoading || balance === null || !walletsReady || !address}
+          disabled={
+            isLoading || balance === null || !connectedWallet || !address
+          }
         >
           Fund
         </button>

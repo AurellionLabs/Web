@@ -1,18 +1,24 @@
 import { useState, useEffect, useCallback } from 'react';
-import {
-  ConnectedWallet,
-  usePrivy,
-  useWallets,
-  Wallet,
-} from '@privy-io/react-auth';
+import { ConnectedWallet, usePrivy, useWallets } from '@privy-io/react-auth';
 import { PrivyWalletRepository } from '@/infrastructure/repositories/privy-wallet-repository';
 import { useE2EAuth } from '@/app/providers/e2e-auth.provider';
 import { setCurrentChainId } from '@/infrastructure/config/indexer-endpoint';
 
 export const IS_E2E_TEST_MODE =
   process.env.NEXT_PUBLIC_E2E_TEST_MODE === 'true';
+const SHOULD_LOG_PRIVY_DEBUG = process.env.NODE_ENV !== 'production';
 
-// Helper function to parse chainId string to number
+type AuthTransitionState =
+  | 'idle'
+  | 'connecting'
+  | 'authenticating'
+  | 'disconnecting';
+
+function logPrivyDebug(message: string, details?: Record<string, unknown>) {
+  if (!SHOULD_LOG_PRIVY_DEBUG) return;
+  console.info(`[PrivyDebug] ${message}`, details ?? {});
+}
+
 const parseChainId = (chainIdStr: string | undefined | null): number | null => {
   if (!chainIdStr) return null;
   try {
@@ -24,9 +30,6 @@ const parseChainId = (chainIdStr: string | undefined | null): number | null => {
   }
 };
 
-// ---------------------------------------------------------------------------
-// E2E path — reads from E2EAuthContext, never touches Privy
-// ---------------------------------------------------------------------------
 function useWalletE2E() {
   const e2eAuth = useE2EAuth();
 
@@ -39,28 +42,29 @@ function useWalletE2E() {
   }, []);
 
   return {
+    wallets: [] as ConnectedWallet[],
+    activeWallet: null as ConnectedWallet | null,
     isConnected: e2eAuth.isConnected,
     connectedWallet: null as ConnectedWallet | null,
     address: e2eAuth.address,
-    chainId: 84532, // Base Sepolia
+    chainId: 84532,
     error: null,
     connect,
     disconnect,
     repository: null,
     isLoading: !e2eAuth.isReady,
+    isDisconnecting: false,
+    authTransitionState: 'idle' as AuthTransitionState,
     isInitialized: e2eAuth.isReady && e2eAuth.isConnected,
     isReady: e2eAuth.isReady,
   };
 }
 
-// ---------------------------------------------------------------------------
-// Production path — Privy-backed (must be inside PrivyProvider)
-// ---------------------------------------------------------------------------
 function useWalletPrivy() {
   const privy = usePrivy();
   const privyWallets = useWallets();
 
-  const initialConnectedWallet = privyWallets.wallets?.[0];
+  const initialConnectedWallet = privyWallets.wallets?.[0] ?? null;
 
   const [repository, setRepository] = useState<PrivyWalletRepository | null>(
     null,
@@ -76,9 +80,9 @@ function useWalletPrivy() {
   const [chainId, setChainId] = useState<number | null>(
     parseChainId(initialConnectedWallet?.chainId),
   );
-
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const currentUserId = privy.user?.id ?? null;
 
   useEffect(() => {
     if (!privy.ready || !privyWallets.ready || repository) return;
@@ -90,6 +94,7 @@ function useWalletPrivy() {
     privyWallets.wallets,
     repository,
     privy,
+    privyWallets,
   ]);
 
   useEffect(() => {
@@ -99,22 +104,42 @@ function useWalletPrivy() {
     setAddress(currentWallet?.address ?? null);
     const newChainId = parseChainId(currentWallet?.chainId);
     setChainId(newChainId);
-    // Sync to indexer endpoint resolver so repositories use the right URL
     setCurrentChainId(newChainId);
   }, [privy.authenticated, privyWallets.wallets]);
 
   useEffect(() => {
+    logPrivyDebug('wallet hook snapshot', {
+      authenticated: privy.authenticated,
+      userId: currentUserId,
+      connectedWalletAddress: connectedWallet?.address ?? null,
+      address,
+      chainId,
+      isConnected,
+      isLoading,
+    });
+  }, [
+    address,
+    chainId,
+    connectedWallet,
+    currentUserId,
+    isConnected,
+    isLoading,
+    privy.authenticated,
+  ]);
+
+  useEffect(() => {
     if (typeof window === 'undefined') return;
-    const win = window as Window & {
+    const browserWindow = window as Window & {
       ethereum?: { on?: Function; removeListener?: Function };
     };
-    if (!win.ethereum?.on) return;
+
+    if (!browserWindow.ethereum?.on) return;
 
     const handleAccountsChanged = (accounts: string[]) => {
-      const newAddress = accounts[0]?.toLowerCase();
+      const nextAddress = accounts[0]?.toLowerCase();
       const currentAddress = connectedWallet?.address?.toLowerCase();
 
-      if (!newAddress) {
+      if (!nextAddress) {
         setConnectedWallet(null);
         setIsConnected(false);
         setAddress(null);
@@ -122,10 +147,10 @@ function useWalletPrivy() {
         return;
       }
 
-      if (newAddress === currentAddress) return;
+      if (nextAddress === currentAddress) return;
 
       const matchingPrivyWallet = privyWallets.wallets?.find(
-        (w) => w.address?.toLowerCase() === newAddress,
+        (wallet) => wallet.address?.toLowerCase() === nextAddress,
       );
 
       if (matchingPrivyWallet) {
@@ -134,13 +159,16 @@ function useWalletPrivy() {
         setAddress(matchingPrivyWallet.address);
         setChainId(parseChainId(matchingPrivyWallet.chainId));
       } else {
-        setAddress(newAddress);
+        setAddress(nextAddress);
       }
     };
 
-    win.ethereum.on('accountsChanged', handleAccountsChanged);
+    browserWindow.ethereum.on('accountsChanged', handleAccountsChanged);
     return () => {
-      win.ethereum?.removeListener?.('accountsChanged', handleAccountsChanged);
+      browserWindow.ethereum?.removeListener?.(
+        'accountsChanged',
+        handleAccountsChanged,
+      );
     };
   }, [connectedWallet, privyWallets.wallets]);
 
@@ -148,20 +176,7 @@ function useWalletPrivy() {
     setError(null);
     setIsLoading(true);
     try {
-      if (privy.authenticated) {
-        if (privyWallets.wallets?.[0]) {
-          return;
-        }
-
-        privy.linkWallet({
-          walletChainType: 'ethereum-only',
-        });
-        return;
-      }
-
-      privy.connectWallet({
-        walletChainType: 'ethereum-only',
-      });
+      await privy.login();
     } catch (err) {
       setError(
         err instanceof Error ? err : new Error('Failed to connect wallet'),
@@ -169,7 +184,7 @@ function useWalletPrivy() {
     } finally {
       setIsLoading(false);
     }
-  }, [privy, privyWallets.wallets]);
+  }, [privy]);
 
   const disconnect = useCallback(async () => {
     setError(null);
@@ -186,6 +201,8 @@ function useWalletPrivy() {
   }, [privy]);
 
   return {
+    wallets: connectedWallet ? [connectedWallet] : [],
+    activeWallet: connectedWallet,
     isConnected,
     connectedWallet,
     address,
@@ -195,14 +212,13 @@ function useWalletPrivy() {
     disconnect,
     repository,
     isLoading,
+    isDisconnecting: false,
+    authTransitionState: 'idle' as AuthTransitionState,
     isInitialized: privy.ready && privyWallets.ready && !!repository,
     isReady: privy.ready && privyWallets.ready,
   };
 }
 
-// ---------------------------------------------------------------------------
-// Public export — build-time constant selects the right implementation
-// ---------------------------------------------------------------------------
 export function useWallet() {
   if (IS_E2E_TEST_MODE) {
     // eslint-disable-next-line react-hooks/rules-of-hooks

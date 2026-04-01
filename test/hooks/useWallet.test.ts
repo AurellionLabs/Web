@@ -30,13 +30,34 @@ vi.mock('@/infrastructure/repositories/privy-wallet-repository', () => ({
     getAddress: vi.fn(),
     getChainId: vi.fn(),
     signMessage: vi.fn(),
+    clearProviderCache: vi.fn(),
   })),
+}));
+
+vi.mock('@/infrastructure/config/indexer-endpoint', () => ({
+  setCurrentChainId: vi.fn(),
+}));
+
+vi.mock('@/dapp-connectors/base-controller', () => ({
+  setProvider: vi.fn(),
+  setSigner: vi.fn(),
+  setWalletAddress: vi.fn(),
+}));
+
+vi.mock('@/infrastructure/contexts/repository-context', () => ({
+  RepositoryContext: {
+    getInstance: vi.fn(() => ({
+      cleanup: vi.fn(),
+    })),
+  },
 }));
 
 // Set up E2E mode env var
 const originalE2E = process.env.NEXT_PUBLIC_E2E_TEST_MODE;
 beforeEach(() => {
   process.env.NEXT_PUBLIC_E2E_TEST_MODE = 'false';
+  window.localStorage.clear();
+  delete (window as Window & { ethereum?: unknown }).ethereum;
 });
 afterEach(() => {
   process.env.NEXT_PUBLIC_E2E_TEST_MODE = originalE2E;
@@ -69,7 +90,7 @@ describe('useWallet', () => {
 
   describe('initialization', () => {
     it('should initialize with disconnected state when not authenticated', () => {
-      const { result } = renderHook(() => useWallet());
+      const { result, rerender } = renderHook(() => useWallet());
 
       expect(result.current.isConnected).toBe(false);
       expect(result.current.address).toBeNull();
@@ -96,7 +117,7 @@ describe('useWallet', () => {
         wallets: [mockWallet],
       });
 
-      const { result } = renderHook(() => useWallet());
+      const { result, rerender } = renderHook(() => useWallet());
 
       expect(result.current.isConnected).toBe(true);
       expect(result.current.address).toBe(
@@ -123,7 +144,7 @@ describe('useWallet', () => {
         wallets: [mockWallet],
       });
 
-      const { result } = renderHook(() => useWallet());
+      const { result, rerender } = renderHook(() => useWallet());
 
       expect(result.current.chainId).toBeNull();
     });
@@ -145,7 +166,7 @@ describe('useWallet', () => {
         wallets: [mockWallet],
       });
 
-      const { result } = renderHook(() => useWallet());
+      const { result, rerender } = renderHook(() => useWallet());
 
       expect(result.current.chainId).toBeNull();
     });
@@ -235,14 +256,14 @@ describe('useWallet', () => {
   });
 
   describe('connect()', () => {
-    it('should call privy.connectWallet() when connect is called while unauthenticated', async () => {
-      const mockConnectWallet = vi.fn();
+    it('should call privy.login() when connect is called while unauthenticated', async () => {
+      const mockLogin = vi.fn().mockResolvedValue(undefined);
       mockUsePrivy.mockReturnValue({
         ready: true,
         authenticated: false,
-        connectWallet: mockConnectWallet,
+        connectWallet: vi.fn(),
         linkWallet: vi.fn(),
-        login: vi.fn(),
+        login: mockLogin,
         logout: vi.fn(),
       });
 
@@ -252,18 +273,19 @@ describe('useWallet', () => {
         await result.current.connect();
       });
 
-      expect(mockConnectWallet).toHaveBeenCalledTimes(1);
+      expect(mockLogin).toHaveBeenCalledTimes(1);
       expect(result.current.isLoading).toBe(false);
+      expect(result.current.authTransitionState).toBe('idle');
     });
 
-    it('should call privy.linkWallet() when authenticated without a connected wallet', async () => {
-      const mockLinkWallet = vi.fn();
+    it('should call privy.login() when authenticated without a connected wallet', async () => {
+      const mockLogin = vi.fn().mockResolvedValue(undefined);
       mockUsePrivy.mockReturnValue({
         ready: true,
         authenticated: true,
         connectWallet: vi.fn(),
-        linkWallet: mockLinkWallet,
-        login: vi.fn(),
+        linkWallet: vi.fn(),
+        login: mockLogin,
         logout: vi.fn(),
       });
       mockUseWallets.mockReturnValue({
@@ -277,20 +299,20 @@ describe('useWallet', () => {
         await result.current.connect();
       });
 
-      expect(mockLinkWallet).toHaveBeenCalledTimes(1);
+      expect(mockLogin).toHaveBeenCalledTimes(1);
       expect(result.current.isConnected).toBe(false);
       expect(result.current.isLoading).toBe(false);
+      expect(result.current.authTransitionState).toBe('idle');
     });
 
-    it('should not reopen the wallet modal when already connected', async () => {
-      const mockConnectWallet = vi.fn();
-      const mockLinkWallet = vi.fn();
+    it('should call privy.login() when a wallet is connected but not authenticated', async () => {
+      const mockLogin = vi.fn().mockResolvedValue(undefined);
       mockUsePrivy.mockReturnValue({
         ready: true,
-        authenticated: true,
-        connectWallet: mockConnectWallet,
-        linkWallet: mockLinkWallet,
-        login: vi.fn(),
+        authenticated: false,
+        connectWallet: vi.fn(),
+        linkWallet: vi.fn(),
+        login: mockLogin,
         logout: vi.fn(),
       });
       mockUseWallets.mockReturnValue({
@@ -309,21 +331,51 @@ describe('useWallet', () => {
         await result.current.connect();
       });
 
-      expect(mockConnectWallet).not.toHaveBeenCalled();
-      expect(mockLinkWallet).not.toHaveBeenCalled();
-      expect(result.current.isLoading).toBe(false);
+      expect(mockLogin).toHaveBeenCalledTimes(1);
+      expect(result.current.authTransitionState).toBe('idle');
     });
 
-    it('should handle connectWallet errors gracefully', async () => {
-      const mockConnectWallet = vi.fn().mockImplementation(() => {
+    it('should call privy.login() when connect is called while already authenticated', async () => {
+      const mockLogin = vi.fn().mockResolvedValue(undefined);
+      mockUsePrivy.mockReturnValue({
+        ready: true,
+        authenticated: true,
+        connectWallet: vi.fn(),
+        linkWallet: vi.fn(),
+        login: mockLogin,
+        logout: vi.fn(),
+      });
+      mockUseWallets.mockReturnValue({
+        ready: true,
+        wallets: [
+          {
+            address: '0x742d35Cc6634C0532925a3b844Bc9e7595f0AB12',
+            chainId: 'eip155:1',
+          },
+        ],
+      });
+
+      const { result } = renderHook(() => useWallet());
+
+      await act(async () => {
+        await result.current.connect();
+      });
+
+      expect(mockLogin).toHaveBeenCalledTimes(1);
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.authTransitionState).toBe('idle');
+    });
+
+    it('should handle login errors gracefully', async () => {
+      const mockLogin = vi.fn().mockImplementation(() => {
         throw new Error('Connect wallet failed');
       });
       mockUsePrivy.mockReturnValue({
         ready: true,
         authenticated: false,
-        connectWallet: mockConnectWallet,
+        connectWallet: vi.fn(),
         linkWallet: vi.fn(),
-        login: vi.fn(),
+        login: mockLogin,
         logout: vi.fn(),
       });
 
@@ -338,16 +390,16 @@ describe('useWallet', () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    it('should handle non-Error connect failures', async () => {
-      const mockConnectWallet = vi.fn().mockImplementation(() => {
+    it('should handle non-Error login failures', async () => {
+      const mockLogin = vi.fn().mockImplementation(() => {
         throw 'String error';
       });
       mockUsePrivy.mockReturnValue({
         ready: true,
         authenticated: false,
-        connectWallet: mockConnectWallet,
+        connectWallet: vi.fn(),
         linkWallet: vi.fn(),
-        login: vi.fn(),
+        login: mockLogin,
         logout: vi.fn(),
       });
 
@@ -362,13 +414,13 @@ describe('useWallet', () => {
     });
 
     it('should clear previous error before connecting', async () => {
-      const mockConnectWallet = vi.fn();
+      const mockLogin = vi.fn().mockResolvedValue(undefined);
       mockUsePrivy.mockReturnValue({
         ready: true,
         authenticated: false,
-        connectWallet: mockConnectWallet,
+        connectWallet: vi.fn(),
         linkWallet: vi.fn(),
-        login: vi.fn(),
+        login: mockLogin,
         logout: vi.fn(),
       });
 
@@ -381,14 +433,14 @@ describe('useWallet', () => {
       expect(result.current.error).toBeNull();
     });
 
-    it('should set isLoading during wallet connect', async () => {
-      const mockConnectWallet = vi.fn().mockImplementation(() => undefined);
+    it('should clear isLoading after wallet connect completes', async () => {
+      const mockLogin = vi.fn().mockResolvedValue(undefined);
       mockUsePrivy.mockReturnValue({
         ready: true,
         authenticated: false,
-        connectWallet: mockConnectWallet,
+        connectWallet: vi.fn(),
         linkWallet: vi.fn(),
-        login: vi.fn(),
+        login: mockLogin,
         logout: vi.fn(),
       });
 
@@ -421,14 +473,28 @@ describe('useWallet', () => {
         ],
       });
 
-      const { result } = renderHook(() => useWallet());
+      const { result, rerender } = renderHook(() => useWallet());
 
       await act(async () => {
         await result.current.disconnect();
       });
 
+      mockUsePrivy.mockReturnValue({
+        ready: true,
+        authenticated: false,
+        login: vi.fn(),
+        logout: mockLogout,
+      });
+      mockUseWallets.mockReturnValue({
+        ready: true,
+        wallets: [],
+      });
+
+      rerender();
+
       expect(mockLogout).toHaveBeenCalledTimes(1);
       expect(result.current.isLoading).toBe(false);
+      expect(result.current.isDisconnecting).toBe(false);
     });
 
     it('should handle logout errors gracefully', async () => {
@@ -478,11 +544,24 @@ describe('useWallet', () => {
         ],
       });
 
-      const { result } = renderHook(() => useWallet());
+      const { result, rerender } = renderHook(() => useWallet());
 
       await act(async () => {
         await result.current.disconnect();
       });
+
+      mockUsePrivy.mockReturnValue({
+        ready: true,
+        authenticated: false,
+        login: vi.fn(),
+        logout: mockLogout,
+      });
+      mockUseWallets.mockReturnValue({
+        ready: true,
+        wallets: [],
+      });
+
+      rerender();
 
       expect(result.current.error).toBeNull();
     });
@@ -540,6 +619,142 @@ describe('useWallet', () => {
       // Should show as not connected when no wallets
       expect(result.current.isConnected).toBe(false);
       expect(result.current.address).toBeNull();
+    });
+
+    it('should switch to a matching Privy wallet when the selected injected account changes', async () => {
+      const mockLogout = vi.fn();
+      const listeners = new Map<string, (accounts: string[]) => void>();
+      const ethereumProvider = {
+        on: vi.fn((event: string, handler: (accounts: string[]) => void) => {
+          listeners.set(event, handler);
+        }),
+        removeListener: vi.fn((event: string) => {
+          listeners.delete(event);
+        }),
+      };
+
+      (window as Window & { ethereum?: unknown }).ethereum = ethereumProvider;
+
+      mockUsePrivy.mockReturnValue({
+        ready: true,
+        authenticated: true,
+        connectWallet: vi.fn(),
+        linkWallet: vi.fn(),
+        login: vi.fn(),
+        logout: mockLogout,
+      });
+      mockUseWallets.mockReturnValue({
+        ready: true,
+        wallets: [
+          {
+            address: '0x1111111111111111111111111111111111111111',
+            chainId: 'eip155:1',
+            linked: true,
+            getEthereumProvider: vi.fn().mockResolvedValue(ethereumProvider),
+          },
+          {
+            address: '0x2222222222222222222222222222222222222222',
+            chainId: 'eip155:84532',
+            linked: true,
+            getEthereumProvider: vi.fn().mockResolvedValue(ethereumProvider),
+          },
+        ],
+      });
+
+      const { result, rerender } = renderHook(() => useWallet());
+
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(result.current.connectedWallet?.address).toBe(
+        '0x1111111111111111111111111111111111111111',
+      );
+
+      await act(async () => {
+        listeners.get('accountsChanged')?.([
+          '0x2222222222222222222222222222222222222222',
+        ]);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      rerender();
+
+      expect(mockLogout).not.toHaveBeenCalled();
+      expect(result.current.connectedWallet?.address).toBe(
+        '0x2222222222222222222222222222222222222222',
+      );
+      expect(result.current.isConnected).toBe(true);
+      expect(result.current.address).toBe(
+        '0x2222222222222222222222222222222222222222',
+      );
+      expect(result.current.chainId).toBe(84532);
+      expect(result.current.isDisconnecting).toBe(false);
+      expect(result.current.authTransitionState).toBe('idle');
+    });
+
+    it('should only update address when the selected injected account is not in Privy wallets', async () => {
+      const mockLogout = vi.fn();
+      const listeners = new Map<string, (accounts: string[]) => void>();
+      const ethereumProvider = {
+        on: vi.fn((event: string, handler: (accounts: string[]) => void) => {
+          listeners.set(event, handler);
+        }),
+        removeListener: vi.fn((event: string) => {
+          listeners.delete(event);
+        }),
+        request: vi
+          .fn()
+          .mockResolvedValue(['0x1111111111111111111111111111111111111111']),
+      };
+
+      (window as Window & { ethereum?: unknown }).ethereum = ethereumProvider;
+
+      mockUsePrivy.mockReturnValue({
+        ready: true,
+        authenticated: true,
+        connectWallet: vi.fn(),
+        linkWallet: vi.fn(),
+        login: vi.fn(),
+        logout: mockLogout,
+      });
+      mockUseWallets.mockReturnValue({
+        ready: true,
+        wallets: [
+          {
+            address: '0x1111111111111111111111111111111111111111',
+            chainId: 'eip155:1',
+            linked: true,
+            getEthereumProvider: vi.fn().mockResolvedValue(ethereumProvider),
+          },
+        ],
+      });
+
+      const { result, rerender } = renderHook(() => useWallet());
+
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      await act(async () => {
+        listeners.get('accountsChanged')?.([
+          '0x2222222222222222222222222222222222222222',
+        ]);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      rerender();
+
+      expect(mockLogout).not.toHaveBeenCalled();
+      expect(result.current.connectedWallet?.address).toBe(
+        '0x1111111111111111111111111111111111111111',
+      );
+      expect(result.current.isConnected).toBe(true);
+      expect(result.current.address).toBe(
+        '0x2222222222222222222222222222222222222222',
+      );
+      expect(result.current.chainId).toBe(1);
+      expect(result.current.isDisconnecting).toBe(false);
     });
   });
 

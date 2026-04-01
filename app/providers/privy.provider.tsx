@@ -1,19 +1,24 @@
 'use client';
 //
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useMemo } from 'react';
 import {
   addRpcUrlOverrideToChain,
   PrivyProvider,
+  usePrivy,
   useWallets,
+  useConnectWallet,
+  useLinkAccount,
+  useLogin,
+  useLogout,
 } from '@privy-io/react-auth';
 import { arbitrum, sepolia, base, baseSepolia, mainnet } from 'viem/chains';
+import { E2EAuthProvider } from '@/app/providers/e2e-auth.provider';
 import {
   setProvider,
   setSigner,
   setWalletAddress,
 } from '@/dapp-connectors/base-controller';
 import { BrowserProvider } from 'ethers';
-import { E2EAuthProvider } from '@/app/providers/e2e-auth.provider';
 
 const IS_E2E_TEST_MODE = process.env.NEXT_PUBLIC_E2E_TEST_MODE === 'true';
 const TEST_CHAIN_ID_HEX = '0x14a34';
@@ -140,39 +145,152 @@ function installE2ETestWalletShim() {
   });
 }
 
-// New component to handle wallet-dependent effects
+interface PrivyProviderWrapperProps {
+  children: ReactNode;
+}
+
+const SHOULD_LOG_PRIVY_DEBUG = process.env.NODE_ENV !== 'production';
+
+function logPrivyDebug(message: string, details?: Record<string, unknown>) {
+  if (!SHOULD_LOG_PRIVY_DEBUG) return;
+  console.info(`[PrivyDebug] ${message}`, details ?? {});
+}
+
+function logPrivyEvent(event: string, details?: Record<string, unknown>) {
+  console.info(`[PrivyEvent] ${event}`, details ?? {});
+}
+
+function logPrivyError(
+  event: string,
+  error: string,
+  details?: Record<string, unknown>,
+) {
+  console.error(`[PrivyEvent] ${event} failed`, {
+    error,
+    ...(details ?? {}),
+  });
+}
+
+function PrivyEventObserver() {
+  const privy = usePrivy();
+  const { wallets } = useWallets();
+  const currentUserId = privy.user?.id ?? null;
+
+  const loginCallbacks = useMemo(
+    () => ({
+      onComplete: ({
+        isNewUser,
+        wasAlreadyAuthenticated,
+        loginMethod,
+        loginAccount,
+      }: {
+        isNewUser: boolean;
+        wasAlreadyAuthenticated: boolean;
+        loginMethod: string | null;
+        loginAccount: { type?: string } | null;
+      }) => {
+        logPrivyEvent('login', {
+          isNewUser,
+          wasAlreadyAuthenticated,
+          loginMethod,
+          loginAccountType: loginAccount?.type ?? null,
+          userId: currentUserId,
+        });
+      },
+      onError: (error: string) => {
+        logPrivyError('login', error, {
+          userId: currentUserId,
+        });
+      },
+    }),
+    [currentUserId],
+  );
+
+  const connectWalletCallbacks = useMemo(
+    () => ({
+      onSuccess: ({
+        wallet,
+      }: {
+        wallet: { address?: string; walletClientType?: string };
+      }) => {
+        logPrivyEvent('connectWallet', {
+          address: wallet.address ?? null,
+          walletClientType: wallet.walletClientType ?? null,
+          userId: currentUserId,
+        });
+      },
+      onError: (error: string) => {
+        logPrivyError('connectWallet', error, {
+          userId: currentUserId,
+        });
+      },
+    }),
+    [currentUserId],
+  );
+
+  const linkAccountCallbacks = useMemo(
+    () => ({
+      onSuccess: ({
+        linkMethod,
+        linkedAccount,
+      }: {
+        linkMethod: string;
+        linkedAccount: { type?: string };
+      }) => {
+        logPrivyEvent('linkAccount', {
+          linkMethod,
+          linkedAccountType: linkedAccount?.type ?? null,
+          userId: currentUserId,
+        });
+      },
+      onError: (error: string, details?: { linkMethod?: string }) => {
+        logPrivyError('linkAccount', error, {
+          linkMethod: details?.linkMethod ?? null,
+          userId: currentUserId,
+        });
+      },
+    }),
+    [currentUserId],
+  );
+
+  const logoutCallbacks = useMemo(
+    () => ({
+      onSuccess: () => {
+        logPrivyEvent('logout', {
+          userId: currentUserId,
+        });
+      },
+    }),
+    [currentUserId],
+  );
+
+  useEffect(() => {
+    logPrivyDebug('auth snapshot', {
+      ready: privy.ready,
+      authenticated: privy.authenticated,
+      userId: currentUserId,
+      walletCount: wallets?.length ?? 0,
+    });
+  }, [currentUserId, privy.authenticated, privy.ready, wallets]);
+
+  useLogin(loginCallbacks);
+  useConnectWallet(connectWalletCallbacks);
+  useLinkAccount(linkAccountCallbacks);
+  useLogout(logoutCallbacks);
+
+  return null;
+}
+
 function PrivyWalletSetupEffect() {
-  const { wallets } = useWallets(); // useWallets is now correctly scoped
+  const { wallets } = useWallets();
 
   useEffect(() => {
     if (IS_E2E_TEST_MODE) return;
 
     const setupProvider = async () => {
-      if (
-        IS_E2E_TEST_MODE &&
-        (!wallets || wallets.length === 0) &&
-        (window as Window & { ethereum?: any }).ethereum
-      ) {
-        try {
-          const ethersProvider = new BrowserProvider(
-            (window as Window & { ethereum?: any }).ethereum,
-          );
-          await ethersProvider.send('eth_requestAccounts', []);
-          setProvider(ethersProvider);
-          const newSigner = await ethersProvider.getSigner();
-          setSigner(newSigner);
-          const newAddress = await newSigner.getAddress();
-          setWalletAddress(newAddress);
-          return;
-        } catch (error) {
-          console.error('Error setting up E2E injected provider:', error);
-        }
-      }
-
       if (wallets && wallets.length > 0 && wallets[0]) {
         try {
           const privyEthereumProvider = await wallets[0].getEthereumProvider();
-          // Ensure provider is not null or undefined before proceeding
           if (!privyEthereumProvider) {
             console.warn('Privy Ethereum provider is not available.');
             setProvider(null);
@@ -180,6 +298,7 @@ function PrivyWalletSetupEffect() {
             setWalletAddress('');
             return;
           }
+
           const ethersProvider = new BrowserProvider(privyEthereumProvider);
           setProvider(ethersProvider);
 
@@ -195,24 +314,21 @@ function PrivyWalletSetupEffect() {
           setWalletAddress('');
         }
       } else {
-        // Wallet disconnected or not available
         setProvider(null);
         setSigner(null);
         setWalletAddress('');
       }
     };
-    setupProvider();
+
+    void setupProvider();
   }, [wallets]);
 
-  return null; // This component does not render anything itself
-}
-
-interface PrivyProviderWrapperProps {
-  children: ReactNode;
+  return null;
 }
 
 export function PrivyProviderWrapper({ children }: PrivyProviderWrapperProps) {
   installE2ETestWalletShim();
+  const privyClientId = process.env.NEXT_PUBLIC_PRIVY_CLIENT_ID || undefined;
 
   const arbitrumOverride = addRpcUrlOverrideToChain(
     arbitrum,
@@ -229,9 +345,20 @@ export function PrivyProviderWrapper({ children }: PrivyProviderWrapperProps) {
     return <E2EAuthProvider>{children}</E2EAuthProvider>;
   }
 
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    !privyClientId &&
+    typeof window !== 'undefined'
+  ) {
+    console.warn(
+      '[PrivyProviderWrapper] NEXT_PUBLIC_PRIVY_CLIENT_ID is not set. Privy app-client-specific origin and CAPTCHA behavior may not match dashboard configuration.',
+    );
+  }
+
   return (
     <PrivyProvider
       appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ''}
+      clientId={privyClientId}
       config={{
         loginMethods: ['wallet', 'email', 'google', 'twitter'],
         embeddedWallets: {
@@ -256,6 +383,7 @@ export function PrivyProviderWrapper({ children }: PrivyProviderWrapperProps) {
       }}
     >
       <PrivyWalletSetupEffect />
+      <PrivyEventObserver />
       {children}
     </PrivyProvider>
   );

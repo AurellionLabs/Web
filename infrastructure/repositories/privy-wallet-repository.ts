@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { useWallets, usePrivy } from '@privy-io/react-auth';
+import { ConnectedWallet, useWallets, usePrivy } from '@privy-io/react-auth';
 import { IWalletRepository } from '@/domain/wallet';
 import { Wallet, WalletState } from '@/domain/models/wallet';
 import { handleContractError } from '@/utils/error-handler';
@@ -14,19 +14,27 @@ export class PrivyWalletRepository implements IWalletRepository {
   private wallet: Wallet;
   private privyWallets: ReturnType<typeof useWallets>;
   private privyAuth: ReturnType<typeof usePrivy>;
+  private getActiveWallet?: () => ConnectedWallet | null;
   private _provider: ethers.BrowserProvider | null = null;
+  private _providerWalletAddress: string | null = null;
 
   constructor(
     privyWallets: ReturnType<typeof useWallets>,
     privyAuth: ReturnType<typeof usePrivy>,
+    getActiveWallet?: () => ConnectedWallet | null,
   ) {
     this.wallet = new Wallet();
     this.privyWallets = privyWallets;
     this.privyAuth = privyAuth;
+    this.getActiveWallet = getActiveWallet;
   }
 
   public getPrivyWallets() {
     return this.privyWallets;
+  }
+
+  private getConnectedWallet(): ConnectedWallet | null {
+    return this.getActiveWallet?.() ?? this.privyWallets.wallets?.[0] ?? null;
   }
 
   private normalizeChainId(chainId: string | number): string {
@@ -42,18 +50,26 @@ export class PrivyWalletRepository implements IWalletRepository {
    * This enables components to access blockchain data without creating their own providers.
    */
   public async getProvider(): Promise<ethers.BrowserProvider> {
-    if (this._provider) {
-      return this._provider;
+    const connectedWallet = this.getConnectedWallet();
+    if (!connectedWallet) {
+      this.clearProviderCache();
+      throw new Error('No connected wallet found');
     }
 
-    const connectedWallet = this.privyWallets.wallets?.[0];
-    if (!connectedWallet) {
-      throw new Error('No connected wallet found');
+    const connectedAddress = connectedWallet.address.toLowerCase();
+    if (this._provider && this._providerWalletAddress === connectedAddress) {
+      return this._provider;
     }
 
     const ethereumProvider = await connectedWallet.getEthereumProvider();
     this._provider = new ethers.BrowserProvider(ethereumProvider);
+    this._providerWalletAddress = connectedAddress;
     return this._provider;
+  }
+
+  public clearProviderCache(): void {
+    this._provider = null;
+    this._providerWalletAddress = null;
   }
 
   /**
@@ -130,7 +146,7 @@ export class PrivyWalletRepository implements IWalletRepository {
       }
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      const connectedWallet = this.privyWallets.wallets?.[0];
+      const connectedWallet = this.getConnectedWallet();
       if (!connectedWallet) {
         throw new Error('No connected wallet found after login attempt.');
       }
@@ -156,6 +172,7 @@ export class PrivyWalletRepository implements IWalletRepository {
   public async disconnect(): Promise<void> {
     try {
       await this.privyAuth.logout();
+      this.clearProviderCache();
       this.wallet.disconnect();
     } catch (error) {
       handleContractError(error, 'disconnect wallet');
@@ -164,7 +181,7 @@ export class PrivyWalletRepository implements IWalletRepository {
   }
 
   public getState(): WalletState {
-    const connectedWallet = this.privyWallets.wallets?.[0];
+    const connectedWallet = this.getConnectedWallet();
     const isConnected = this.privyAuth.authenticated && !!connectedWallet;
 
     if (isConnected) {

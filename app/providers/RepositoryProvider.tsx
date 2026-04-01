@@ -9,7 +9,6 @@ import {
 } from '@/chain-constants';
 import { Ausys__factory } from '@/lib/contracts';
 import { LoadingScreen } from '@/app/components/ui/loading-screen';
-import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { useE2EAuth } from '@/app/providers/e2e-auth.provider';
 import { ethers } from 'ethers';
 
@@ -135,22 +134,33 @@ function RepositoryProviderPrivy({ children }: RepositoryProviderProps) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [needsWalletConnection, setNeedsWalletConnection] = useState(false);
-  const privy = usePrivy();
-  const privyWallets = useWallets();
-  const { connect, isReady, error: walletError } = useWallet();
+  const {
+    connect,
+    isReady,
+    error: walletError,
+    isConnected,
+    connectedWallet,
+    isLoading: isWalletLoading,
+    isDisconnecting,
+    authTransitionState,
+  } = useWallet();
   const walletPromptRequestedRef = useRef(false);
-  const connectedWallet = privyWallets.wallets?.[0] ?? null;
+  const previousIsConnectedRef = useRef<boolean | null>(null);
 
   const initializeRepository = useCallback(async () => {
     try {
-      if (!connectedWallet) {
+      if (!isConnected || !connectedWallet) {
         setIsInitialized(false);
         setNeedsWalletConnection(true);
         setError(null);
 
-        if (!walletPromptRequestedRef.current) {
+        if (
+          !walletPromptRequestedRef.current &&
+          !isWalletLoading &&
+          !isDisconnecting
+        ) {
           walletPromptRequestedRef.current = true;
-          await connect();
+          void connect();
         }
         return;
       }
@@ -176,20 +186,26 @@ function RepositoryProviderPrivy({ children }: RepositoryProviderProps) {
           : new Error('Failed to initialise repository'),
       );
     }
-  }, [connect, connectedWallet]);
+  }, [connect, connectedWallet, isConnected, isDisconnecting, isWalletLoading]);
 
   useEffect(() => {
-    if (connectedWallet) {
+    const previousIsConnected = previousIsConnectedRef.current;
+    previousIsConnectedRef.current = isConnected;
+
+    if (isConnected) {
       walletPromptRequestedRef.current = false;
       setNeedsWalletConnection(false);
       setError(null);
       return;
     }
 
-    if (!privy.authenticated) {
+    if (previousIsConnected) {
       walletPromptRequestedRef.current = false;
     }
-  }, [connectedWallet, privy.authenticated]);
+    if (isDisconnecting) {
+      walletPromptRequestedRef.current = false;
+    }
+  }, [isConnected, isDisconnecting]);
 
   // Re-sync signer when wallet address changes
   const currentWalletAddress = connectedWallet?.address ?? null;
@@ -216,20 +232,26 @@ function RepositoryProviderPrivy({ children }: RepositoryProviderProps) {
   }, [connectedWallet, currentWalletAddress, isInitialized]);
 
   useEffect(() => {
-    if (isInitialized || !isReady || !privy.ready || !privyWallets.ready)
+    if (
+      isInitialized ||
+      !isReady ||
+      isDisconnecting ||
+      authTransitionState === 'authenticating'
+    ) {
       return;
+    }
     void initializeRepository();
   }, [
-    initializeRepository,
-    isReady,
-    privy.ready,
-    privyWallets.ready,
-    isInitialized,
-    privy.authenticated,
+    authTransitionState,
     connectedWallet,
+    initializeRepository,
+    isConnected,
+    isDisconnecting,
+    isReady,
+    isInitialized,
   ]);
 
-  if (!privy.ready || !privyWallets.ready) return <LoadingScreen />;
+  if (!isReady) return <LoadingScreen />;
 
   if (!isInitialized) {
     if (needsWalletConnection) {
@@ -241,7 +263,9 @@ function RepositoryProviderPrivy({ children }: RepositoryProviderProps) {
             </h2>
             <p className="text-sm text-white/80">
               {walletError?.message ||
-                'A connected wallet is required to open this page.'}
+                (authTransitionState === 'authenticating'
+                  ? 'Complete the wallet signature in Privy to continue.'
+                  : 'A connected wallet is required to open this page.')}
             </p>
             <button
               onClick={() => {
