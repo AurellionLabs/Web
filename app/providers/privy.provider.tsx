@@ -1,6 +1,6 @@
 'use client';
 //
-import { ReactNode, useEffect, useMemo } from 'react';
+import { ReactNode, useEffect, useMemo, useRef } from 'react';
 import {
   addRpcUrlOverrideToChain,
   PrivyProvider,
@@ -173,8 +173,9 @@ function logPrivyError(
 
 function PrivyEventObserver() {
   const privy = usePrivy();
-  const { wallets } = useWallets();
+  const { ready: walletsReady, wallets } = useWallets();
   const currentUserId = privy.user?.id ?? null;
+  const hasRequestedEmptyWalletLogout = useRef(false);
 
   const loginCallbacks = useMemo(
     () => ({
@@ -269,9 +270,44 @@ function PrivyEventObserver() {
       ready: privy.ready,
       authenticated: privy.authenticated,
       userId: currentUserId,
+      walletsReady,
       walletCount: wallets?.length ?? 0,
     });
-  }, [currentUserId, privy.authenticated, privy.ready, wallets]);
+  }, [currentUserId, privy.authenticated, privy.ready, wallets, walletsReady]);
+
+  useEffect(() => {
+    if (!privy.ready || !walletsReady) return;
+
+    if (!privy.authenticated || (wallets?.length ?? 0) > 0) {
+      hasRequestedEmptyWalletLogout.current = false;
+      return;
+    }
+
+    if (hasRequestedEmptyWalletLogout.current) return;
+    hasRequestedEmptyWalletLogout.current = true;
+
+    logPrivyEvent('logoutNoConnectedWallets', {
+      userId: currentUserId,
+    });
+
+    void privy.logout().catch((error) => {
+      hasRequestedEmptyWalletLogout.current = false;
+      logPrivyError(
+        'logoutNoConnectedWallets',
+        error instanceof Error ? error.message : 'Unknown logout error',
+        {
+          userId: currentUserId,
+        },
+      );
+    });
+  }, [
+    currentUserId,
+    privy,
+    privy.authenticated,
+    privy.ready,
+    wallets,
+    walletsReady,
+  ]);
 
   useLogin(loginCallbacks);
   useConnectWallet(connectWalletCallbacks);
