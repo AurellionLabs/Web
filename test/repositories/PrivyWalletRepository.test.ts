@@ -154,6 +154,30 @@ describe('PrivyWalletRepository', () => {
 
       expect(state.isConnected).toBe(false);
     });
+
+    it('should prefer the active wallet resolver over the first privy wallet', () => {
+      const secondaryWallet = {
+        address: '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd',
+        chainId: '0x2105',
+        getEthereumProvider: vi.fn().mockResolvedValue({}),
+      };
+
+      const multiWalletRepo = new PrivyWalletRepository(
+        { wallets: [mockConnectedWallet, secondaryWallet] },
+        {
+          ready: true,
+          authenticated: true,
+          login: mockLogin,
+          logout: mockLogout,
+        },
+        () => secondaryWallet,
+      );
+
+      const state = multiWalletRepo.getState();
+
+      expect(state.address).toBe(secondaryWallet.address);
+      expect(state.chainId).toBe('0x2105');
+    });
   });
 
   describe('getWallet', () => {

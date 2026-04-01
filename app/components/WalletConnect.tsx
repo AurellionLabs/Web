@@ -1,10 +1,18 @@
 import React from 'react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { Button } from './ui/button';
+import { useWallet } from '@/hooks/useWallet';
 
 export function WalletConnect() {
   const { login, ready, authenticated } = usePrivy();
   const { wallets } = useWallets();
+
+  const {
+    connect: connectWallet,
+    isConnected,
+    isLoading,
+    isReady,
+  } = useWallet();
 
   if (!ready) {
     return <div>Loading...</div>;
@@ -13,7 +21,7 @@ export function WalletConnect() {
   if (!authenticated) {
     return (
       <Button
-        onClick={login}
+        onClick={connectWallet}
         className="bg-primary text-white hover:bg-primary/90"
       >
         Connect Wallet

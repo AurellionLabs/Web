@@ -82,7 +82,11 @@ export class RepositoryContext {
 
       this.poolRepository = new PoolRepository(provider, signer);
 
-      this.platformRepository = new PlatformRepository(pinata, undefined, chainId);
+      this.platformRepository = new PlatformRepository(
+        pinata,
+        undefined,
+        chainId,
+      );
     } catch (error) {
       console.error(
         '[RepositoryContext] Failed to create repositories:',
@@ -260,6 +264,7 @@ export class RepositoryContext {
    * Clean up resources
    */
   public cleanup(): void {
+    this.diamondContext?.disconnect();
     this.nodeRepository = null;
     this.orderRepository = null;
     this.driverRepository = null;
