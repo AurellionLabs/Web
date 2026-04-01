@@ -1,40 +1,34 @@
 'use client';
 
-import { useMainProvider } from '@/app/providers/main.provider';
-import { usePrivy } from '@privy-io/react-auth';
 import { useWallet } from '@/hooks/useWallet';
 
 export default function ConnectButton() {
-  const { connected: isMainProviderConnected, setIsWalletConnected } =
-    useMainProvider();
-  const { ready, authenticated } = usePrivy();
   const {
     connect: connectWallet,
-    isConnected: isWalletHookConnected,
+    isConnected,
     isLoading,
+    isReady,
   } = useWallet();
 
   const handleConnect = async () => {
-    if (!ready) {
+    if (!isReady || isConnected) {
       return;
     }
-    if (!authenticated) {
-      try {
-        await connectWallet();
-      } catch (error) {
-        console.error('Connection error:', error);
-      }
-    } else {
+
+    try {
+      await connectWallet();
+    } catch (error) {
+      console.error('Connection error:', error);
     }
   };
 
   const buttonText =
-    !ready || isLoading
+    !isReady || isLoading
       ? 'Loading...'
-      : authenticated
+      : isConnected
         ? 'Connected'
         : 'Connect Wallet';
-  const isDisabled = !ready || isLoading;
+  const isDisabled = !isReady || isLoading;
 
   return (
     <button

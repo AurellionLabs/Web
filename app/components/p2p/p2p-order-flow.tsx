@@ -10,6 +10,7 @@ import {
   Pen,
   PackageCheck,
   AlertTriangle,
+  XCircle,
 } from 'lucide-react';
 import { GlowButton } from '@/app/components/ui/glow-button';
 import { TrapButton } from '@/app/components/eva/eva-components';
@@ -417,6 +418,7 @@ export function P2POrderFlow({
   const currentStep = localSettled
     ? 4
     : getCurrentStepIndex(order, buyerSigned, driverSigned);
+  const isCancelled = order.currentStatus === OrderStatus.CANCELLED;
 
   // Build status message with pickup awareness
   let statusMessage: string;
@@ -512,6 +514,7 @@ export function P2POrderFlow({
     currentStep === 0 &&
     onScheduleDelivery &&
     !isUnmatchedOffer &&
+    !isCancelled &&
     order.currentStatus !== OrderStatus.SETTLED;
 
   // Only allow pickup signing if driver has already signed (i.e., a driver has
@@ -524,6 +527,7 @@ export function P2POrderFlow({
     !pickupSigned &&
     !senderPickupSigned &&
     driverPickupSigned &&
+    !isCancelled &&
     order.currentStatus !== OrderStatus.SETTLED;
 
   // Only allow delivery signing when the journey is actually in transit
@@ -537,8 +541,27 @@ export function P2POrderFlow({
     !buyerSigned &&
     !waitingForDriver &&
     journeyIsInTransit &&
+    !isCancelled &&
     order.currentStatus !== OrderStatus.SETTLED;
   // HandOff is always auto-attempted after signing — no manual button needed
+
+  if (isCancelled) {
+    return (
+      <div className="space-y-4 p-4 rounded-lg border border-red-500/25 bg-red-500/5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full border border-red-500/40 bg-red-500/10 text-red-400">
+            <XCircle className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="text-sm font-medium text-red-300">Cancelled</div>
+            <div className="text-xs text-red-200/80">
+              This P2P trade was cancelled before it could continue.
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 p-4 rounded-lg border border-amber-500/20 bg-amber-500/5">

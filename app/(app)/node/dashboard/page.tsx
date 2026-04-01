@@ -172,7 +172,7 @@ export default function NodeDashboardPage() {
   const viewMode = searchParams.get('view');
   const publicChain = resolvePublicNodeChain(searchParams);
   const publicChainId = publicChain.chainId;
-  const preservePublicView = viewMode === 'public' || !walletAddress;
+  const preservePublicView = viewMode === 'public';
   const publicSelectionKey =
     preservePublicView && nodeIdFromUrl && publicChainId !== null
       ? `${publicChainId}:${nodeIdFromUrl}`

@@ -847,11 +847,10 @@ export function aggregateP2POrdersForUser(
     orderId: string,
     created: P2POfferCreatedRawEvent,
     isBuyer: boolean,
-    defaultStatus: number,
     counterparty: string,
   ): Order {
     const oid = orderId.toLowerCase();
-    const contractStatus = statusMap.get(oid) ?? defaultStatus;
+    const contractStatus = statusMap.get(oid) ?? 1;
     const journeyIds = orderJourneyMap.get(oid) ?? [];
     const createdAt = getTimestamp(created.block_timestamp);
 
@@ -901,20 +900,22 @@ export function aggregateP2POrdersForUser(
   }
 
   // 1) Orders the user created
-  //    The user is the creator, so the OTHER party is target_counterparty.
+  //    Only accepted offers should surface as orders in dashboard order lists.
+  //    Unaccepted offers remain part of offer-specific views.
   for (const ce of createdByUser) {
     const oid = ce.order_id.toLowerCase();
     if (seenOrderIds.has(oid)) continue;
-    seenOrderIds.add(oid);
 
     const isBuyer = !ce.is_seller_initiated;
     const accepted = acceptedMap.get(oid);
+    if (!accepted) continue;
+
+    seenOrderIds.add(oid);
     const counterparty =
-      accepted?.acceptor ||
+      accepted.acceptor ||
       ce.target_counterparty ||
       '0x0000000000000000000000000000000000000000';
-    // counterparty = target_counterparty (the other side of the trade)
-    orders.push(buildOrder(ce.order_id, ce, isBuyer, 0, counterparty));
+    orders.push(buildOrder(ce.order_id, ce, isBuyer, counterparty));
   }
 
   // 2) Orders the user accepted (they are the counterparty)
@@ -930,7 +931,7 @@ export function aggregateP2POrdersForUser(
     // If user accepted a seller-initiated offer, user is buyer; otherwise user is seller
     const isBuyer = created.is_seller_initiated;
     // counterparty = the original creator (the other side of the trade)
-    orders.push(buildOrder(ae.order_id, created, isBuyer, 1, created.creator));
+    orders.push(buildOrder(ae.order_id, created, isBuyer, created.creator));
   }
 
   return orders;

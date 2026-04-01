@@ -52,6 +52,8 @@ describe('useWallet', () => {
     mockUsePrivy.mockReturnValue({
       ready: true,
       authenticated: false,
+      connectWallet: vi.fn(),
+      linkWallet: vi.fn(),
       login: vi.fn(),
       logout: vi.fn(),
     });
@@ -233,12 +235,14 @@ describe('useWallet', () => {
   });
 
   describe('connect()', () => {
-    it('should call privy.login() when connect is called', async () => {
-      const mockLogin = vi.fn().mockResolvedValue(undefined);
+    it('should call privy.connectWallet() when connect is called while unauthenticated', async () => {
+      const mockConnectWallet = vi.fn();
       mockUsePrivy.mockReturnValue({
         ready: true,
         authenticated: false,
-        login: mockLogin,
+        connectWallet: mockConnectWallet,
+        linkWallet: vi.fn(),
+        login: vi.fn(),
         logout: vi.fn(),
       });
 
@@ -248,16 +252,78 @@ describe('useWallet', () => {
         await result.current.connect();
       });
 
-      expect(mockLogin).toHaveBeenCalledTimes(1);
+      expect(mockConnectWallet).toHaveBeenCalledTimes(1);
       expect(result.current.isLoading).toBe(false);
     });
 
-    it('should handle login errors gracefully', async () => {
-      const mockLogin = vi.fn().mockRejectedValue(new Error('Login failed'));
+    it('should call privy.linkWallet() when authenticated without a connected wallet', async () => {
+      const mockLinkWallet = vi.fn();
+      mockUsePrivy.mockReturnValue({
+        ready: true,
+        authenticated: true,
+        connectWallet: vi.fn(),
+        linkWallet: mockLinkWallet,
+        login: vi.fn(),
+        logout: vi.fn(),
+      });
+      mockUseWallets.mockReturnValue({
+        ready: true,
+        wallets: [],
+      });
+
+      const { result } = renderHook(() => useWallet());
+
+      await act(async () => {
+        await result.current.connect();
+      });
+
+      expect(mockLinkWallet).toHaveBeenCalledTimes(1);
+      expect(result.current.isConnected).toBe(false);
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    it('should not reopen the wallet modal when already connected', async () => {
+      const mockConnectWallet = vi.fn();
+      const mockLinkWallet = vi.fn();
+      mockUsePrivy.mockReturnValue({
+        ready: true,
+        authenticated: true,
+        connectWallet: mockConnectWallet,
+        linkWallet: mockLinkWallet,
+        login: vi.fn(),
+        logout: vi.fn(),
+      });
+      mockUseWallets.mockReturnValue({
+        ready: true,
+        wallets: [
+          {
+            address: '0x742d35Cc6634C0532925a3b844Bc9e7595f0AB12',
+            chainId: 'eip155:1',
+          },
+        ],
+      });
+
+      const { result } = renderHook(() => useWallet());
+
+      await act(async () => {
+        await result.current.connect();
+      });
+
+      expect(mockConnectWallet).not.toHaveBeenCalled();
+      expect(mockLinkWallet).not.toHaveBeenCalled();
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    it('should handle connectWallet errors gracefully', async () => {
+      const mockConnectWallet = vi.fn().mockImplementation(() => {
+        throw new Error('Connect wallet failed');
+      });
       mockUsePrivy.mockReturnValue({
         ready: true,
         authenticated: false,
-        login: mockLogin,
+        connectWallet: mockConnectWallet,
+        linkWallet: vi.fn(),
+        login: vi.fn(),
         logout: vi.fn(),
       });
 
@@ -268,16 +334,20 @@ describe('useWallet', () => {
       });
 
       expect(result.current.error).toBeInstanceOf(Error);
-      expect(result.current.error?.message).toBe('Login failed');
+      expect(result.current.error?.message).toBe('Connect wallet failed');
       expect(result.current.isLoading).toBe(false);
     });
 
-    it('should handle non-Error login failures', async () => {
-      const mockLogin = vi.fn().mockRejectedValue('String error');
+    it('should handle non-Error connect failures', async () => {
+      const mockConnectWallet = vi.fn().mockImplementation(() => {
+        throw 'String error';
+      });
       mockUsePrivy.mockReturnValue({
         ready: true,
         authenticated: false,
-        login: mockLogin,
+        connectWallet: mockConnectWallet,
+        linkWallet: vi.fn(),
+        login: vi.fn(),
         logout: vi.fn(),
       });
 
@@ -292,17 +362,18 @@ describe('useWallet', () => {
     });
 
     it('should clear previous error before connecting', async () => {
-      const mockLogin = vi.fn().mockResolvedValue(undefined);
+      const mockConnectWallet = vi.fn();
       mockUsePrivy.mockReturnValue({
         ready: true,
         authenticated: false,
-        login: mockLogin,
+        connectWallet: mockConnectWallet,
+        linkWallet: vi.fn(),
+        login: vi.fn(),
         logout: vi.fn(),
       });
 
       const { result } = renderHook(() => useWallet());
 
-      // Set an error initially
       await act(async () => {
         await result.current.connect();
       });
@@ -310,16 +381,14 @@ describe('useWallet', () => {
       expect(result.current.error).toBeNull();
     });
 
-    it('should set isLoading during login', async () => {
-      let loadingDuringLogin = false;
-      const mockLogin = vi.fn().mockImplementation(() => {
-        loadingDuringLogin = result.current.isLoading;
-        return Promise.resolve();
-      });
+    it('should set isLoading during wallet connect', async () => {
+      const mockConnectWallet = vi.fn().mockImplementation(() => undefined);
       mockUsePrivy.mockReturnValue({
         ready: true,
         authenticated: false,
-        login: mockLogin,
+        connectWallet: mockConnectWallet,
+        linkWallet: vi.fn(),
+        login: vi.fn(),
         logout: vi.fn(),
       });
 
@@ -329,7 +398,6 @@ describe('useWallet', () => {
         await result.current.connect();
       });
 
-      // Loading should be false after login completes
       expect(result.current.isLoading).toBe(false);
     });
   });

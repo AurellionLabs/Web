@@ -295,7 +295,36 @@ describe('OrderRepository', () => {
   // getP2POrdersForUser
   // =====================================================================
   describe('getP2POrdersForUser', () => {
-    it('should return P2P orders created by the user', async () => {
+    it('should return accepted P2P orders created by the user', async () => {
+      const p2pCreated = makeP2PCreatedEvent();
+      const p2pAccepted = makeP2PAcceptedEvent({
+        order_id: p2pCreated.order_id,
+        acceptor: '0xBuyerAccepted',
+      });
+
+      graphqlRequestMock
+        .mockResolvedValueOnce({
+          diamondP2POfferCreatedEventss: { items: [p2pCreated] },
+        })
+        .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED)
+        .mockResolvedValueOnce({
+          diamondP2POfferCreatedEventss: { items: [p2pCreated] },
+        })
+        .mockResolvedValueOnce({
+          diamondP2POfferAcceptedEventss: { items: [p2pAccepted] },
+        })
+        .mockResolvedValueOnce(EMPTY_STATUS)
+        .mockResolvedValueOnce(EMPTY_JOURNEYS_BY_ORDER)
+        .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS);
+
+      const orders = await repo.getP2POrdersForUser(USER_ADDRESS);
+
+      expect(orders.length).toBe(1);
+      expect(orders[0].isP2P).toBe(true);
+      expect(orders[0].id).toBe('0xP2P1');
+    });
+
+    it('should exclude creator-side offers that were never accepted', async () => {
       const p2pCreated = makeP2PCreatedEvent();
 
       graphqlRequestMock
@@ -306,16 +335,14 @@ describe('OrderRepository', () => {
         .mockResolvedValueOnce({
           diamondP2POfferCreatedEventss: { items: [p2pCreated] },
         })
-        .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // all accepted events
+        .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED)
         .mockResolvedValueOnce(EMPTY_STATUS)
         .mockResolvedValueOnce(EMPTY_JOURNEYS_BY_ORDER)
         .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS);
 
       const orders = await repo.getP2POrdersForUser(USER_ADDRESS);
 
-      expect(orders.length).toBe(1);
-      expect(orders[0].isP2P).toBe(true);
-      expect(orders[0].id).toBe('0xP2P1');
+      expect(orders).toEqual([]);
     });
 
     it('should return P2P orders accepted by the user', async () => {
@@ -459,8 +486,12 @@ describe('OrderRepository', () => {
   // getP2POrderById
   // =====================================================================
   describe('getP2POrderById', () => {
-    it('should return a P2P order for a created order id', async () => {
+    it('should return a P2P order by id when the offer was accepted', async () => {
       const created = makeP2PCreatedEvent();
+      const accepted = makeP2PAcceptedEvent({
+        order_id: created.order_id,
+        acceptor: '0xBuyerAccepted',
+      });
       const journey = makeJourneyCreatedEvent({ order_id: created.order_id });
       const journeyStatus = makeJourneyStatusUpdateEvent({
         journey_id: journey.journey_id,
@@ -470,7 +501,9 @@ describe('OrderRepository', () => {
         .mockResolvedValueOnce({
           diamondP2POfferCreatedEventss: { items: [created] },
         })
-        .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED)
+        .mockResolvedValueOnce({
+          diamondP2POfferAcceptedEventss: { items: [accepted] },
+        })
         .mockResolvedValueOnce(EMPTY_STATUS)
         .mockResolvedValueOnce({
           diamondJourneyCreatedEventss: { items: [journey] },
@@ -485,9 +518,25 @@ describe('OrderRepository', () => {
       expect(order?.id).toBe(created.order_id);
       expect(order?.isP2P).toBe(true);
       expect(order?.seller).toBe(USER_ADDRESS);
-      expect(order?.buyer).toBe('0xCounterparty');
+      expect(order?.buyer).toBe('0xBuyerAccepted');
       expect(order?.journeyIds).toEqual([journey.journey_id]);
       expect(order?.journeyStatus).toBe(2);
+    });
+
+    it('should return null for a created offer id when the offer was never accepted', async () => {
+      const created = makeP2PCreatedEvent();
+
+      graphqlRequestMock
+        .mockResolvedValueOnce({
+          diamondP2POfferCreatedEventss: { items: [created] },
+        })
+        .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED)
+        .mockResolvedValueOnce(EMPTY_STATUS)
+        .mockResolvedValueOnce(EMPTY_JOURNEYS_BY_ORDER);
+
+      const order = await repo.getP2POrderById(created.order_id);
+
+      expect(order).toBeNull();
     });
 
     it('should resolve buyer and seller correctly for an accepted buyer-initiated offer', async () => {
