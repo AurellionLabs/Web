@@ -611,7 +611,7 @@ describe('Customer Provider Business Logic', () => {
         },
       ];
 
-      // aggregateP2POrdersForUser returns ALL orders involving this user
+      // aggregateP2POrdersForUser only returns accepted orders involving this user
       const allP2POrders = aggregateP2POrdersForUser(
         createdByUser,
         [],
@@ -621,7 +621,7 @@ describe('Customer Provider Business Logic', () => {
         NODE_OPERATOR,
       );
 
-      expect(allP2POrders).toHaveLength(3);
+      expect(allP2POrders).toEqual([]);
 
       // Apply the same filter as customer.provider.tsx loadCustomerOrders
       const userAddr = NODE_OPERATOR.toLowerCase();
@@ -629,21 +629,7 @@ describe('Customer Provider Business Logic', () => {
         (order) => order.buyer?.toLowerCase() === userAddr,
       );
 
-      // Only the buy offer (is_seller_initiated=false) should pass the filter.
-      // The 2 seller-initiated orders must be EXCLUDED.
-      expect(p2pBuyerOrders).toHaveLength(1);
-      expect(p2pBuyerOrders[0].id).toBe(
-        '0xb10e2d527612073b26eecdfd717e6a320cf44b4a',
-      );
-
-      // Verify the seller orders did NOT leak through
-      const sellerOrderIds = [
-        '0x8a35acfbc15ff81a39ae7d344fd709f28e8600b4',
-        '0xc2575a0e9e593c00f959f8c92f12db2869c3395a',
-      ];
-      for (const oid of sellerOrderIds) {
-        expect(p2pBuyerOrders.find((o) => o.id === oid)).toBeUndefined();
-      }
+      expect(p2pBuyerOrders).toEqual([]);
     });
 
     it('should show P2P orders where the user IS the buyer (accepted seller offer)', async () => {
@@ -704,7 +690,7 @@ describe('Customer Provider Business Logic', () => {
       expect(p2pBuyerOrders[0].seller).toBe(SELLER);
     });
 
-    it('buyer/seller fields must never both equal the user address for created offers', async () => {
+    it('buyer/seller fields must never both equal the user address for accepted creator-side offers', async () => {
       // This is the exact bug that caused the dashboard leak.
       // If buyer === seller === user, the filter can never work.
       const { aggregateP2POrdersForUser } = await import(
@@ -731,12 +717,23 @@ describe('Customer Provider Business Logic', () => {
           transaction_hash: '0x' + 'f'.repeat(64),
         },
       ];
+      const accepted = [
+        {
+          id: 'evt-2',
+          order_id: '0xaaa1',
+          acceptor: COUNTERPARTY,
+          is_seller_initiated: true,
+          block_number: '1001',
+          block_timestamp: '1700000100',
+          transaction_hash: '0x' + 'e'.repeat(64),
+        },
+      ];
 
       const orders = aggregateP2POrdersForUser(
         created,
         [],
         created,
-        [],
+        accepted,
         [],
         USER,
       );

@@ -118,15 +118,16 @@ describe('aggregateP2POrdersForUser with journey data', () => {
     expect(orders).toEqual([]);
   });
 
-  it('should build order from user-created event with isP2P=true', () => {
+  it('should build order from user-created accepted event with isP2P=true', () => {
     const created = [
       makeCreatedEvent({ order_id: '0x01', creator: USER_ADDR }),
     ];
+    const accepted = [makeAcceptedEvent({ order_id: '0x01' })];
     const orders = aggregateP2POrdersForUser(
       created,
       [],
       created,
-      [],
+      accepted,
       [],
       USER_ADDR,
     );
@@ -142,6 +143,7 @@ describe('aggregateP2POrdersForUser with journey data', () => {
     const created = [
       makeCreatedEvent({ order_id: orderId, creator: USER_ADDR }),
     ];
+    const accepted = [makeAcceptedEvent({ order_id: orderId })];
     const journeys = [
       makeJourneyCreated({ order_id: orderId, journey_id: journeyId }),
     ];
@@ -150,7 +152,7 @@ describe('aggregateP2POrdersForUser with journey data', () => {
       created,
       [],
       created,
-      [],
+      accepted,
       [],
       USER_ADDR,
       journeys,
@@ -167,6 +169,7 @@ describe('aggregateP2POrdersForUser with journey data', () => {
     const created = [
       makeCreatedEvent({ order_id: orderId, creator: USER_ADDR }),
     ];
+    const accepted = [makeAcceptedEvent({ order_id: orderId })];
     const journeys = [
       makeJourneyCreated({ order_id: orderId, journey_id: journeyId }),
     ];
@@ -178,7 +181,7 @@ describe('aggregateP2POrdersForUser with journey data', () => {
       created,
       [],
       created,
-      [],
+      accepted,
       [],
       USER_ADDR,
       journeys,
@@ -189,16 +192,17 @@ describe('aggregateP2POrdersForUser with journey data', () => {
     expect(orders[0].journeyStatus).toBe(1); // In Transit
   });
 
-  it('should set journeyStatus to null when no journey exists', () => {
+  it('should set journeyStatus to null when no journey exists for accepted orders', () => {
     const created = [
       makeCreatedEvent({ order_id: '0x01', creator: USER_ADDR }),
     ];
+    const accepted = [makeAcceptedEvent({ order_id: '0x01' })];
 
     const orders = aggregateP2POrdersForUser(
       created,
       [],
       created,
-      [],
+      accepted,
       [],
       USER_ADDR,
       [], // no journeys
@@ -215,6 +219,7 @@ describe('aggregateP2POrdersForUser with journey data', () => {
     const created = [
       makeCreatedEvent({ order_id: orderId, creator: USER_ADDR }),
     ];
+    const accepted = [makeAcceptedEvent({ order_id: orderId })];
     const journeys = [
       makeJourneyCreated({ order_id: orderId, journey_id: journeyId }),
     ];
@@ -236,7 +241,7 @@ describe('aggregateP2POrdersForUser with journey data', () => {
       created,
       [],
       created,
-      [],
+      accepted,
       [],
       USER_ADDR,
       journeys,
@@ -365,13 +370,14 @@ describe('aggregateP2POrdersForUser with journey data', () => {
     const created = [
       makeCreatedEvent({ order_id: orderId, creator: USER_ADDR }),
     ];
+    const accepted = [makeAcceptedEvent({ order_id: orderId })];
     const statuses = [makeStatusUpdate({ order_id: orderId, new_status: '2' })];
 
     const orders = aggregateP2POrdersForUser(
       created,
       [],
       created,
-      [],
+      accepted,
       statuses,
       USER_ADDR,
     );
@@ -383,13 +389,14 @@ describe('aggregateP2POrdersForUser with journey data', () => {
     const created = [
       makeCreatedEvent({ order_id: '0x05', creator: USER_ADDR }),
     ];
+    const accepted = [makeAcceptedEvent({ order_id: '0x05' })];
 
     // Call without journey params (defaults to [])
     const orders = aggregateP2POrdersForUser(
       created,
       [],
       created,
-      [],
+      accepted,
       [],
       USER_ADDR,
     );
@@ -407,7 +414,7 @@ describe('aggregateP2POrdersForUser with journey data', () => {
   describe('buyer/seller assignment for created offers', () => {
     const COUNTERPARTY = '0x4444444444444444444444444444444444444444';
 
-    it('seller-initiated: creator is seller, target_counterparty is buyer', () => {
+    it('seller-initiated accepted offer: creator is seller, acceptor is buyer', () => {
       const created = [
         makeCreatedEvent({
           order_id: '0xA1',
@@ -416,12 +423,18 @@ describe('aggregateP2POrdersForUser with journey data', () => {
           target_counterparty: COUNTERPARTY,
         }),
       ];
+      const accepted = [
+        makeAcceptedEvent({
+          order_id: '0xA1',
+          acceptor: COUNTERPARTY,
+        }),
+      ];
 
       const orders = aggregateP2POrdersForUser(
         created,
         [],
         created,
-        [],
+        accepted,
         [],
         USER_ADDR,
       );
@@ -431,7 +444,7 @@ describe('aggregateP2POrdersForUser with journey data', () => {
       expect(orders[0].buyer).toBe(COUNTERPARTY);
     });
 
-    it('buyer-initiated: creator is buyer, target_counterparty is seller', () => {
+    it('buyer-initiated accepted offer: creator is buyer, acceptor is seller', () => {
       const created = [
         makeCreatedEvent({
           order_id: '0xA2',
@@ -440,12 +453,19 @@ describe('aggregateP2POrdersForUser with journey data', () => {
           target_counterparty: COUNTERPARTY,
         }),
       ];
+      const accepted = [
+        makeAcceptedEvent({
+          order_id: '0xA2',
+          acceptor: COUNTERPARTY,
+          is_seller_initiated: false,
+        }),
+      ];
 
       const orders = aggregateP2POrdersForUser(
         created,
         [],
         created,
-        [],
+        accepted,
         [],
         USER_ADDR,
       );
@@ -455,7 +475,7 @@ describe('aggregateP2POrdersForUser with journey data', () => {
       expect(orders[0].seller).toBe(COUNTERPARTY);
     });
 
-    it('open offer (zero counterparty): creator is seller, buyer is zero address', () => {
+    it('should exclude open offers that were never accepted', () => {
       const created = [
         makeCreatedEvent({
           order_id: '0xA3',
@@ -474,12 +494,7 @@ describe('aggregateP2POrdersForUser with journey data', () => {
         USER_ADDR,
       );
 
-      expect(orders).toHaveLength(1);
-      expect(orders[0].seller).toBe(USER_ADDR.toLowerCase());
-      // Open offer: no buyer yet
-      expect(orders[0].buyer).toBe(
-        '0x0000000000000000000000000000000000000000',
-      );
+      expect(orders).toEqual([]);
     });
   });
 
@@ -543,8 +558,7 @@ describe('aggregateP2POrdersForUser with journey data', () => {
     const NODE_ADDR = '0x6666666666666666666666666666666666666666';
     const CUSTOMER_ADDR = '0x7777777777777777777777777777777777777777';
 
-    it('seller-initiated order should NOT appear on customer dashboard for the seller', () => {
-      // Node creates a sell offer targeting a customer
+    it('seller-created offers should not surface as orders before acceptance', () => {
       const created = [
         makeCreatedEvent({
           order_id: '0xC1',
@@ -564,12 +578,7 @@ describe('aggregateP2POrdersForUser with journey data', () => {
         NODE_ADDR,
       );
 
-      expect(orders).toHaveLength(1);
-      // The node is the seller — NOT the buyer
-      expect(orders[0].seller).toBe(NODE_ADDR.toLowerCase());
-      expect(orders[0].buyer).toBe(CUSTOMER_ADDR);
-      // So a customer filter (order.buyer === nodeAddr) would correctly EXCLUDE this
-      expect(orders[0].buyer).not.toBe(NODE_ADDR.toLowerCase());
+      expect(orders).toEqual([]);
     });
   });
 
@@ -604,5 +613,61 @@ describe('aggregateP2POrdersForUser with journey data', () => {
     expect(orders).toHaveLength(1);
     expect(orders[0].seller).toBe(USER_ADDR.toLowerCase());
     expect(orders[0].buyer).toBe(acceptor.toLowerCase());
+  });
+
+  it('should exclude creator-side cancelled offers that were never accepted', () => {
+    const orderId = '0xcreator-cancelled';
+    const created = [
+      makeCreatedEvent({
+        order_id: orderId,
+        creator: USER_ADDR,
+      }),
+    ];
+    const statuses = [
+      makeStatusUpdate({
+        order_id: orderId,
+        new_status: '3',
+      }),
+    ];
+
+    const orders = aggregateP2POrdersForUser(
+      created,
+      [],
+      created,
+      [],
+      statuses,
+      USER_ADDR,
+    );
+
+    expect(orders).toEqual([]);
+  });
+
+  it('should include creator-side cancelled orders when the offer was accepted', () => {
+    const orderId = '0xaccepted-then-cancelled';
+    const created = [
+      makeCreatedEvent({
+        order_id: orderId,
+        creator: USER_ADDR,
+      }),
+    ];
+    const accepted = [makeAcceptedEvent({ order_id: orderId })];
+    const statuses = [
+      makeStatusUpdate({
+        order_id: orderId,
+        new_status: '3',
+      }),
+    ];
+
+    const orders = aggregateP2POrdersForUser(
+      created,
+      [],
+      created,
+      accepted,
+      statuses,
+      USER_ADDR,
+    );
+
+    expect(orders).toHaveLength(1);
+    expect(orders[0].currentStatus).toBe(OrderStatus.CANCELLED);
   });
 });
