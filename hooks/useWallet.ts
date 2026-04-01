@@ -148,7 +148,20 @@ function useWalletPrivy() {
     setError(null);
     setIsLoading(true);
     try {
-      await privy.login();
+      if (privy.authenticated) {
+        if (privyWallets.wallets?.[0]) {
+          return;
+        }
+
+        privy.linkWallet({
+          walletChainType: 'ethereum-only',
+        });
+        return;
+      }
+
+      privy.connectWallet({
+        walletChainType: 'ethereum-only',
+      });
     } catch (err) {
       setError(
         err instanceof Error ? err : new Error('Failed to connect wallet'),
@@ -156,7 +169,7 @@ function useWalletPrivy() {
     } finally {
       setIsLoading(false);
     }
-  }, [privy]);
+  }, [privy, privyWallets.wallets]);
 
   const disconnect = useCallback(async () => {
     setError(null);

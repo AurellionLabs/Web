@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Button } from './button';
+import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './dialog';
 import { useToast } from '@/hooks/use-toast';
 import { formatAddress } from '@/lib/formatters';
@@ -75,7 +74,7 @@ function WalletConnectionPrivy() {
   const { ready, authenticated } = usePrivy();
   const { fundWallet } = useFundWallet();
   const { wallets, ready: walletsReady } = useWallets();
-  const { connect, disconnect, address, error, repository, isInitialized } =
+  const { connect, disconnect, address, error, repository, isConnected } =
     useWallet();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
@@ -87,27 +86,24 @@ function WalletConnectionPrivy() {
   const [ethBalance, setEthBalance] = useState<string | null>(null);
   const [usdcBalance, setUsdcBalance] = useState<string | null>(null);
   const [isFetchingBalances, setIsFetchingBalances] = useState(false);
+  const isWalletAuthenticated = isConnected && !!address;
+  const connectButtonText = useMemo(() => {
+    if (!ready || isLoading) {
+      return 'Loading...';
+    }
+
+    return 'Connect Wallet';
+  }, [ready, isLoading]);
 
   useEffect(() => {
     if (ready) {
-      setIsWalletConnected(authenticated);
-      if (authenticated && !address && isInitialized) {
-        connect();
-      }
+      setIsWalletConnected(isConnected);
     }
-    if (authenticated && wallets?.length > 0) {
+    if (isConnected && wallets?.length > 0) {
       checkConnection();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    ready,
-    authenticated,
-    address,
-    isInitialized,
-    connect,
-    setIsWalletConnected,
-    wallets,
-  ]);
+  }, [ready, isConnected, address, setIsWalletConnected, wallets]);
 
   const checkConnection = async () => {
     if (!ready || !authenticated) return;
@@ -205,8 +201,6 @@ function WalletConnectionPrivy() {
   const connectWallet = async () => {
     try {
       await connect();
-      setIsWalletConnected(true);
-      setIsOpen(true);
     } catch (error: any) {
       console.error('Wallet connection error:', error);
       if (error.code === 4001) {
@@ -222,7 +216,6 @@ function WalletConnectionPrivy() {
           variant: 'destructive',
         });
       }
-      setIsWalletConnected(false);
     }
   };
 
@@ -420,9 +413,16 @@ function WalletConnectionPrivy() {
     </div>
   );
 
-  // Don't show if not authenticated
-  if (!authenticated || !address) {
-    return null;
+  if (!isWalletAuthenticated) {
+    return (
+      <button
+        onClick={connectWallet}
+        disabled={!ready || isLoading}
+        className="px-4 py-2 text-sm font-medium rounded-lg border border-amber-500/50 bg-transparent text-amber-400 hover:bg-amber-500/10 hover:border-amber-400 hover:text-amber-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {connectButtonText}
+      </button>
+    );
   }
 
   return (

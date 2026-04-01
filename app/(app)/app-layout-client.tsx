@@ -10,7 +10,6 @@ import { DriverProvider } from '@/app/providers/driver.provider';
 import { TradeProvider } from '@/app/providers/trade.provider';
 import { DiamondProvider } from '@/app/providers/diamond.provider';
 import { SettlementGate } from '@/app/components/settlement/SettlementGate';
-import { useWallet } from '@/hooks/useWallet';
 
 /**
  * Most routes use the full authenticated provider stack, but the
@@ -20,12 +19,10 @@ import { useWallet } from '@/hooks/useWallet';
 export function AppLayoutClient({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { isConnected } = useWallet();
 
   const isPublicNodeExplorer = pathname === '/node/explorer';
   const isPublicNodeDashboard =
-    pathname === '/node/dashboard' &&
-    (searchParams.get('view') === 'public' || !isConnected);
+    pathname === '/node/dashboard' && searchParams.get('view') === 'public';
 
   return (
     <DiamondProvider>

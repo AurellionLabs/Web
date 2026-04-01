@@ -1,5 +1,5 @@
 'use client';
-import { ReactNode, useEffect, useState, useCallback } from 'react';
+import { ReactNode, useEffect, useState, useCallback, useRef } from 'react';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { ServiceContext } from '@/infrastructure/contexts/service-context';
 import { useWallet } from '@/hooks/useWallet';
@@ -134,19 +134,25 @@ function RepositoryProviderE2E({ children }: RepositoryProviderProps) {
 function RepositoryProviderPrivy({ children }: RepositoryProviderProps) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [needsWalletConnection, setNeedsWalletConnection] = useState(false);
   const privy = usePrivy();
   const privyWallets = useWallets();
-  const { connect, isConnected, isReady } = useWallet();
+  const { connect, isReady, error: walletError } = useWallet();
+  const walletPromptRequestedRef = useRef(false);
+  const connectedWallet = privyWallets.wallets?.[0] ?? null;
 
   const initializeRepository = useCallback(async () => {
     try {
-      if (isReady && !privy.authenticated) {
-        await connect();
-      }
-
-      const connectedWallet = privyWallets.wallets?.[0];
       if (!connectedWallet) {
-        throw new Error('Privy wallet not available.');
+        setIsInitialized(false);
+        setNeedsWalletConnection(true);
+        setError(null);
+
+        if (!walletPromptRequestedRef.current) {
+          walletPromptRequestedRef.current = true;
+          await connect();
+        }
+        return;
       }
 
       const ethereumProvider = await connectedWallet.getEthereumProvider();
@@ -157,20 +163,36 @@ function RepositoryProviderPrivy({ children }: RepositoryProviderProps) {
       const provider = new ethers.BrowserProvider(ethereumProvider);
       const signer = await provider.getSigner();
       await setupRepository(provider, signer);
+      walletPromptRequestedRef.current = false;
+      setNeedsWalletConnection(false);
       setIsInitialized(true);
       setError(null);
     } catch (err) {
       console.error('[RepositoryProviderPrivy] init error:', err);
+      setNeedsWalletConnection(false);
       setError(
         err instanceof Error
           ? err
           : new Error('Failed to initialise repository'),
       );
     }
-  }, [connect, privy.authenticated, privyWallets.wallets, isReady]);
+  }, [connect, connectedWallet]);
+
+  useEffect(() => {
+    if (connectedWallet) {
+      walletPromptRequestedRef.current = false;
+      setNeedsWalletConnection(false);
+      setError(null);
+      return;
+    }
+
+    if (!privy.authenticated) {
+      walletPromptRequestedRef.current = false;
+    }
+  }, [connectedWallet, privy.authenticated]);
 
   // Re-sync signer when wallet address changes
-  const currentWalletAddress = privyWallets.wallets?.[0]?.address ?? null;
+  const currentWalletAddress = connectedWallet?.address ?? null;
   useEffect(() => {
     if (!isInitialized || !currentWalletAddress) return;
     let cancelled = false;
@@ -179,9 +201,8 @@ function RepositoryProviderPrivy({ children }: RepositoryProviderProps) {
         const repoCtx = RepositoryContext.getInstance();
         const stored = await repoCtx.getSignerAddress();
         if (stored.toLowerCase() === currentWalletAddress.toLowerCase()) return;
-        const wallet = privyWallets.wallets?.[0];
-        if (!wallet) return;
-        const ep = await wallet.getEthereumProvider();
+        if (!connectedWallet) return;
+        const ep = await connectedWallet.getEthereumProvider();
         const provider = new ethers.BrowserProvider(ep);
         const signer = await provider.getSigner();
         if (!cancelled) await repoCtx.updateSigner(signer);
@@ -192,24 +213,52 @@ function RepositoryProviderPrivy({ children }: RepositoryProviderProps) {
     return () => {
       cancelled = true;
     };
-  }, [currentWalletAddress, isInitialized, privyWallets.wallets]);
+  }, [connectedWallet, currentWalletAddress, isInitialized]);
 
   useEffect(() => {
     if (isInitialized || !isReady || !privy.ready || !privyWallets.ready)
       return;
-    initializeRepository();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    void initializeRepository();
   }, [
+    initializeRepository,
     isReady,
     privy.ready,
     privyWallets.ready,
     isInitialized,
     privy.authenticated,
-  ]); // initializeRepository excluded: stable function, runs once on initialization conditions
+    connectedWallet,
+  ]);
 
   if (!privy.ready || !privyWallets.ready) return <LoadingScreen />;
 
   if (!isInitialized) {
+    if (needsWalletConnection) {
+      return (
+        <div className="flex min-h-screen items-center justify-center bg-black p-6 text-white">
+          <div className="max-w-xl text-center">
+            <h2 className="mb-2 text-xl font-semibold">
+              Connect wallet to continue
+            </h2>
+            <p className="text-sm text-white/80">
+              {walletError?.message ||
+                'A connected wallet is required to open this page.'}
+            </p>
+            <button
+              onClick={() => {
+                walletPromptRequestedRef.current = false;
+                setNeedsWalletConnection(true);
+                setError(null);
+                void initializeRepository();
+              }}
+              className="mt-4 rounded bg-white/10 px-4 py-2 text-sm hover:bg-white/20"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     if (error) {
       return (
         <div className="flex min-h-screen items-center justify-center bg-black p-6 text-white">
@@ -220,8 +269,9 @@ function RepositoryProviderPrivy({ children }: RepositoryProviderProps) {
             <p className="text-sm text-white/80">{error.message}</p>
             <button
               onClick={() => {
+                walletPromptRequestedRef.current = false;
                 setError(null);
-                initializeRepository();
+                void initializeRepository();
               }}
               className="mt-4 rounded bg-white/10 px-4 py-2 text-sm hover:bg-white/20"
             >
