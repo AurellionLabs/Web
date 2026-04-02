@@ -102,6 +102,7 @@ import {
 } from '@/utils/order-asset-resolution';
 import { isNodeDashboardReadOnly } from './access-mode';
 import { resolvePublicNodeChain } from '@/lib/public-node-chain';
+import { getNodeExplorerHref } from './explorer-link';
 
 const tokenizeFormSchema = z.object({
   assetClass: z.string().min(1, { message: 'Please select an asset class.' }),
@@ -159,7 +160,7 @@ export default function NodeDashboardPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const { address: walletAddress } = useWallet();
+  const { address: walletAddress, chainId: walletChainId } = useWallet();
   const { decimals: quoteTokenDecimals, symbol: quoteTokenSymbol } =
     useQuoteTokenMetadata();
   const {
@@ -181,6 +182,12 @@ export default function NodeDashboardPage() {
     publicChainId === null
       ? null
       : (NETWORK_CONFIGS[publicChainId]?.name ?? String(publicChainId));
+  const nodeExplorerHref = getNodeExplorerHref({
+    ownerAddress: currentNodeData?.owner,
+    walletChainId,
+    publicChainId,
+    viewMode,
+  });
   const isReadOnly = isNodeDashboardReadOnly({
     viewMode,
     diamondIsReadOnly,
@@ -1930,6 +1937,23 @@ export default function NodeDashboardPage() {
                   </div>
                 </div>
               )}
+
+              <div className="mt-4 flex justify-start border-t border-border/15 pt-4">
+                <TrapButton
+                  variant="gold"
+                  size="sm"
+                  onClick={() =>
+                    nodeExplorerHref &&
+                    window.open(nodeExplorerHref, '_blank', 'noreferrer')
+                  }
+                  disabled={!nodeExplorerHref}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <ExternalLink className="h-4 w-4" />
+                    View Node on Explorer
+                  </span>
+                </TrapButton>
+              </div>
             </div>
           </EvaPanel>
         </div>
