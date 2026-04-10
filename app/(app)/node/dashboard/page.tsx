@@ -1,6 +1,12 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   Plus,
   ChevronLeft,
@@ -79,6 +85,11 @@ import { NETWORK_CONFIGS } from '@/config/network';
 type AttributeValue = string | number | boolean;
 import { Order, OrderStatus } from '@/domain/orders';
 import {
+  buildP2PStepTransactionMap,
+  type P2PJourneyTransactionContext,
+  type P2PStepTransactionMap,
+} from '@/app/components/p2p/p2p-order-step-transactions';
+import {
   getP2PActivitySnapshot,
   isP2POrderExpanded,
   reconcileP2PExpansionOverrides,
@@ -91,8 +102,18 @@ import { P2POrderFlow } from '@/app/components/p2p/p2p-order-flow';
 import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
 import {
+  GET_AUSYS_ORDER_STATUS_UPDATES_BY_ORDER_ID,
   GET_EMIT_SIG_EVENTS_BY_JOURNEY,
+  GET_JOURNEY_STATUS_UPDATES_BY_IDS,
+  GET_P2P_ACCEPTED_EVENTS_BY_ORDER_ID,
+  GET_P2P_JOURNEYS_BY_ORDER_ID,
+  GET_P2P_OFFER_BY_ORDER_ID,
+  type AuSysOrderStatusUpdatesByOrderIdResponse,
   type EmitSigEventsByJourneyResponse,
+  type JourneyStatusUpdatesByIdsResponse,
+  type P2PAcceptedEventsByOrderIdResponse,
+  type P2PJourneysByOrderIdResponse,
+  type P2POfferByOrderIdResponse,
 } from '@/infrastructure/shared/graph-queries';
 import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 import { detectJourneyRoleConflict } from '@/utils/journey-role-conflicts';
@@ -102,7 +123,7 @@ import {
 } from '@/utils/order-asset-resolution';
 import { isNodeDashboardReadOnly } from './access-mode';
 import { resolvePublicNodeChain } from '@/lib/public-node-chain';
-import { getNodeExplorerHref } from './explorer-link';
+import { getNodeExplorerHref, getNodeTransactionHref } from './explorer-link';
 
 const tokenizeFormSchema = z.object({
   assetClass: z.string().min(1, { message: 'Please select an asset class.' }),
@@ -323,6 +344,12 @@ export default function NodeDashboardPage() {
   const [expandedP2POrders, setExpandedP2POrders] = useState<
     Record<string, boolean>
   >({});
+  const [p2pStepTransactions, setP2PStepTransactions] = useState<
+    Record<string, P2PStepTransactionMap>
+  >({});
+  const [loadingP2PStepTransactions, setLoadingP2PStepTransactions] = useState<
+    Record<string, boolean>
+  >({});
   const previousP2PActivityRef = useRef<Record<string, boolean>>({});
   const [activePublicSelectionKey, setActivePublicSelectionKey] = useState<
     string | null
@@ -374,6 +401,11 @@ export default function NodeDashboardPage() {
 
     previousP2PActivityRef.current = nextActivity;
   }, [orders]);
+
+  useEffect(() => {
+    setP2PStepTransactions({});
+    setLoadingP2PStepTransactions({});
+  }, [selectedNodeAddress, publicChainId, preservePublicView]);
 
   /**
    * Fetch live signature states for a P2P order's journey.
@@ -479,6 +511,175 @@ export default function NodeDashboardPage() {
       return { buyerSigned: false, driverDeliverySigned: false };
     }
   };
+
+  const loadP2POrderStepTransactions = useCallback(
+    async (order: Order) => {
+      if (
+        p2pStepTransactions[order.id] ||
+        loadingP2PStepTransactions[order.id]
+      ) {
+        return;
+      }
+
+      setLoadingP2PStepTransactions((prev) => ({
+        ...prev,
+        [order.id]: true,
+      }));
+
+      try {
+        const indexerUrl = getCurrentIndexerUrl(publicChainId ?? undefined);
+        const [
+          createdResponse,
+          acceptedResponse,
+          orderStatusResponse,
+          journeysResponse,
+        ] = await Promise.all([
+          graphqlRequest<P2POfferByOrderIdResponse>(
+            indexerUrl,
+            GET_P2P_OFFER_BY_ORDER_ID,
+            { orderId: order.id },
+          ),
+          graphqlRequest<P2PAcceptedEventsByOrderIdResponse>(
+            indexerUrl,
+            GET_P2P_ACCEPTED_EVENTS_BY_ORDER_ID,
+            { orderId: order.id, limit: 50 },
+          ),
+          graphqlRequest<AuSysOrderStatusUpdatesByOrderIdResponse>(
+            indexerUrl,
+            GET_AUSYS_ORDER_STATUS_UPDATES_BY_ORDER_ID,
+            { orderId: order.id, limit: 50 },
+          ),
+          graphqlRequest<P2PJourneysByOrderIdResponse>(
+            indexerUrl,
+            GET_P2P_JOURNEYS_BY_ORDER_ID,
+            { orderId: order.id, limit: 50 },
+          ),
+        ]);
+
+        const journeyIds = Array.from(
+          new Set([
+            ...order.journeyIds,
+            ...(journeysResponse.diamondJourneyCreatedEventss?.items || []).map(
+              (journey) => journey.journey_id,
+            ),
+          ]),
+        );
+
+        const repoContext = RepositoryContext.getInstance();
+        const ausys = repoContext.getAusysContract();
+
+        const [journeyStatusResponse, emitSigEntries, journeyContextEntries] =
+          await Promise.all([
+            journeyIds.length > 0
+              ? graphqlRequest<JourneyStatusUpdatesByIdsResponse>(
+                  indexerUrl,
+                  GET_JOURNEY_STATUS_UPDATES_BY_IDS,
+                  { journeyIds, limit: 100 },
+                )
+              : Promise.resolve({
+                  diamondAuSysJourneyStatusUpdatedEventss: { items: [] },
+                } satisfies JourneyStatusUpdatesByIdsResponse),
+            Promise.all(
+              journeyIds.map(async (journeyId) => {
+                try {
+                  const response =
+                    await graphqlRequest<EmitSigEventsByJourneyResponse>(
+                      indexerUrl,
+                      GET_EMIT_SIG_EVENTS_BY_JOURNEY,
+                      { journeyId, limit: 50 },
+                    );
+
+                  return [
+                    journeyId,
+                    response.diamondEmitSigEventss?.items || [],
+                  ] as const;
+                } catch (error) {
+                  console.warn(
+                    '[NodeDashboard] Failed to load emit signature events:',
+                    journeyId,
+                    error,
+                  );
+                  return [journeyId, []] as const;
+                }
+              }),
+            ),
+            Promise.all(
+              journeyIds.map(async (journeyId) => {
+                try {
+                  const journey = await ausys.getJourney(journeyId);
+
+                  return [
+                    journeyId,
+                    {
+                      journeyStart: Number(journey.journeyStart) || 0,
+                      sender: journey.sender,
+                      receiver: journey.receiver,
+                      driver: journey.driver,
+                    } satisfies P2PJourneyTransactionContext,
+                  ] as const;
+                } catch (error) {
+                  console.warn(
+                    '[NodeDashboard] Failed to load journey context:',
+                    journeyId,
+                    error,
+                  );
+                  return [
+                    journeyId,
+                    { journeyStart: 0 } satisfies P2PJourneyTransactionContext,
+                  ] as const;
+                }
+              }),
+            ),
+          ]);
+
+        const stepTransactions = buildP2PStepTransactionMap({
+          createdEvents:
+            createdResponse.diamondP2POfferCreatedEventss?.items || [],
+          acceptedEvents:
+            acceptedResponse.diamondP2POfferAcceptedEventss?.items || [],
+          orderStatusUpdates:
+            orderStatusResponse.diamondAuSysOrderStatusUpdatedEventss?.items ||
+            [],
+          journeyEvents:
+            journeysResponse.diamondJourneyCreatedEventss?.items || [],
+          journeyStatusUpdates:
+            journeyStatusResponse.diamondAuSysJourneyStatusUpdatedEventss
+              ?.items || [],
+          emitSigEventsByJourney: Object.fromEntries(emitSigEntries),
+          journeyContexts: Object.fromEntries(
+            journeyContextEntries.map(([journeyId, context]) => [
+              journeyId.toLowerCase(),
+              context,
+            ]),
+          ),
+        });
+
+        setP2PStepTransactions((prev) => ({
+          ...prev,
+          [order.id]: stepTransactions,
+        }));
+      } catch (error) {
+        console.error(
+          '[NodeDashboard] Failed to load P2P order step transactions:',
+          error,
+        );
+        toast({
+          title: 'Unable to load transactions',
+          description:
+            error instanceof Error
+              ? error.message
+              : 'Failed to load order step transactions.',
+          variant: 'destructive',
+        });
+      } finally {
+        setLoadingP2PStepTransactions((prev) => ({
+          ...prev,
+          [order.id]: false,
+        }));
+      }
+    },
+    [loadingP2PStepTransactions, p2pStepTransactions, publicChainId, toast],
+  );
 
   const form = useForm<z.infer<typeof tokenizeFormSchema>>({
     resolver: zodResolver(tokenizeFormSchema),
@@ -1854,6 +2055,21 @@ export default function NodeDashboardPage() {
                               <P2POrderFlow
                                 order={order}
                                 fetchSignatureState={getP2PSignatureState}
+                                stepTransactions={p2pStepTransactions[order.id]}
+                                isStepTransactionsLoading={
+                                  loadingP2PStepTransactions[order.id] ?? false
+                                }
+                                onOpenStepTransactions={() => {
+                                  void loadP2POrderStepTransactions(order);
+                                }}
+                                getTransactionHref={(txHash) =>
+                                  getNodeTransactionHref({
+                                    transactionHash: txHash,
+                                    walletChainId,
+                                    publicChainId,
+                                    viewMode,
+                                  })
+                                }
                                 onSignPickup={
                                   !isReadOnly &&
                                   order.seller?.toLowerCase() ===
