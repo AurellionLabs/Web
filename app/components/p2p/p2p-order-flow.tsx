@@ -11,13 +11,25 @@ import {
   PackageCheck,
   AlertTriangle,
   XCircle,
+  ExternalLink,
 } from 'lucide-react';
 import { GlowButton } from '@/app/components/ui/glow-button';
 import { TrapButton } from '@/app/components/eva/eva-components';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/app/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import { OrderWithAsset, P2POrderDetail } from '@/app/types/shared';
+import { OrderWithAsset } from '@/app/types/shared';
 import { OrderStatus } from '@/domain/orders/order';
 import { SettlementDestinationModal } from '@/app/components/settlement/SettlementDestinationModal';
+import type {
+  P2PStep,
+  P2PStepTransactionMap,
+} from './p2p-order-step-transactions';
 
 // =============================================================================
 // Types
@@ -63,16 +75,17 @@ export interface P2POrderFlowProps {
   }>;
   /** Whether an action is currently in progress */
   isActionLoading?: boolean;
+  /** Cached step transactions for this order */
+  stepTransactions?: P2PStepTransactionMap;
+  /** Whether step transactions are currently loading */
+  isStepTransactionsLoading?: boolean;
+  /** Lazy-load callback for step transactions */
+  onOpenStepTransactions?: (stepId: P2PStep) => void;
+  /** Resolves a block-explorer href for a transaction hash */
+  getTransactionHref?: (txHash: string) => string | null;
 }
 
 /** Steps in the P2P order lifecycle */
-type P2PStep =
-  | 'accepted'
-  | 'journey-pending'
-  | 'in-transit'
-  | 'awaiting-confirmation'
-  | 'settled';
-
 interface StepConfig {
   id: P2PStep;
   label: string;
@@ -178,6 +191,22 @@ function getStatusMessage(
   }
 }
 
+function formatTransactionHash(txHash: string): string {
+  if (txHash.length < 14) {
+    return txHash;
+  }
+
+  return `${txHash.slice(0, 10)}...${txHash.slice(-6)}`;
+}
+
+function formatTransactionTime(timestamp: number): string {
+  if (!timestamp || Number.isNaN(timestamp)) {
+    return 'Unknown time';
+  }
+
+  return new Date(timestamp * 1000).toLocaleString();
+}
+
 // =============================================================================
 // Component
 // =============================================================================
@@ -191,6 +220,10 @@ export function P2POrderFlow({
   onSignPickup,
   fetchSignatureState,
   isActionLoading = false,
+  stepTransactions,
+  isStepTransactionsLoading = false,
+  onOpenStepTransactions,
+  getTransactionHref,
 }: P2POrderFlowProps) {
   const [buyerSigned, setBuyerSigned] = useState(false);
   const [driverSigned, setDriverSigned] = useState(false);
@@ -211,6 +244,7 @@ export function P2POrderFlow({
   // the order prop to update from the indexer before showing step 4
   const [localSettled, setLocalSettled] = useState(false);
   const [isSettlementModalOpen, setIsSettlementModalOpen] = useState(false);
+  const [selectedStepId, setSelectedStepId] = useState<P2PStep | null>(null);
 
   const journeyId =
     order.journeyIds && order.journeyIds.length > 0
@@ -545,6 +579,53 @@ export function P2POrderFlow({
     order.currentStatus !== OrderStatus.SETTLED;
   // HandOff is always auto-attempted after signing — no manual button needed
 
+  const canOpenStepTransactions = (stepId: P2PStep): boolean => {
+    switch (stepId) {
+      case 'accepted':
+        return true;
+      case 'journey-pending':
+        return Boolean(journeyId);
+      case 'in-transit':
+        return (
+          Boolean(journeyId) &&
+          ((order.journeyStatus ?? null) === 1 ||
+            (order.journeyStatus ?? null) === 2 ||
+            buyerSigned ||
+            driverSigned ||
+            localSettled ||
+            order.currentStatus === OrderStatus.SETTLED)
+        );
+      case 'awaiting-confirmation':
+        return (
+          Boolean(journeyId) &&
+          (buyerSigned ||
+            driverSigned ||
+            (order.journeyStatus ?? null) === 2 ||
+            localSettled ||
+            order.currentStatus === OrderStatus.SETTLED)
+        );
+      case 'settled':
+        return localSettled || order.currentStatus === OrderStatus.SETTLED;
+      default:
+        return false;
+    }
+  };
+
+  const handleOpenStepTransactions = (stepId: P2PStep) => {
+    if (!canOpenStepTransactions(stepId)) {
+      return;
+    }
+
+    setSelectedStepId(stepId);
+    onOpenStepTransactions?.(stepId);
+  };
+
+  const selectedStep = STEPS.find((step) => step.id === selectedStepId) ?? null;
+  const selectedStepTransactions =
+    selectedStepId !== null ? (stepTransactions?.[selectedStepId] ?? []) : [];
+  const selectedJourneyId =
+    selectedStepTransactions.find((tx) => tx.journeyId)?.journeyId ?? journeyId;
+
   if (isCancelled) {
     return (
       <div className="space-y-4 p-4 rounded-lg border border-red-500/25 bg-red-500/5">
@@ -571,6 +652,7 @@ export function P2POrderFlow({
           const isComplete = idx < currentStep;
           const isCurrent = idx === currentStep;
           const StepIcon = step.icon;
+          const isClickable = canOpenStepTransactions(step.id);
 
           return (
             <div
@@ -579,33 +661,49 @@ export function P2POrderFlow({
             >
               {/* Step circle */}
               <div className="flex flex-col items-center">
-                <div
+                <button
+                  type="button"
+                  onClick={() => handleOpenStepTransactions(step.id)}
+                  disabled={!isClickable}
+                  aria-label={`${step.label} step`}
                   className={cn(
-                    'w-8 h-8 rounded-full flex items-center justify-center transition-all',
-                    isComplete && 'bg-amber-500 text-black',
-                    isCurrent &&
-                      'bg-amber-500/20 border-2 border-amber-500 text-amber-500',
-                    !isComplete &&
-                      !isCurrent &&
-                      'bg-gray-800 border border-gray-600 text-white/70',
+                    'flex flex-col items-center rounded-md transition-colors',
+                    isClickable && 'cursor-pointer hover:text-amber-200',
+                    !isClickable && 'cursor-default',
                   )}
                 >
-                  {isComplete ? (
-                    <Check className="w-4 h-4" />
-                  ) : (
-                    <StepIcon className="w-4 h-4" />
-                  )}
-                </div>
-                <span
-                  className={cn(
-                    'text-xs mt-1 text-center whitespace-nowrap',
-                    isComplete && 'text-amber-400',
-                    isCurrent && 'text-amber-300 font-medium',
-                    !isComplete && !isCurrent && 'text-white/70',
-                  )}
-                >
-                  {step.label}
-                </span>
+                  <div
+                    className={cn(
+                      'w-8 h-8 rounded-full flex items-center justify-center transition-all',
+                      isComplete && 'bg-amber-500 text-black',
+                      isCurrent &&
+                        'bg-amber-500/20 border-2 border-amber-500 text-amber-500',
+                      !isComplete &&
+                        !isCurrent &&
+                        'bg-gray-800 border border-gray-600 text-white/70',
+                      isClickable &&
+                        'ring-1 ring-transparent hover:ring-amber-500/40',
+                    )}
+                  >
+                    {isComplete ? (
+                      <Check className="w-4 h-4" />
+                    ) : (
+                      <StepIcon className="w-4 h-4" />
+                    )}
+                  </div>
+                  <span
+                    className={cn(
+                      'text-xs mt-1 text-center whitespace-nowrap',
+                      isComplete && 'text-amber-400',
+                      isCurrent && 'text-amber-300 font-medium',
+                      !isComplete && !isCurrent && 'text-white/70',
+                      isClickable &&
+                        'underline decoration-dotted underline-offset-4',
+                    )}
+                  >
+                    {step.label}
+                  </span>
+                </button>
               </div>
 
               {/* Connecting line */}
@@ -789,6 +887,83 @@ export function P2POrderFlow({
         onClose={() => setIsSettlementModalOpen(false)}
         onSuccess={() => setIsSettlementModalOpen(false)}
       />
+
+      <Dialog
+        open={selectedStepId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedStepId(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-2xl bg-neutral-950 border-neutral-800">
+          <DialogHeader className="space-y-2">
+            <DialogTitle className="text-white">
+              {selectedStep?.label ?? 'Step'} Transactions
+            </DialogTitle>
+            <DialogDescription className="text-white/70">
+              Order {formatTransactionHash(order.id)}
+              {selectedJourneyId
+                ? ` • Journey ${formatTransactionHash(selectedJourneyId)}`
+                : ''}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-[420px] overflow-y-auto rounded-lg border border-white/10 bg-black/20">
+            {isStepTransactionsLoading &&
+            selectedStepTransactions.length === 0 ? (
+              <div className="flex items-center gap-2 px-4 py-6 text-sm text-white/70">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Loading transactions...
+              </div>
+            ) : selectedStepTransactions.length === 0 ? (
+              <div className="px-4 py-6 text-sm text-white/70">
+                No transactions recorded for this step yet.
+              </div>
+            ) : (
+              <div className="divide-y divide-white/10">
+                {selectedStepTransactions.map((transaction) => {
+                  const href = getTransactionHref?.(transaction.txHash) ?? null;
+
+                  return (
+                    <a
+                      key={`${selectedStepId}-${transaction.txHash}`}
+                      href={href ?? '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={cn(
+                        'flex items-start justify-between gap-4 px-4 py-3 transition-colors',
+                        href
+                          ? 'cursor-pointer hover:bg-white/5'
+                          : 'pointer-events-none opacity-70',
+                      )}
+                    >
+                      <div className="space-y-1">
+                        <div className="font-medium text-white">
+                          {transaction.eventLabels.join(' • ')}
+                        </div>
+                        <div className="text-xs text-white/65">
+                          {transaction.actorLabels.join(' • ')}
+                        </div>
+                        <div className="font-mono text-xs text-white/50">
+                          {formatTransactionHash(transaction.txHash)}
+                          {' • '}
+                          {formatTransactionTime(transaction.timestamp)}
+                        </div>
+                      </div>
+
+                      <div className="mt-0.5 flex items-center gap-2 text-xs text-amber-300">
+                        <span>View</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </div>
+                    </a>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
