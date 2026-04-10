@@ -99,7 +99,6 @@ import { formatTokenAmount } from '@/lib/formatters';
 import { sortOrdersWithPinnedActivity } from '@/lib/order-sorting';
 import { cn } from '@/lib/utils';
 import { P2POrderFlow } from '@/app/components/p2p/p2p-order-flow';
-import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
 import {
   GET_AUSYS_ORDER_STATUS_UPDATES_BY_ORDER_ID,
@@ -188,6 +187,7 @@ export default function NodeDashboardPage() {
     initialized: diamondInitialized,
     error: diamondError,
     isReadOnly: diamondIsReadOnly,
+    diamondContext,
   } = useDiamond();
 
   const nodeIdFromUrl = searchParams.get('nodeId');
@@ -424,9 +424,12 @@ export default function NodeDashboardPage() {
     roleConflictReason?: string;
   }> => {
     try {
-      const repoContext = RepositoryContext.getInstance();
-      const ausys = repoContext.getAusysContract();
-      const journey = await ausys.getJourney(journeyId);
+      if (!diamondInitialized || !diamondContext) {
+        return { buyerSigned: false, driverDeliverySigned: false };
+      }
+
+      const diamond = diamondContext.getDiamond();
+      const journey = await diamond.getJourney(journeyId);
       const status = Number(journey.currentStatus);
       const roleConflict = detectJourneyRoleConflict(
         journey.sender,
@@ -527,6 +530,10 @@ export default function NodeDashboardPage() {
       }));
 
       try {
+        if (!diamondInitialized || !diamondContext) {
+          throw new Error('Diamond read-only contract is still initializing.');
+        }
+
         const indexerUrl = getCurrentIndexerUrl(publicChainId ?? undefined);
         const [
           createdResponse,
@@ -565,8 +572,7 @@ export default function NodeDashboardPage() {
           ]),
         );
 
-        const repoContext = RepositoryContext.getInstance();
-        const ausys = repoContext.getAusysContract();
+        const diamond = diamondContext.getDiamond();
 
         const [journeyStatusResponse, emitSigEntries, journeyContextEntries] =
           await Promise.all([
@@ -606,7 +612,7 @@ export default function NodeDashboardPage() {
             Promise.all(
               journeyIds.map(async (journeyId) => {
                 try {
-                  const journey = await ausys.getJourney(journeyId);
+                  const journey = await diamond.getJourney(journeyId);
 
                   return [
                     journeyId,
@@ -678,7 +684,14 @@ export default function NodeDashboardPage() {
         }));
       }
     },
-    [loadingP2PStepTransactions, p2pStepTransactions, publicChainId, toast],
+    [
+      diamondContext,
+      diamondInitialized,
+      loadingP2PStepTransactions,
+      p2pStepTransactions,
+      publicChainId,
+      toast,
+    ],
   );
 
   const form = useForm<z.infer<typeof tokenizeFormSchema>>({

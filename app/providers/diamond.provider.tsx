@@ -58,6 +58,7 @@ interface DiamondContextType {
   loading: boolean;
   error: Error | null;
   isReadOnly: boolean;
+  diamondContext: DiamondContext | null;
 
   // Services
   nodeRepository: NodeRepository | null;
@@ -794,6 +795,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     loading,
     error,
     isReadOnly,
+    diamondContext,
     nodeRepository,
     nodeService,
     nodeAssetService,
