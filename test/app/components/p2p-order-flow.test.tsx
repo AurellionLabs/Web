@@ -1,7 +1,9 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { P2POrderFlow } from '@/app/components/p2p/p2p-order-flow';
+import type { P2PStepTransactionMap } from '@/app/components/p2p/p2p-order-step-transactions';
 import { OrderStatus } from '@/domain/orders/order';
 import type { OrderWithAsset } from '@/app/types/shared';
 
@@ -28,6 +30,23 @@ function makeOrder(overrides: Partial<OrderWithAsset> = {}): OrderWithAsset {
     createdAt: 1700000000,
     updatedAt: 1700000000,
     asset: null,
+    ...overrides,
+  };
+}
+
+function makeStepTransactions(
+  overrides: Partial<P2PStepTransactionMap> = {},
+): P2PStepTransactionMap {
+  return {
+    accepted: [
+      {
+        txHash: '0xaccepted1234567890',
+        timestamp: 1700000000,
+        blockNumber: 100,
+        eventLabels: ['Offer Accepted'],
+        actorLabels: ['Acceptor'],
+      },
+    ],
     ...overrides,
   };
 }
@@ -68,6 +87,50 @@ describe('P2POrderFlow', () => {
       screen.getByText(
         'Open offer — waiting for a seller to accept before delivery can be scheduled.',
       ),
+    ).toBeInTheDocument();
+  });
+
+  it('opens the step transaction modal for clickable steps', async () => {
+    const user = userEvent.setup();
+    const onOpenStepTransactions = vi.fn();
+
+    render(
+      <P2POrderFlow
+        order={makeOrder()}
+        stepTransactions={makeStepTransactions()}
+        onOpenStepTransactions={onOpenStepTransactions}
+        getTransactionHref={(txHash) => `https://explorer.test/tx/${txHash}`}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Accepted step' }));
+
+    expect(onOpenStepTransactions).toHaveBeenCalledWith('accepted');
+    expect(screen.getByText('Accepted Transactions')).toBeInTheDocument();
+    expect(screen.getByText('Offer Accepted')).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /Offer Accepted/i }),
+    ).toHaveAttribute('href', 'https://explorer.test/tx/0xaccepted1234567890');
+  });
+
+  it('leaves steps without known transactions disabled', () => {
+    render(<P2POrderFlow order={makeOrder({ journeyIds: [] })} />);
+
+    expect(screen.getByRole('button', { name: 'Journey step' })).toBeDisabled();
+  });
+
+  it('shows an empty state when a clickable step has no loaded transactions yet', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <P2POrderFlow order={makeOrder()} onOpenStepTransactions={vi.fn()} />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Accepted step' }));
+
+    expect(screen.getByText('Accepted Transactions')).toBeInTheDocument();
+    expect(
+      screen.getByText('No transactions recorded for this step yet.'),
     ).toBeInTheDocument();
   });
 });
