@@ -16,48 +16,36 @@ Aurellion supports any commodity that can be classified and attributed. Currentl
 
 | Class       | Examples               | Attributes                               |
 | ----------- | ---------------------- | ---------------------------------------- |
+| `Metals`    | Gold, Silver, Cobalt   | weight, Oz, weight                       |
 | `LIVESTOCK` | Goat, Sheep, Cow       | breed, age, weight, health cert          |
 | `GRAIN`     | Wheat, Maize, Rice     | variety, moisture %, grade, harvest date |
 | `GEMSTONE`  | Diamond, Ruby, Emerald | carat, cut, clarity, colour, cert ID     |
 | `PRODUCE`   | Coffee, Cocoa, Spice   | origin, grade, processing method         |
 
 New classes are added by the contract owner via `AssetsFacet.addSupportedClass()`.
+Applications can be made for new classes.
 
 ---
 
 ## The Tokenisation Flow
 
 ```
-Physical Asset Exists (e.g., 10 goats at Node X, Nairobi)
+Physical asset exists (e.g., 10 Oz of Gold at Node X, Nairobi)
          │
-         ▼
-Node Operator calls nodeMint(account, assetDefinition, amount, className)
-         │
-         ▼ AssetsFacet validates:
-         │  ✓ Caller has a valid, active node (validNode modifier)
-         │  ✓ Class is active (GOAT class exists and enabled)
-         │
-         ▼ Token ID generated deterministically:
-         │  tokenId = uint256(keccak256(abi.encode(assetDefinition)))
-         │
-         ▼ Mint hash generated (unique per account+asset):
-         │  hash = keccak256(abi.encode(account, assetDefinition))
+         ▼ Node operator intiates minting tokenized gold
          │
          ▼ ERC-1155 tokens minted:
-         │  erc1155Balances[tokenId][account] += amount
-         │  erc1155TotalSupply[tokenId] += amount
          │
-         ▼ Custody established:
-         │  tokenCustodianAmounts[tokenId][account] += amount
-         │  tokenCustodyAmount[tokenId] += amount
+         ▼ Node ownership and custody established:
+         │
          │
          ▼ Events emitted:
             MintedAsset(account, hash, tokenId, name, assetClass, className)
             CustodyEstablished(tokenId, account, amount)
          │
-         ▼ Ponder picks up MintedAsset → assets table
+         ▼ Indexer picks up MintedAsset → assets table
          │
-         ▼ Token appears in node's dashboard → listed for sale on CLOB
+Tokens appears in node's dashboard
 ```
 
 ---
@@ -111,8 +99,6 @@ Custody represents physical control. In Aurellion:
 - The total custody across all custodians: `tokenCustodyAmount[tokenId]`
 - When goods are transferred to another node, custody updates
 
-This model replaces the old single-custodian approach (deprecated `tokenCustodian` mapping) to support multi-node supply chains.
-
 ### Custody Events
 
 | Situation        | Event                                                   |
@@ -152,24 +138,12 @@ A buyer purchasing 5x tokenId=0xABC gets them from whichever node filled their C
 
 Settlement closes the loop:
 
-1. Buyer purchases tokens on the CLOB
-2. BridgeFacet creates a UnifiedOrder
-3. Physical asset transported via journey system
-4. Upon delivery, tokens transfer to buyer's wallet
-5. Buyer can redeem tokens by visiting the node, providing custody proof
-6. Node calls `redeemCustody(tokenId, amount, custodian)`
-7. Physical goods are released
+1. Tokens are held in contract and can be traded.
+2. User redeems tokens
+3. Physical asset transported
+4. Upon delivery, tokens transfer to users wallet
 
 ---
-
-## Asset Class Management
-
-| Function                            | Role Required | Description                                 |
-| ----------------------------------- | ------------- | ------------------------------------------- |
-| `addSupportedClass(className)`      | Owner         | Activates a new asset class                 |
-| `removeSupportedClass(className)`   | Owner         | Deactivates (tombstones) a class            |
-| `getSupportedClasses()`             | Public        | Lists all classes (including inactive)      |
-| `addSupportedAsset(name, assetDef)` | Node Owner    | Registers a new asset definition for a node |
 
 ---
 

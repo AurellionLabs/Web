@@ -71,22 +71,6 @@ Node is now active and generating revenue
 
 ---
 
-## Node Validation Process
-
-Before a node can mint tokens, it must be validated by the Aurellion admin. Validation is currently off-chain and involves:
-
-| Check                 | Description                                                                |
-| --------------------- | -------------------------------------------------------------------------- |
-| Physical inspection   | GPS coordinates match actual location                                      |
-| Capacity verification | Declared capacity matches physical space                                   |
-| Operator identity     | KYC/KYB of node operator                                                   |
-| Commodity licence     | Operator has required permits (livestock dealer, warehouse operator, etc.) |
-| Insurance             | Adequate insurance for goods stored                                        |
-
-Once validated, `validNode=true` is set on-chain and the `validNode` modifier in `AssetsFacet` allows minting.
-
----
-
 ## Node Asset Inventory
 
 Nodes maintain two types of inventory:

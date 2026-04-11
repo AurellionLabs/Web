@@ -37,13 +37,9 @@ export const NAV_STRUCTURE: NavItem[] = [
     icon: '◎',
     children: [
       { title: 'RWA Tokenisation',    slug: ['core-concepts', 'real-world-asset-tokenisation'] },
-      { title: 'CLOB Trading',        slug: ['core-concepts', 'clob-trading'] },
-      { title: 'Order Lifecycle',     slug: ['core-concepts', 'order-lifecycle'] },
       { title: 'Journey & Logistics', slug: ['core-concepts', 'journey-and-logistics'] },
       { title: 'Node Network',        slug: ['core-concepts', 'node-network'] },
-      { title: 'RWY Staking',         slug: ['core-concepts', 'rwy-staking'] },
       { title: 'P2P Trading',         slug: ['core-concepts', 'p2p-trading'] },
-      { title: 'AMM Liquidity Pools', slug: ['core-concepts', 'amm-liquidity-pools'] },
     ],
   },
   {
