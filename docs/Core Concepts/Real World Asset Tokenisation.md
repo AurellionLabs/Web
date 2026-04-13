@@ -16,10 +16,10 @@ Aurellion supports any commodity that can be classified and attributed. Currentl
 
 | Class       | Examples               | Attributes                               |
 | ----------- | ---------------------- | ---------------------------------------- |
-| `Metals`    | Gold, Silver, Cobalt   | weight, Oz, weight                       |
+| `Metals`    | Gold, Silver, Cobalt   | weight, purity, denomination             |
 | `LIVESTOCK` | Goat, Sheep, Cow       | breed, age, weight, health cert          |
 | `GRAIN`     | Wheat, Maize, Rice     | variety, moisture %, grade, harvest date |
-| `GEMSTONE`  | Diamond, Ruby, Emerald | carat, cut, clarity, colour, cert ID     |
+| `GEMSTONE`  | Diamond, Ruby, Emerald | carat, cut, clarity, colour,             |
 | `PRODUCE`   | Coffee, Cocoa, Spice   | origin, grade, processing method         |
 
 New classes are added by the contract owner via `AssetsFacet.addSupportedClass()`.
