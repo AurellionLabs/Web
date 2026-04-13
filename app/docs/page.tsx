@@ -284,6 +284,53 @@ export default function DocsHomePage() {
 
       <EvaPanel
         label="DEPLOYED CONTRACTS"
+        sublabel="Arbitrum One"
+        sysId="CHAIN-42161"
+        status="active"
+        accent="gold"
+        className="mb-12"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[
+            {
+              label: 'Diamond Proxy',
+              value: '0x0Adc63e71B035d5c7FDB1B4593999FA1F296f1B2',
+              note: 'active',
+            },
+            {
+              label: 'AURA Quote Token',
+              value: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
+              note: 'active',
+            },
+            {
+              label: 'Indexer GraphQL',
+              value: 'indexer.aurellionlabs.com/graphql',
+              note: 'active',
+            },
+          ].map((item) => (
+            <div key={item.label}>
+              <div className="font-mono text-[9px] tracking-[0.2em] uppercase text-white/60 mb-1.5">
+                {item.label}
+              </div>
+              <div className="font-mono text-[11px] text-gold/70 break-all leading-relaxed">
+                {item.value}
+              </div>
+              <div className="font-mono text-[9px] text-white/55 mt-1">
+                {item.note}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 pt-4 border-t border-glass flex items-center gap-3">
+          <EvaStatusBadge status="active" label="LIVE ON TESTNET" />
+          <span className="font-mono text-[9px] tracking-[0.15em] uppercase text-foreground/25">
+            13 FACETS · DIAMOND EIP-2535 · BASE SEPOLIA
+          </span>
+        </div>
+      </EvaPanel>
+
+      <EvaPanel
+        label="DEPLOYED CONTRACTS"
         sublabel="Base Sepolia Testnet"
         sysId="CHAIN-84532"
         status="active"
@@ -295,17 +342,17 @@ export default function DocsHomePage() {
             {
               label: 'Diamond Proxy',
               value: '0x8ed92Ff64dC6e833182a4743124FE3e48E2966A7',
-              note: 'block 37798377',
+              note: 'active',
             },
             {
               label: 'AURA Quote Token',
               value: '0xe727f09fd8Eb3CaFa730493614df1528Ba69B1e6',
-              note: 'block 36423435',
+              note: 'active',
             },
             {
               label: 'Indexer GraphQL',
-              value: 'indexer.aurellionlabs.com/graphql',
-              note: 'port 42069',
+              value: 'dev.indexer.aurellionlabs.com/graphql',
+              note: 'active',
             },
           ].map((item) => (
             <div key={item.label}>

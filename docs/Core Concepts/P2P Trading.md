@@ -12,13 +12,13 @@ tags: [concepts, p2p, trading, direct]
 
 ## P2P vs CLOB
 
-| Feature               | CLOB                       | P2P                              |
-| --------------------- | -------------------------- | -------------------------------- |
-| Price discovery       | Yes — market-driven        | No — pre-agreed                  |
-| Counterparty          | Any market participant     | Specific address or open         |
-| Order book visibility | Public                     | Private (offer details on-chain) |
-| Minimum viable size   | Any                        | Any                              |
-| Best for              | Price discovery, liquidity | Large trades, OTC deals          |
+| Feature               | CLOB                       | P2P                      |
+| --------------------- | -------------------------- | ------------------------ |
+| Price discovery       | Yes — market-driven        | Yes — pre-agreed         |
+| Counterparty          | Any market participant     | Specific address or open |
+| Order book visibility | Public                     | Public                   |
+| Minimum viable size   | Any                        | Any                      |
+| Best for              | Price discovery, liquidity | Large trades, OTC deals  |
 
 ---
 

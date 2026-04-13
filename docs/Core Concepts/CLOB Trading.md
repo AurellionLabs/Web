@@ -2,7 +2,7 @@
 tags: [concepts, clob, trading, order-book, matching]
 ---
 
-# CLOB Trading
+# CLOB Trading - Coming soon
 
 [[🏠 Home]] > Core Concepts > CLOB Trading
 
