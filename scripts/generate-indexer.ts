@@ -54,7 +54,7 @@ const FACETS_TO_INDEX: Record<string, { domain: string; priority: number }> = {
 };
 
 // External contracts (not facets) that emit events we want to index
-// Note: RWYVault removed - replaced by RWYStakingFacet in Diamond
+// RWY staking events come from RWYStakingFacet in Diamond.
 const EXTERNAL_CONTRACTS: Record<
   string,
   { domain: string; artifactPath: string; priority: number }
@@ -542,7 +542,7 @@ function parseFacets(): Map<string, FacetInfo> {
     );
   }
 
-  // Parse external contracts (RWYVault, AuraAsset, etc.)
+  // Parse external contract ABIs when configured.
   for (const [contractName, config] of Object.entries(EXTERNAL_CONTRACTS)) {
     const abi = loadArtifact(contractName, config.artifactPath);
     if (!abi) continue;

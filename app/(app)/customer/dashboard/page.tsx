@@ -68,11 +68,9 @@ import {
   DeliveryFormData,
 } from '@/app/components/p2p/delivery-details-dialog';
 import { P2PDeliveryDetails, P2POffer, P2POfferStatus } from '@/domain/p2p';
-import { getWalletAddress } from '@/dapp-connectors/base-controller';
 import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
 import { getDefaultP2PDeliveryBountyWei } from '@/config/p2p';
 import { useWallet } from '@/hooks/useWallet';
-import { AUSYS_ABI } from '@/lib/constants/contracts';
 import {
   getP2PActivitySnapshot,
   isP2POrderExpanded,

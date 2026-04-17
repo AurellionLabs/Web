@@ -1,5 +1,5 @@
 // Auto-generated Diamond ABI - DO NOT EDIT
-// Generated at: 2026-03-10T19:30:30.102Z
+// Generated at: 2026-04-17T23:44:28.742Z
 //
 // This file combines ABIs from all facets with events deduplicated by signature hash.
 // For per-facet ABIs, import from the individual files.
@@ -7968,6 +7968,11 @@ export const DiamondABI = [
             internalType: 'uint16',
             name: 'snapshotNodeBps',
             type: 'uint16',
+          },
+          {
+            internalType: 'bytes32',
+            name: 'sellerNode',
+            type: 'bytes32',
           },
         ],
         internalType: 'struct DiamondStorage.AuSysOrder',

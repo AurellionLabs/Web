@@ -9,3 +9,9 @@ export { DiamondContext, getDiamondContext } from './diamond-context';
 export { DiamondNodeRepository } from './diamond-node-repository';
 export { DiamondNodeService, type INodeService } from './diamond-node-service';
 export { DiamondNodeAssetService } from './diamond-node-asset-service';
+export {
+  getDiamondContract,
+  getDiamondProvider,
+  getDiamondSigner,
+  getDiamondSignerAddress,
+} from './diamond-runtime';

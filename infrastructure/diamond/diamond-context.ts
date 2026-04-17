@@ -1,7 +1,7 @@
 /**
  * Diamond Context - Provides access to the Diamond contract and its facets
  *
- * This replaces the legacy RepositoryContext for Diamond-based operations.
+ * Singleton Diamond context for contract, signer, and provider access.
  * All node, asset, order operations go through the single Diamond proxy.
  */
 

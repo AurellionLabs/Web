@@ -7,7 +7,7 @@ const roadmapItems = [
     status: 'Completed',
     title: 'Q2 2024: Core Contract Development',
     description:
-      'Development and testing of Aurum, AuSys, AuraGoat, and AuStake smart contracts.',
+      'Development and testing of Diamond facets for nodes, logistics, assets, and staking.',
   },
   {
     status: 'Completed',
@@ -25,7 +25,7 @@ const roadmapItems = [
     status: 'Upcoming',
     title: 'Q1 2025: Staking V2 & Driver App',
     description:
-      'Enhance AuStake features, launch dedicated mobile application for drivers.',
+      'Enhance RWY staking features, launch dedicated mobile application for drivers.',
   },
   {
     status: 'Upcoming',

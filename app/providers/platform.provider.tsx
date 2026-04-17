@@ -12,7 +12,6 @@ import React, {
 import { usePathname, useSearchParams } from 'next/navigation';
 import { Asset } from '@/domain/shared';
 import { AssetClass, IPlatformRepository } from '@/domain/platform';
-import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { CLOBV2Repository } from '@/infrastructure/repositories/clob-v2-repository';
 import { PlatformRepository } from '@/infrastructure/repositories/platform-repository';
 import { NEXT_PUBLIC_DEFAULT_CHAIN_ID } from '@/chain-constants';
@@ -123,16 +122,11 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       return repositoryRef.current;
     }
 
-    try {
-      repositoryRef.current =
-        RepositoryContext.getInstance().getPlatformRepository();
-    } catch {
-      repositoryRef.current = new PlatformRepository(
-        undefined,
-        undefined,
-        activePlatformChainId ?? NEXT_PUBLIC_DEFAULT_CHAIN_ID,
-      );
-    }
+    repositoryRef.current = new PlatformRepository(
+      undefined,
+      undefined,
+      activePlatformChainId ?? NEXT_PUBLIC_DEFAULT_CHAIN_ID,
+    );
 
     return repositoryRef.current;
   }, [activePlatformChainId]);

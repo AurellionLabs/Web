@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
-import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
+import { getDiamondProvider, getDiamondSigner } from '@/infrastructure/diamond';
 
 const AUSYS_SETTLEMENT_ABI = [
   'function selectTokenDestination(bytes32 orderId, bytes32 nodeId, bool burn) external',
@@ -38,11 +38,7 @@ export interface CustodyBreakdown {
 }
 
 export class SettlementService {
-  private repositoryContext: RepositoryContext;
-
-  constructor() {
-    this.repositoryContext = RepositoryContext.getInstance();
-  }
+  constructor() {}
 
   // ---------------------------------------------------------------------------
   // Token balance
@@ -58,7 +54,7 @@ export class SettlementService {
     tokenId: string,
     tokenAddress: string = NEXT_PUBLIC_DIAMOND_ADDRESS,
   ): Promise<bigint> {
-    const provider = this.repositoryContext.getProvider();
+    const provider = getDiamondProvider();
     const contract = new ethers.Contract(tokenAddress, ERC1155_ABI, provider);
     return contract.balanceOf(account, BigInt(tokenId));
   }
@@ -76,7 +72,7 @@ export class SettlementService {
     tokenAddress: string,
     operator: string,
   ): Promise<boolean> {
-    const provider = this.repositoryContext.getProvider();
+    const provider = getDiamondProvider();
     const contract = new ethers.Contract(
       tokenAddress,
       ERC1155_APPROVAL_ABI,
@@ -93,7 +89,7 @@ export class SettlementService {
     tokenAddress: string,
     operator: string,
   ): Promise<void> {
-    const signer = this.repositoryContext.getSigner();
+    const signer = getDiamondSigner();
     const contract = new ethers.Contract(
       tokenAddress,
       ERC1155_APPROVAL_ABI,
@@ -112,7 +108,7 @@ export class SettlementService {
    * Called on every page load to detect offline settlements.
    */
   async getPendingOrders(buyerAddress: string): Promise<string[]> {
-    const provider = this.repositoryContext.getProvider();
+    const provider = getDiamondProvider();
     const contract = new ethers.Contract(
       NEXT_PUBLIC_DIAMOND_ADDRESS,
       AUSYS_SETTLEMENT_ABI,
@@ -141,7 +137,7 @@ export class SettlementService {
     }
     const effectiveNodeId = burn ? ZERO_BYTES32 : nodeId;
 
-    const signer = this.repositoryContext.getSigner();
+    const signer = getDiamondSigner();
     const contract = new ethers.Contract(
       NEXT_PUBLIC_DIAMOND_ADDRESS,
       AUSYS_SETTLEMENT_ABI,
@@ -216,7 +212,7 @@ export class SettlementService {
    * Returns how much of the underlying the given custodian address is responsible for.
    */
   async getCustodyInfo(tokenId: string, custodian: string): Promise<bigint> {
-    const provider = this.repositoryContext.getProvider();
+    const provider = getDiamondProvider();
     const contract = new ethers.Contract(
       NEXT_PUBLIC_DIAMOND_ADDRESS,
       ASSETS_FACET_ABI,
@@ -234,7 +230,7 @@ export class SettlementService {
    * Returns how much of the token is custodied at a specific node (not wallet).
    */
   async getNodeCustodyInfo(tokenId: string, nodeHash: string): Promise<bigint> {
-    const provider = this.repositoryContext.getProvider();
+    const provider = getDiamondProvider();
     const contract = new ethers.Contract(
       NEXT_PUBLIC_DIAMOND_ADDRESS,
       ASSETS_FACET_ABI,
@@ -268,7 +264,7 @@ export class SettlementService {
       };
     }
 
-    const provider = this.repositoryContext.getProvider();
+    const provider = getDiamondProvider();
     const contract = new ethers.Contract(
       NEXT_PUBLIC_DIAMOND_ADDRESS,
       ERC1155_ABI,

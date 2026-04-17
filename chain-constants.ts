@@ -6,26 +6,15 @@
 // CONTRACT ADDRESSES - Base Sepolia
 // =============================================================================
 
-export const NEXT_PUBLIC_AUSTAKE_ADDRESS =
-  '0x6d00C0cE97E10794d8771743915a2C0DB6d99492';
 export const NEXT_PUBLIC_AURA_TOKEN_ADDRESS =
   '0xe727f09fd8Eb3CaFa730493614df1528Ba69B1e6';
-export const NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS =
-  '0x725793e4Ebb067df8167D43be56B4d86A6c964F3';
-export const NEXT_PUBLIC_AUSYS_ADDRESS =
-  '0x94a61417e11C2e4FB756DBF2a0CaC7f433eaE6Aa';
 export const NEXT_PUBLIC_AURA_ASSET_ADDRESS =
   '0xb3090aBF81918FF50e921b166126aD6AB9a03944';
-export const NEXT_PUBLIC_CLOB_ADDRESS =
-  '0xDd33fF6AE3E20E59D1AC20336358F024a2861304';
 
 // CLOB V2 Diamond - separate Diamond for CLOB trading (placeLimitOrder, matching, etc.)
 // Deployed: 2026-01-07 (see deployments/clob-v2-baseSepolia-*.json)
 export const NEXT_PUBLIC_CLOB_V2_DIAMOND_ADDRESS =
   '0x2516CAdb7b3d4E94094bC4580C271B8559902e3f';
-export const NEXT_PUBLIC_ORDER_BRIDGE_ADDRESS =
-  '0xad1f2aBF1baE127464Ea5ADd8A540c7bfDade226';
-
 // RWY Staking is now part of the Diamond (RWYStakingFacet)
 // Use NEXT_PUBLIC_DIAMOND_ADDRESS for RWY staking operations
 
@@ -51,10 +40,6 @@ export const NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS = Number(
 export const NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL =
   process.env.NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL ||
   (quoteTokenIsArbitrumUsdc ? 'USDC' : 'AURA');
-
-//
-// AuraGoat is the same as AuraAsset for now (ERC1155 token contract)
-export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = NEXT_PUBLIC_AURA_ASSET_ADDRESS;
 
 // =============================================================================
 // EIP-2535 DIAMOND CONTRACTS - Base Sepolia
@@ -144,28 +129,17 @@ export function getIndexerUrl(chainId?: number | null): string {
   return NEXT_PUBLIC_INDEXER_URL;
 }
 
-// Legacy aliases — kept for backward compat, prefer getIndexerUrl(chainId)
-export const NEXT_PUBLIC_AUSYS_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
-export const NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
-export const NEXT_PUBLIC_AURUM_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
-export const NEXT_PUBLIC_AUSTAKE_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
-
 // =============================================================================
 // DEPLOYMENT BLOCKS (for indexer configuration)
 // =============================================================================
 
 export const DEPLOYMENT_BLOCKS = {
-  auraToken: 36423435,
-  auSys: 36423438,
-  aurumNodeManager: 36423440,
-  auStake: 36423442,
-  auraAsset: 36423444,
-  clob: 36423451,
+  diamond: DIAMOND_DEPLOY_BLOCK,
+  auraAsset: 36033385,
 };
 
 // Export individual constants for generator
 export const AURA_ASSET_DEPLOY_BLOCK = 36033385;
-// RWY_VAULT_DEPLOY_BLOCK removed - now part of Diamond
 
 export const NEXT_PUBLIC_RWY_STAKING_FACET_ADDRESS =
   '0xdf79919593BC5111e5c911b46BBF1DDDDe5a8DD2';

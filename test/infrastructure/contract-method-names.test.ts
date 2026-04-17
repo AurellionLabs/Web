@@ -75,7 +75,6 @@ const FILES_WITH_STRING_METHOD_CALLS = [
 const FILES_WITH_DIRECT_CALLS = [
   'app/providers/driver.provider.tsx',
   'app/providers/customer.provider.tsx',
-  'dapp-connectors/ausys-controller.ts',
 ];
 
 // --- Extracted ABIs file ---
@@ -329,14 +328,11 @@ describe('Extracted ABIs Completeness', () => {
 
     // Contracts that are actively used in production code
     const productionContracts = [
-      'Ausys',
-      'AuraAsset',
-      'AuStake',
-      'AurumNodeManager',
-      'AurumNode',
-      'AuraGoatRed',
-      'CLOB',
-      'RWYVault',
+      'Diamond',
+      'DiamondCutFacet',
+      'DiamondLoupeFacet',
+      'OwnershipFacet',
+      'RWYStakingFacet',
     ];
 
     for (const name of productionContracts) {

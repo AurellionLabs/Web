@@ -197,7 +197,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
       ? diamondContext.getChainId()
       : null;
   // E2E signer comes directly from E2EAuthProvider — do NOT go through
-  // RepositoryContext.getSigner() which requires full initialization first.
+  // Diamond signer setup requires full initialization first.
   const { signer: e2eSigner, provider: e2eProvider } = useE2EAuth();
 
   // Track if we're in read-only mode
@@ -266,7 +266,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
         }
 
         if (IS_E2E) {
-          // E2E mode: signer comes directly from E2EAuthProvider (no RepositoryContext needed).
+          // E2E mode: signer comes directly from E2EAuthProvider.
           // mainConnected is set by WalletConnectionE2E once E2EAuthProvider is ready.
           if (!mainConnected || !e2eSigner || !e2eProvider) {
             setLoading(false);

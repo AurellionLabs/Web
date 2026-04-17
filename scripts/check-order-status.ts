@@ -1,15 +1,15 @@
 import { ethers } from 'ethers';
-import { NEXT_PUBLIC_AUSYS_ADDRESS } from '../chain-constants';
-import { AUSYS_ABI } from '../lib/constants/contracts';
+import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '../chain-constants';
+import { AusysABI } from '../lib/contracts/abis';
 
 async function checkOrderStatus() {
   const provider = new ethers.JsonRpcProvider(
     process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC || 'https://sepolia.base.org',
   );
 
-  const ausys = new ethers.Contract(
-    NEXT_PUBLIC_AUSYS_ADDRESS,
-    AUSYS_ABI,
+  const diamond = new ethers.Contract(
+    NEXT_PUBLIC_DIAMOND_ADDRESS,
+    AusysABI,
     provider,
   );
 
@@ -22,7 +22,7 @@ async function checkOrderStatus() {
   }
 
   try {
-    const order = await ausys.getOrder(orderId);
+    const order = await diamond.getOrder(orderId);
     console.log('\n=== Order Status Check ===');
     console.log('Order ID:', orderId);
     console.log('Current Status (numeric):', order.currentStatus.toString());

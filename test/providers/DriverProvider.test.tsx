@@ -9,7 +9,7 @@
 
 import React from 'react';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ethers } from 'ethers';
 
 // --- Mock contract with Diamond method names ---
@@ -65,22 +65,28 @@ const mockSigner = {
   provider: null,
 };
 
-const mockRepoContext = {
-  getAusysContract: vi.fn().mockReturnValue(mockDiamondContract),
+const mockDiamondContext = {
+  getDiamond: vi.fn().mockReturnValue(mockDiamondContract),
   getDriverRepository: vi.fn().mockReturnValue(mockRepository),
   getSigner: vi.fn().mockReturnValue(mockSigner),
-  getSignerAddress: vi
-    .fn()
-    .mockResolvedValue('0x742d35Cc6634C0532925a3b844Bc9e7595f2bD4c'),
+  getProvider: vi.fn().mockReturnValue({}),
 };
 
-vi.mock('@/infrastructure/contexts/repository-context', () => {
-  return {
-    RepositoryContext: {
-      getInstance: () => mockRepoContext,
-    },
-  };
-});
+vi.mock('@/app/providers/diamond.provider', () => ({
+  useDiamond: () => ({
+    diamondContext: mockDiamondContext,
+    initialized: true,
+  }),
+}));
+
+vi.mock('@/infrastructure/repositories/driver-repository', () => ({
+  DriverRepository: vi.fn().mockImplementation(() => ({
+    getAvailableDeliveries: (...args: unknown[]) =>
+      mockRepository.getAvailableDeliveries(...args),
+    getMyDeliveries: (...args: unknown[]) =>
+      mockRepository.getMyDeliveries(...args),
+  })),
+}));
 
 vi.mock('@/hooks/useWallet', () => ({
   useWallet: () => ({
@@ -128,24 +134,18 @@ describe('DriverProvider', () => {
     // Reset repository mocks
     mockRepository.getAvailableDeliveries = vi.fn().mockResolvedValue([]);
     mockRepository.getMyDeliveries = vi.fn().mockResolvedValue([]);
-    // Reset context mocks
-    mockRepoContext.getAusysContract = vi
+    // Reset Diamond context mocks
+    mockDiamondContext.getDiamond = vi
       .fn()
       .mockReturnValue(mockDiamondContract);
-    mockRepoContext.getDriverRepository = vi
+    mockDiamondContext.getDriverRepository = vi
       .fn()
       .mockReturnValue(mockRepository);
-    mockRepoContext.getSigner = vi.fn().mockReturnValue(mockSigner);
-    mockRepoContext.getSignerAddress = vi
-      .fn()
-      .mockResolvedValue('0x742d35Cc6634C0532925a3b844Bc9e7595f2bD4c');
+    mockDiamondContext.getSigner = vi.fn().mockReturnValue(mockSigner);
+    mockDiamondContext.getProvider = vi.fn().mockReturnValue({});
     mockSigner.getAddress = vi
       .fn()
       .mockResolvedValue('0x742d35Cc6634C0532925a3b844Bc9e7595f2bD4c');
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('acceptDelivery - contract method names', () => {
@@ -202,7 +202,7 @@ describe('DriverProvider', () => {
           wait: vi.fn().mockResolvedValue({ blockNumber: 1 }),
         }),
       };
-      mockRepoContext.getAusysContract = vi
+      mockDiamondContext.getDiamond = vi
         .fn()
         .mockReturnValue(legacyOnlyContract);
 

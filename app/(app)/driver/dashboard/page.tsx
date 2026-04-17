@@ -42,8 +42,8 @@ import {
   type EmitSigEventsByJourneyResponse,
 } from '@/infrastructure/shared/graph-queries';
 import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
-import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { getJourneyRoleConflictMessage } from '@/utils/journey-role-conflicts';
+import { useDiamond } from '@/app/providers/diamond.provider';
 
 type TabType = 'available' | 'my-deliveries';
 
@@ -66,6 +66,7 @@ export default function DriverDashboard() {
   } = useDriver();
   const { toast } = useToast();
   const { address } = useWallet();
+  const { diamondContext } = useDiamond();
   const [activeTab, setActiveTab] = useState<TabType>('available');
   // Local status overrides (e.g., driver signed but waiting for sender)
   const [statusOverrides, setStatusOverrides] = useState<
@@ -118,7 +119,8 @@ export default function DriverDashboard() {
       await Promise.all(
         uncheckedPickedUp.map(async (delivery) => {
           try {
-            const ausys = RepositoryContext.getInstance().getAusysContract();
+            if (!diamondContext) return;
+            const ausys = diamondContext.getDiamond();
             const journey = await ausys.getJourney(delivery.jobId);
             const pickupTimestamp = Number(journey.journeyStart);
             const receiverAddr = journey.receiver.toLowerCase();
@@ -164,7 +166,7 @@ export default function DriverDashboard() {
     };
 
     checkDeliverySignatures();
-  }, [myDeliveries, address]);
+  }, [myDeliveries, address, diamondContext]);
 
   // Apply local status overrides (e.g., AWAITING_SENDER), but only when still
   // relevant. If the underlying delivery has progressed (e.g., ACCEPTED → PICKED_UP),

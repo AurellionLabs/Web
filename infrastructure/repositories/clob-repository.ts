@@ -38,10 +38,14 @@ import {
 } from '@/chain-constants';
 import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 import type { CLOBTrade as DomainCLOBTrade } from '@/domain/clob/clob';
-// NEXT_PUBLIC_CLOB_ADDRESS no longer needed - CLOB is internal to Diamond
+// CLOB calls go through Diamond facets.
 import { formatEther, parseEther } from 'viem';
 import { ethers } from 'ethers';
-import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
+import {
+  getDiamondProvider,
+  getDiamondSigner,
+  getDiamondSignerAddress,
+} from '@/infrastructure/diamond';
 
 /**
  * Order side type
@@ -160,12 +164,10 @@ export class CLOBRepository {
   private get graphQLEndpoint() {
     return getCurrentIndexerUrl();
   }
-  private repositoryContext: RepositoryContext;
   private diamondAddress: string;
   private quoteTokenAddress: string;
 
   constructor() {
-    this.repositoryContext = RepositoryContext.getInstance();
     // Diamond address - all CLOB operations go through Diamond CLOBFacet
     this.diamondAddress = NEXT_PUBLIC_DIAMOND_ADDRESS;
     this.quoteTokenAddress =
@@ -610,8 +612,8 @@ export class CLOBRepository {
    * All CLOB functionality is now in the Diamond's CLOBFacet
    */
   private async getContractWithSigner(): Promise<ethers.Contract> {
-    const signer = this.repositoryContext.getSigner();
-    const provider = this.repositoryContext.getProvider();
+    const signer = getDiamondSigner();
+    const provider = getDiamondProvider();
 
     // Import Diamond ABI from generated file (single source of truth)
     // DIAMOND_ABI includes all facet functions including OrderRouterFacet
@@ -632,8 +634,8 @@ export class CLOBRepository {
    * Get quote token contract with signer
    */
   private async getQuoteTokenWithSigner(): Promise<ethers.Contract> {
-    const signer = this.repositoryContext.getSigner();
-    const provider = this.repositoryContext.getProvider();
+    const signer = getDiamondSigner();
+    const provider = getDiamondProvider();
 
     const erc20ABI = [
       'function approve(address spender, uint256 amount) external returns (bool)',
@@ -655,7 +657,7 @@ export class CLOBRepository {
     quoteToken: ethers.Contract,
     amount: bigint,
   ): Promise<void> {
-    const signerAddress = await this.repositoryContext.getSignerAddress();
+    const signerAddress = await getDiamondSignerAddress();
 
     const currentAllowance = await quoteToken.allowance(
       signerAddress,
@@ -680,9 +682,9 @@ export class CLOBRepository {
    * Ensure ERC1155 base token approval for CLOB contract (needed for sell orders)
    */
   private async ensureBaseTokenApproval(baseToken: string): Promise<void> {
-    const signer = this.repositoryContext.getSigner();
-    const provider = this.repositoryContext.getProvider();
-    const signerAddress = await this.repositoryContext.getSignerAddress();
+    const signer = getDiamondSigner();
+    const provider = getDiamondProvider();
+    const signerAddress = await getDiamondSignerAddress();
 
     const erc1155ABI = [
       'function setApprovalForAll(address operator, bool approved) external',

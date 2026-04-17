@@ -97,7 +97,7 @@ class E2EServerSigner extends ethers.AbstractSigner<ethers.JsonRpcProvider> {
   }
 }
 
-// Keep a named export for RepositoryProvider to use
+// Keep a named export for app providers to use.
 export { E2EServerSigner };
 
 // ---------------------------------------------------------------------------

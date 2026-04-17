@@ -19,7 +19,7 @@ The Graph-based data access layer (`graph.ts`, `graph-queries.ts`) is deprecated
 - `aura-asset-base-sepolia/` - AuraAsset subgraph (replaced by Ponder handlers)
 - `aurum-base-sepolia/` - Aurum subgraph (replaced by Ponder handlers)
 - `ausys-base-sepolia/` - AuSys subgraph (replaced by Ponder handlers)
-- `austake-base-sepolia/` - AuStake subgraph (replaced by Ponder handlers)
+- `austake-base-sepolia/` - legacy staking subgraph (replaced by Ponder handlers)
 
 ### Replacement
 

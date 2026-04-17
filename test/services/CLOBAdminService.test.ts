@@ -22,18 +22,18 @@ const mocks = vi.hoisted(() => {
     cancelOrder: vi.fn(),
     connect: vi.fn(),
   };
-  const repoCtx = {
+  const diamondRuntime = {
     getSigner: vi.fn(),
     getProvider: vi.fn(),
     getSignerAddress: vi.fn(),
   };
-  return { adminContract, coreContract, repoCtx };
+  return { adminContract, coreContract, diamondRuntime };
 });
 
-vi.mock('@/infrastructure/contexts/repository-context', () => ({
-  RepositoryContext: {
-    getInstance: () => mocks.repoCtx,
-  },
+vi.mock('@/infrastructure/diamond', () => ({
+  getDiamondSigner: () => mocks.diamondRuntime.getSigner(),
+  getDiamondProvider: () => mocks.diamondRuntime.getProvider(),
+  getDiamondSignerAddress: () => mocks.diamondRuntime.getSignerAddress(),
 }));
 
 vi.mock('@/chain-constants', () => ({
@@ -69,15 +69,15 @@ import { CLOBV2Service } from '@/infrastructure/services/clob-v2-service';
 // ─────────────────────────────────────────────────────────────────────────────
 
 function freshService() {
-  mocks.repoCtx.getSigner.mockReturnValue({
+  mocks.diamondRuntime.getSigner.mockReturnValue({
     getAddress: vi
       .fn()
       .mockResolvedValue('0x1111111111111111111111111111111111111111'),
   });
-  mocks.repoCtx.getProvider.mockReturnValue({
+  mocks.diamondRuntime.getProvider.mockReturnValue({
     getBlockNumber: vi.fn().mockResolvedValue(100),
   });
-  mocks.repoCtx.getSignerAddress.mockResolvedValue(
+  mocks.diamondRuntime.getSignerAddress.mockResolvedValue(
     '0x1111111111111111111111111111111111111111',
   );
   mocks.adminContract.connect = vi.fn().mockReturnValue(mocks.adminContract);

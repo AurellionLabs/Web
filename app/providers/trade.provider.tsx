@@ -7,13 +7,15 @@ import React, {
   useCallback,
   ReactNode,
   useEffect,
+  useMemo,
 } from 'react';
-import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
-import { ServiceContext } from '@/infrastructure/contexts/service-context';
 import { handleContractError } from '@/utils/error-handler';
 import { TokenizedAsset } from '@/domain/node';
 import { Order } from '@/domain/orders';
 import { useWallet } from '@/hooks/useWallet';
+import { useDiamond } from './diamond.provider';
+import { OrderRepository } from '@/infrastructure/repositories/orders-repository';
+import { OrderService } from '@/infrastructure/services/order-service';
 
 export interface TokenizedAssetUI extends TokenizedAsset {
   // Additional UI-specific computed fields
@@ -40,17 +42,35 @@ export function TradeProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const repositoryContext = RepositoryContext.getInstance();
-  const nodeRepository = repositoryContext.getNodeRepository();
-  const orderRepository = repositoryContext.getOrderRepository();
-  const orderService = ServiceContext.getInstance().getOrderService();
+  const {
+    diamondContext,
+    initialized: diamondInitialized,
+    nodeRepository,
+  } = useDiamond();
+  const orderRepository = useMemo(() => {
+    if (!diamondInitialized || !diamondContext) return null;
+    return new OrderRepository(
+      diamondContext.getDiamond() as any,
+      diamondContext.getProvider() as any,
+      diamondContext.getSigner(),
+    );
+  }, [diamondContext, diamondInitialized]);
+  const orderService = useMemo(() => {
+    if (!diamondInitialized || !diamondContext) return null;
+    return new OrderService(
+      diamondContext.getDiamond() as any,
+      diamondContext.getSigner() as any,
+    );
+  }, [diamondContext, diamondInitialized]);
 
   const fetchAssets = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const domainAssets = await nodeRepository.getAllNodeAssets();
+      const domainAssets = nodeRepository
+        ? await nodeRepository.getAllNodeAssets()
+        : [];
 
       if (domainAssets.length === 0) {
         setAssets([]);
@@ -92,6 +112,10 @@ export function TradeProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     setError(null);
     try {
+      if (!orderRepository) {
+        setOrders([]);
+        return;
+      }
       const fetchedOrders = await orderRepository.getBuyerOrders(
         address as string,
       );
@@ -111,7 +135,10 @@ export function TradeProvider({ children }: { children: ReactNode }) {
       setError(null);
 
       try {
-        const signer = repositoryContext.getSigner();
+        if (!orderService || !diamondContext) {
+          throw new Error('Diamond not initialized');
+        }
+        const signer = diamondContext.getSigner();
         const walletAddress = await signer.getAddress();
 
         if (!walletAddress) {
@@ -140,7 +167,7 @@ export function TradeProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       }
     },
-    [orderService, repositoryContext, loadOrders],
+    [orderService, diamondContext, loadOrders],
   );
 
   return (

@@ -1,6 +1,6 @@
 'use client';
 
-import { ethers, type BytesLike } from 'ethers';
+import { type BytesLike } from 'ethers';
 import {
   createContext,
   useContext,
@@ -8,14 +8,15 @@ import {
   useState,
   useEffect,
   useCallback,
+  useMemo,
 } from 'react';
-import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
-// ServiceContext not used; we call contract directly via RepositoryContext
 import { DiamondP2PService } from '@/infrastructure/diamond/diamond-p2p-service';
+import { useDiamond } from './diamond.provider';
 import { handleContractError } from '@/utils/error-handler';
 import { useWallet } from '@/hooks/useWallet';
 import { Order, OrderStatus } from '@/domain/orders/order';
 import { usePlatform } from './platform.provider';
+import { OrderRepository } from '@/infrastructure/repositories/orders-repository';
 import { OrderWithAsset } from '@/app/types/shared';
 import { P2PDeliveryDetails } from '@/domain/p2p';
 import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
@@ -86,42 +87,30 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const [orders, setOrders] = useState<OrderWithAsset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const repoContext = RepositoryContext.getInstance();
-  const orderRepository = repoContext.getOrderRepository();
-  const { address, connectedWallet } = useWallet();
+  const { address } = useWallet();
   const { getAssetByTokenId, supportedAssets } = usePlatform();
+  const { diamondContext, initialized: diamondInitialized } = useDiamond();
+  const orderRepository = useMemo(() => {
+    if (!diamondInitialized || !diamondContext) return null;
+    const diamond = diamondContext.getDiamond();
+    return new OrderRepository(
+      diamond as any,
+      diamondContext.getProvider() as any,
+      diamondContext.getSigner(),
+    );
+  }, [diamondContext, diamondInitialized]);
 
   /**
    * Get a signer-aligned Ausys contract.
-   * If the RepositoryContext signer doesn't match the current wallet,
-   * derive a fresh signer from the Privy wallet's Ethereum provider.
+   * Get the Diamond AuSys-compatible contract.
    */
   const getAlignedAusysContract = useCallback(async () => {
-    const ausys = repoContext.getAusysContract();
+    if (!diamondContext) throw new Error('Diamond not initialized');
+    const ausys = diamondContext.getDiamond();
     if (!address) throw new Error('Wallet not connected');
 
-    const signerAddr = await repoContext.getSignerAddress();
-    if (signerAddr.toLowerCase() === address.toLowerCase()) {
-      return ausys; // Already aligned
-    }
-
-    console.warn(
-      `[CustomerProvider] Signer mismatch: stored=${signerAddr}, wallet=${address}. Reconnecting...`,
-    );
-
-    if (connectedWallet) {
-      const ethereumProvider = await connectedWallet.getEthereumProvider();
-      const provider = new ethers.BrowserProvider(ethereumProvider);
-      const freshSigner = await provider.getSigner();
-      await repoContext.updateSigner(freshSigner);
-      return repoContext.getAusysContract();
-    }
-
-    console.warn(
-      '[CustomerProvider] No Privy wallet available for signer alignment',
-    );
     return ausys;
-  }, [repoContext, address, connectedWallet]);
+  }, [diamondContext, address]);
   const loadCustomerOrders = useCallback(async () => {
     if (!orderRepository) {
       setError('Order Repository not available.');
@@ -238,7 +227,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     async (orderId: string) => {
       try {
         setIsLoading(true);
-        const diamondContext = repoContext.getDiamondContext();
+        if (!diamondContext) throw new Error('Diamond not initialized');
         const p2pService = new DiamondP2PService(diamondContext);
         await p2pService.cancelOffer(orderId);
 
@@ -265,7 +254,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       }
     },
-    [repoContext, loadCustomerOrders],
+    [diamondContext, loadCustomerOrders],
   );
 
   const confirmReceipt = useCallback(
@@ -616,7 +605,8 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       roleConflictReason?: string;
     }> => {
       try {
-        const ausys = repoContext.getAusysContract();
+        if (!diamondContext) throw new Error('Diamond not initialized');
+        const ausys = diamondContext.getDiamond();
         const journey = await ausys.getJourney(journeyId as BytesLike);
         const status = Number(journey.currentStatus);
         const roleConflict = detectJourneyRoleConflict(
@@ -710,7 +700,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         return { buyerSigned: false, driverDeliverySigned: false };
       }
     },
-    [repoContext],
+    [diamondContext],
   );
 
   /**
@@ -723,7 +713,8 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         setIsLoading(true);
         setError(null);
         // Use the Diamond contract (has createOrderJourney), not the Ausys contract
-        const diamond = repoContext.getDiamondContext().getDiamond();
+        if (!diamondContext) throw new Error('Diamond not initialized');
+        const diamond = diamondContext.getDiamond();
         const walletAddress = normalizeAddress(address);
         if (isZeroAddress(walletAddress)) {
           throw new Error(
@@ -901,7 +892,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       }
     },
-    [repoContext, loadCustomerOrders],
+    [diamondContext, loadCustomerOrders],
   );
 
   const refreshOrders = useCallback(async () => {

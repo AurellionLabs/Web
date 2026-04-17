@@ -15,13 +15,11 @@ import {
   SupportingDocument,
 } from '@/domain/node/node';
 import { Asset } from '@/domain/shared';
-import { ethers } from 'ethers';
 import { useWallet } from '@/hooks/useWallet';
 import { useMainProvider } from './main.provider';
 import { useNodes } from './nodes.provider';
 import { usePlatform } from './platform.provider';
 import { useDiamond } from './diamond.provider';
-import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { OrderWithAsset } from '@/app/types/shared';
 
 type SelectedNodeContextType = {
@@ -115,13 +113,14 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
   const [documentsLoading, setDocumentsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const { address, connectedWallet } = useWallet();
+  const { address } = useWallet();
   const { connected } = useMainProvider();
   const { getNode, refreshNodes } = useNodes();
   const { getAssetByTokenId, supportedAssets } = usePlatform();
 
   // Use Diamond infrastructure
   const {
+    diamondContext,
     initialized: diamondInitialized,
     nodeRepository,
     nodeService,
@@ -440,37 +439,14 @@ export function SelectedNodeProvider({ children }: { children: ReactNode }) {
   );
 
   /**
-   * Get a signer-aligned Ausys contract.
-   * If the RepositoryContext signer doesn't match the current wallet,
-   * derive a fresh signer from the Privy wallet's Ethereum provider.
+   * Get the Diamond AuSys-compatible contract.
    */
   const getAlignedAusysContract = useCallback(async () => {
-    const repoContext = RepositoryContext.getInstance();
-    const ausys = repoContext.getAusysContract();
+    if (!diamondContext) throw new Error('Diamond not initialized');
+    const ausys = diamondContext.getDiamond();
     if (!address) throw new Error('Wallet not connected');
-
-    const signerAddr = await repoContext.getSignerAddress();
-    if (signerAddr.toLowerCase() === address.toLowerCase()) {
-      return ausys; // Already aligned
-    }
-
-    console.warn(
-      `[NodeProvider] Signer mismatch: stored=${signerAddr}, wallet=${address}. Reconnecting...`,
-    );
-
-    if (connectedWallet) {
-      const ethereumProvider = await connectedWallet.getEthereumProvider();
-      const provider = new ethers.BrowserProvider(ethereumProvider);
-      const freshSigner = await provider.getSigner();
-      await repoContext.updateSigner(freshSigner);
-      return repoContext.getAusysContract();
-    }
-
-    console.warn(
-      '[NodeProvider] No Privy wallet available for signer alignment',
-    );
     return ausys;
-  }, [address, connectedWallet]);
+  }, [address, diamondContext]);
 
   // Node custody actions: packageSign and startJourney
   // Uses the AuSys contract on the Diamond for signing and journey management

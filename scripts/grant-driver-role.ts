@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import * as dotenv from 'dotenv';
-import { NEXT_PUBLIC_AUSYS_ADDRESS } from '../chain-constants';
+import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '../chain-constants';
 dotenv.config();
 
 // Replace with your driver's wallet address
@@ -36,15 +36,15 @@ async function main() {
     'function DRIVER_ROLE() view returns (bytes32)',
   ];
 
-  const ausys = new ethers.Contract(
-    NEXT_PUBLIC_AUSYS_ADDRESS,
+  const diamond = new ethers.Contract(
+    NEXT_PUBLIC_DIAMOND_ADDRESS,
     ausysAbi,
     wallet,
   );
 
   // Check current role
-  const DRIVER_ROLE = await ausys.DRIVER_ROLE();
-  const hasRole = await ausys.hasRole(DRIVER_ROLE, DRIVER_ADDRESS);
+  const DRIVER_ROLE = await diamond.DRIVER_ROLE();
+  const hasRole = await diamond.hasRole(DRIVER_ROLE, DRIVER_ADDRESS);
 
   if (hasRole) {
     console.log('✅ Address already has DRIVER_ROLE');
@@ -53,7 +53,7 @@ async function main() {
 
   // Grant role
   console.log('Sending transaction to grant DRIVER_ROLE...');
-  const tx = await ausys.setDriver(DRIVER_ADDRESS, true);
+  const tx = await diamond.setDriver(DRIVER_ADDRESS, true);
   console.log('Transaction hash:', tx.hash);
 
   console.log('Waiting for confirmation...');

@@ -1,27 +1,26 @@
 import { IDriverService } from '@/domain/driver/driver';
-import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import type { Ausys as LocationContract } from '@/lib/contracts';
 import { handleContractError } from '@/utils/error-handler';
 import { ethers } from 'ethers';
 import { sendContractTxWithReadEstimation } from '@/infrastructure/shared/tx-helper';
+import { getDiamondContract, getDiamondSigner } from '@/infrastructure/diamond';
 
 /**
  * Concrete implementation of the IDriverService interface.
  */
 export class DriverService implements IDriverService {
-  private context: RepositoryContext;
   private ausysContract: LocationContract | null = null;
 
-  constructor(context: RepositoryContext) {
-    this.context = context;
-    this.ausysContract = this.context.getAusysContract(); // Get contract from context
+  constructor(contract?: LocationContract) {
+    this.ausysContract = contract ?? null;
   }
 
   private getAusysContractOrThrow(): LocationContract {
     if (!this.ausysContract) {
-      throw new Error(
-        'Ausys/LocationContract is not initialized in RepositoryContext',
-      );
+      this.ausysContract = getDiamondContract() as any;
+    }
+    if (!this.ausysContract) {
+      throw new Error('Diamond AuSys contract is not initialized');
     }
     return this.ausysContract;
   }
@@ -30,10 +29,9 @@ export class DriverService implements IDriverService {
 
   async acceptDelivery(journeyId: string): Promise<void> {
     const contract = this.getAusysContractOrThrow();
-    const signer = this.context.getSigner();
+    const signer = getDiamondSigner();
     const driverAddress = await signer.getAddress();
     try {
-      // Reference: ausys-controller.ts#assignDriverToJobId
       await sendContractTxWithReadEstimation(
         contract as unknown as ethers.Contract,
         'assignDriverToJourney',
@@ -48,17 +46,14 @@ export class DriverService implements IDriverService {
 
   async confirmPickup(journeyId: string): Promise<void> {
     const contract = this.getAusysContractOrThrow();
-    const signer = this.context.getSigner();
+    const signer = getDiamondSigner();
     const driverAddress = await signer.getAddress();
     try {
-      // Reference: ausys-controller.ts#packageHandOn
       // Need to get the customer/sender address first
       const journey = await contract.getJourney(journeyId);
       if (!journey || journey.sender === ethers.ZeroAddress) {
         throw new Error(`Journey ${journeyId} not found or has no sender.`);
       }
-      const customerAddress = journey.sender;
-
       await sendContractTxWithReadEstimation(
         contract as unknown as ethers.Contract,
         'handOn',
@@ -73,10 +68,9 @@ export class DriverService implements IDriverService {
 
   async packageSign(journeyId: string): Promise<void> {
     const contract = this.getAusysContractOrThrow();
-    const signer = this.context.getSigner();
+    const signer = getDiamondSigner();
     const driverAddress = await signer.getAddress();
     try {
-      // Reference: ausys-controller.ts#driverPackageSign
       // Need to get the sender address first
       const journey = await contract.getJourney(journeyId);
       if (!journey || journey.sender === ethers.ZeroAddress) {
@@ -96,12 +90,9 @@ export class DriverService implements IDriverService {
 
   async completeDelivery(journeyId: string): Promise<void> {
     const contract = this.getAusysContractOrThrow();
-    const signer = this.context.getSigner();
+    const signer = getDiamondSigner();
     const driverAddress = await signer.getAddress();
-    // Default token address - adjust if a different default or lookup logic is needed
-    const tokenAddress = ethers.ZeroAddress;
     try {
-      // Reference: ausys-controller.ts#packageHandOff
       // Need to get the receiver address first
       const journey = await contract.getJourney(journeyId);
       if (!journey || journey.receiver === ethers.ZeroAddress) {

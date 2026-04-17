@@ -50,20 +50,16 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock('@/infrastructure/contexts/repository-context', () => ({
-  RepositoryContext: {
-    getInstance: () => ({
-      getSigner: vi.fn().mockReturnValue({
-        getAddress: vi
-          .fn()
-          .mockResolvedValue('0x1111111111111111111111111111111111111111'),
-      }),
-      getProvider: vi.fn().mockReturnValue({ getBlockNumber: vi.fn() }),
-      getSignerAddress: vi
-        .fn()
-        .mockResolvedValue('0x1111111111111111111111111111111111111111'),
-    }),
-  },
+vi.mock('@/infrastructure/diamond', () => ({
+  getDiamondSigner: () => ({
+    getAddress: vi
+      .fn()
+      .mockResolvedValue('0x1111111111111111111111111111111111111111'),
+  }),
+  getDiamondProvider: () => ({ getBlockNumber: vi.fn() }),
+  getDiamondSignerAddress: vi
+    .fn()
+    .mockResolvedValue('0x1111111111111111111111111111111111111111'),
 }));
 
 vi.mock('@/chain-constants', () => ({

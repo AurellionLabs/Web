@@ -1,5 +1,5 @@
 // Auto-generated from AuSysFacet.sol - DO NOT EDIT
-// Generated at: 2026-03-10T19:30:30.101Z
+// Generated at: 2026-04-17T23:44:28.742Z
 
 export const AuSysFacetABI = [
   {
@@ -1345,6 +1345,11 @@ export const AuSysFacetABI = [
             internalType: 'uint16',
             name: 'snapshotNodeBps',
             type: 'uint16',
+          },
+          {
+            internalType: 'bytes32',
+            name: 'sellerNode',
+            type: 'bytes32',
           },
         ],
         internalType: 'struct DiamondStorage.AuSysOrder',
