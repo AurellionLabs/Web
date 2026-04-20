@@ -84,11 +84,7 @@ import { NETWORK_CONFIGS } from '@/config/network';
 
 type AttributeValue = string | number | boolean;
 import { Order, OrderStatus } from '@/domain/orders';
-import {
-  buildP2PStepTransactionMap,
-  type P2PJourneyTransactionContext,
-  type P2PStepTransactionMap,
-} from '@/app/components/p2p/p2p-order-step-transactions';
+import { type P2PStepTransactionMap } from '@/app/components/p2p/p2p-order-step-transactions';
 import {
   getP2PActivitySnapshot,
   isP2POrderExpanded,
@@ -97,25 +93,12 @@ import {
 } from '@/lib/order-expansion';
 import { formatTokenAmount } from '@/lib/formatters';
 import { sortOrdersWithPinnedActivity } from '@/lib/order-sorting';
+import { loadP2PSignatureState } from '@/lib/p2p-signature-state';
+import { loadP2PStepTransactionMap } from '@/lib/p2p-step-transaction-loader';
 import { cn } from '@/lib/utils';
 import { P2POrderFlow } from '@/app/components/p2p/p2p-order-flow';
 import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
-import {
-  GET_AUSYS_ORDER_STATUS_UPDATES_BY_ORDER_ID,
-  GET_EMIT_SIG_EVENTS_BY_JOURNEY,
-  GET_JOURNEY_STATUS_UPDATES_BY_IDS,
-  GET_P2P_ACCEPTED_EVENTS_BY_ORDER_ID,
-  GET_P2P_JOURNEYS_BY_ORDER_ID,
-  GET_P2P_OFFER_BY_ORDER_ID,
-  type AuSysOrderStatusUpdatesByOrderIdResponse,
-  type EmitSigEventsByJourneyResponse,
-  type JourneyStatusUpdatesByIdsResponse,
-  type P2PAcceptedEventsByOrderIdResponse,
-  type P2PJourneysByOrderIdResponse,
-  type P2POfferByOrderIdResponse,
-} from '@/infrastructure/shared/graph-queries';
 import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
-import { detectJourneyRoleConflict } from '@/utils/journey-role-conflicts';
 import {
   buildAssetNameLookup,
   resolveOrderAssetName,
@@ -185,9 +168,9 @@ export default function NodeDashboardPage() {
     useQuoteTokenMetadata();
   const {
     initialized: diamondInitialized,
+    diamondContext,
     error: diamondError,
     isReadOnly: diamondIsReadOnly,
-    diamondContext,
   } = useDiamond();
 
   const nodeIdFromUrl = searchParams.get('nodeId');
@@ -429,86 +412,14 @@ export default function NodeDashboardPage() {
       }
 
       const diamond = diamondContext.getDiamond();
-      const journey = await diamond.getJourney(journeyId);
-      const status = Number(journey.currentStatus);
-      const roleConflict = detectJourneyRoleConflict(
-        journey.sender,
-        journey.receiver,
-        journey.driver,
-      );
 
-      if (status >= 2) {
-        return {
-          buyerSigned: true,
-          driverDeliverySigned: true,
-          senderPickupSigned: true,
-          driverPickupSigned: true,
-          roleConflict: false,
-        };
-      }
-
-      // Fetch EmitSig events for this journey
-      try {
-        const sigResponse =
-          await graphqlRequest<EmitSigEventsByJourneyResponse>(
-            getCurrentIndexerUrl(publicChainId ?? undefined),
-            GET_EMIT_SIG_EVENTS_BY_JOURNEY,
-            { journeyId, limit: 50 },
-          );
-
-        const sigEvents = sigResponse.diamondEmitSigEventss?.items || [];
-        const sender = journey.sender.toLowerCase();
-        const receiver = journey.receiver.toLowerCase();
-        const driver = journey.driver.toLowerCase();
-        const pickupTimestamp = Number(journey.journeyStart);
-
-        if (status === 0) {
-          // Pending — check pickup signatures (events BEFORE journey start, or all if journeyStart === 0)
-          const senderPickupSigned = sigEvents.some(
-            (e) => e.user.toLowerCase() === sender,
-          );
-          const driverPickupSigned = sigEvents.some(
-            (e) => e.user.toLowerCase() === driver,
-          );
-
-          return {
-            buyerSigned: false,
-            driverDeliverySigned: false,
-            senderPickupSigned,
-            driverPickupSigned,
-            roleConflict: roleConflict.hasConflict,
-            roleConflictReason: roleConflict.message,
-          };
-        }
-
-        if (status === 1) {
-          // InTransit — pickup already done, check delivery sigs
-          // Only sigs AFTER pickup count as delivery sigs
-          const deliverySigs = sigEvents.filter(
-            (e) => Number(e.block_timestamp) > pickupTimestamp,
-          );
-
-          const buyerSigned = deliverySigs.some(
-            (e) => e.user.toLowerCase() === receiver,
-          );
-          const driverDeliverySigned = deliverySigs.some(
-            (e) => e.user.toLowerCase() === driver,
-          );
-
-          return {
-            buyerSigned,
-            driverDeliverySigned,
-            senderPickupSigned: true,
-            driverPickupSigned: true,
-            roleConflict: roleConflict.hasConflict,
-            roleConflictReason: roleConflict.message,
-          };
-        }
-      } catch (indexerErr) {
-        console.warn('[NodeDashboard] EmitSig query failed:', indexerErr);
-      }
-
-      return { buyerSigned: false, driverDeliverySigned: false };
+      return await loadP2PSignatureState({
+        journeyId,
+        indexerUrl: getCurrentIndexerUrl(publicChainId ?? undefined),
+        graphqlRequest,
+        getJourney: (id) => diamond.getJourney(id),
+        logger: console,
+      });
     } catch (err) {
       console.warn('[NodeDashboard] getP2PSignatureState error:', err);
       return { buyerSigned: false, driverDeliverySigned: false };
@@ -534,130 +445,13 @@ export default function NodeDashboardPage() {
           throw new Error('Diamond read-only contract is still initializing.');
         }
 
-        const indexerUrl = getCurrentIndexerUrl(publicChainId ?? undefined);
-        const [
-          createdResponse,
-          acceptedResponse,
-          orderStatusResponse,
-          journeysResponse,
-        ] = await Promise.all([
-          graphqlRequest<P2POfferByOrderIdResponse>(
-            indexerUrl,
-            GET_P2P_OFFER_BY_ORDER_ID,
-            { orderId: order.id },
-          ),
-          graphqlRequest<P2PAcceptedEventsByOrderIdResponse>(
-            indexerUrl,
-            GET_P2P_ACCEPTED_EVENTS_BY_ORDER_ID,
-            { orderId: order.id, limit: 50 },
-          ),
-          graphqlRequest<AuSysOrderStatusUpdatesByOrderIdResponse>(
-            indexerUrl,
-            GET_AUSYS_ORDER_STATUS_UPDATES_BY_ORDER_ID,
-            { orderId: order.id, limit: 50 },
-          ),
-          graphqlRequest<P2PJourneysByOrderIdResponse>(
-            indexerUrl,
-            GET_P2P_JOURNEYS_BY_ORDER_ID,
-            { orderId: order.id, limit: 50 },
-          ),
-        ]);
-
-        const journeyIds = Array.from(
-          new Set([
-            ...order.journeyIds,
-            ...(journeysResponse.diamondJourneyCreatedEventss?.items || []).map(
-              (journey) => journey.journey_id,
-            ),
-          ]),
-        );
-
         const diamond = diamondContext.getDiamond();
-
-        const [journeyStatusResponse, emitSigEntries, journeyContextEntries] =
-          await Promise.all([
-            journeyIds.length > 0
-              ? graphqlRequest<JourneyStatusUpdatesByIdsResponse>(
-                  indexerUrl,
-                  GET_JOURNEY_STATUS_UPDATES_BY_IDS,
-                  { journeyIds, limit: 100 },
-                )
-              : Promise.resolve({
-                  diamondAuSysJourneyStatusUpdatedEventss: { items: [] },
-                } satisfies JourneyStatusUpdatesByIdsResponse),
-            Promise.all(
-              journeyIds.map(async (journeyId) => {
-                try {
-                  const response =
-                    await graphqlRequest<EmitSigEventsByJourneyResponse>(
-                      indexerUrl,
-                      GET_EMIT_SIG_EVENTS_BY_JOURNEY,
-                      { journeyId, limit: 50 },
-                    );
-
-                  return [
-                    journeyId,
-                    response.diamondEmitSigEventss?.items || [],
-                  ] as const;
-                } catch (error) {
-                  console.warn(
-                    '[NodeDashboard] Failed to load emit signature events:',
-                    journeyId,
-                    error,
-                  );
-                  return [journeyId, []] as const;
-                }
-              }),
-            ),
-            Promise.all(
-              journeyIds.map(async (journeyId) => {
-                try {
-                  const journey = await diamond.getJourney(journeyId);
-
-                  return [
-                    journeyId,
-                    {
-                      journeyStart: Number(journey.journeyStart) || 0,
-                      sender: journey.sender,
-                      receiver: journey.receiver,
-                      driver: journey.driver,
-                    } satisfies P2PJourneyTransactionContext,
-                  ] as const;
-                } catch (error) {
-                  console.warn(
-                    '[NodeDashboard] Failed to load journey context:',
-                    journeyId,
-                    error,
-                  );
-                  return [
-                    journeyId,
-                    { journeyStart: 0 } satisfies P2PJourneyTransactionContext,
-                  ] as const;
-                }
-              }),
-            ),
-          ]);
-
-        const stepTransactions = buildP2PStepTransactionMap({
-          createdEvents:
-            createdResponse.diamondP2POfferCreatedEventss?.items || [],
-          acceptedEvents:
-            acceptedResponse.diamondP2POfferAcceptedEventss?.items || [],
-          orderStatusUpdates:
-            orderStatusResponse.diamondAuSysOrderStatusUpdatedEventss?.items ||
-            [],
-          journeyEvents:
-            journeysResponse.diamondJourneyCreatedEventss?.items || [],
-          journeyStatusUpdates:
-            journeyStatusResponse.diamondAuSysJourneyStatusUpdatedEventss
-              ?.items || [],
-          emitSigEventsByJourney: Object.fromEntries(emitSigEntries),
-          journeyContexts: Object.fromEntries(
-            journeyContextEntries.map(([journeyId, context]) => [
-              journeyId.toLowerCase(),
-              context,
-            ]),
-          ),
+        const stepTransactions = await loadP2PStepTransactionMap({
+          order,
+          indexerUrl: getCurrentIndexerUrl(publicChainId ?? undefined),
+          graphqlRequest,
+          getJourney: (journeyId) => diamond.getJourney(journeyId),
+          logger: console,
         });
 
         setP2PStepTransactions((prev) => ({
