@@ -3,18 +3,22 @@
 
 pragma solidity ^0.8.24;
 
-import {Memory} from "@openzepplin/contracts/utils/Memory.sol";
 import {IERC20, IERC20Metadata, ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {LowLevelCall} from "@openzeppelin/contracts/utils/LowLevelCall.sol";
-import {Math} from "@openzepplin/contracts/utils/math/Math.sol";
+import {Memory} from "@openzeppelin/contracts/utils/Memory.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import { DiamondStorage } from '../libraries/DiamondStorage.sol';
 
-contract ERC4626 is ERC20, IERC4626 {
+abstract contract ERC4626 is ERC20, IERC4626 {
     using Math for uint256;
 
     IERC20 private immutable _asset;
+    uint assetsUSD;
+    DiamondStorage.Node node; 
     uint8 private immutable _underlyingDecimals;
+    bytes32 nodeHash;
 
     /**
      * @dev Attempted to deposit more assets than the max amount for `receiver`.
@@ -35,14 +39,16 @@ contract ERC4626 is ERC20, IERC4626 {
      * @dev Attempted to redeem more shares than the max amount for `owner`.
      */
     error ERC4626ExceededMaxRedeem(address owner, uint256 shares, uint256 max);
-
     /**
      * @dev Set the underlying asset contract. This must be an ERC20-compatible contract (ERC-20 or ERC-777).
      */
-    constructor(IERC20 asset_) {
+    constructor(IERC20 asset_,bytes32 _nodeHash) {
         (bool success, uint8 assetDecimals) = _tryGetAssetDecimals(asset_);
         _underlyingDecimals = success ? assetDecimals : 18;
         _asset = asset_;
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        nodeHash= _nodeHash;
+        node= s.nodes[nodeHash];
     }
 
     /**
@@ -68,7 +74,7 @@ contract ERC4626 is ERC20, IERC4626 {
      * asset has not been created yet), a default of 18 is used to represent the underlying asset's decimals.
      *
      * See {IERC20Metadata-decimals}.
-     */
+     **/
     function decimals() public view virtual override(IERC20Metadata, ERC20) returns (uint8) {
         return _underlyingDecimals + _decimalsOffset();
     }
@@ -80,8 +86,20 @@ contract ERC4626 is ERC20, IERC4626 {
 
     /// @inheritdoc IERC4626
     function totalAssets() public view virtual returns (uint256) {
+        return assetsUSD;
+    }
 
-        return IERC20(asset()).balanceOf(address(this));
+    function updateAssets() public {
+       DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+       uint256 count = s.totalNodeAssets[nodeHash];
+       uint tempAssetsUSD;
+
+        for (uint256 i = 0; i < count; i++) {
+            tempAssetsUSD += s.nodeAssets[nodeHash][i].price;
+        }
+       assetsUSD = tempAssetsUSD;
+        
+
     }
 
     /// @inheritdoc IERC4626
