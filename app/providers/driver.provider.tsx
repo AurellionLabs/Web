@@ -53,7 +53,11 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { address: driverWalletAddress } = useWallet();
-  const { diamondContext, initialized: diamondInitialized } = useDiamond();
+  const {
+    diamondContext,
+    initialized: diamondInitialized,
+    contextVersion,
+  } = useDiamond();
   const repository = useMemo(() => {
     if (!diamondInitialized || !diamondContext) return null;
     const diamond = diamondContext.getDiamond();
@@ -62,7 +66,7 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
       diamondContext.getProvider() as any,
       diamondContext.getSigner(),
     );
-  }, [diamondContext, diamondInitialized]);
+  }, [diamondContext, diamondInitialized, contextVersion]);
 
   const refreshDeliveries = async () => {
     if (!driverWalletAddress) {

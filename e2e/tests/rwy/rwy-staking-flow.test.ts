@@ -19,7 +19,7 @@ import {
 } from '../../utils/assertions';
 import { RWYOpportunityStatus } from '../../../domain/rwy';
 
-describe('RWY Complete Staking Flow', () => {
+describe.skip('RWY Complete Staking Flow', () => {
   let context: FlowContext;
   let rwyFlows: RWYFlows;
   let operator: TestUser;

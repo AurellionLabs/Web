@@ -114,7 +114,11 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
   const searchParams = useSearchParams();
   const { address } = useWallet();
   const { currentUserRole } = useMainProvider();
-  const { diamondContext, initialized: diamondInitialized } = useDiamond();
+  const {
+    diamondContext,
+    initialized: diamondInitialized,
+    contextVersion,
+  } = useDiamond();
 
   // Repository and Service instances
   const poolRepository = useMemo(() => {
@@ -123,7 +127,7 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
       diamondContext.getProvider(),
       diamondContext.getSigner(),
     );
-  }, [diamondContext, diamondInitialized]);
+  }, [diamondContext, diamondInitialized, contextVersion]);
   const poolService = useMemo(() => {
     if (!poolRepository || !diamondContext) return null;
     return new PoolService(
@@ -131,7 +135,7 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
       diamondContext.getSigner(),
       poolRepository,
     );
-  }, [diamondContext, poolRepository]);
+  }, [diamondContext, poolRepository, contextVersion]);
 
   // Helper function removed - now using repository for pool dynamics calculation
 

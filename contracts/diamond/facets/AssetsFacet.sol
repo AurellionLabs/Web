@@ -236,6 +236,7 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
     function supportsInterface(bytes4 interfaceId) public pure override(IERC165) returns (bool) {
         return
             interfaceId == type(IERC1155).interfaceId ||
+            interfaceId == type(IERC1155Receiver).interfaceId ||
             interfaceId == type(IERC1155MetadataURI).interfaceId ||
             interfaceId == type(IERC165).interfaceId;
     }
@@ -346,9 +347,17 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
         // Mint tokens
         _mint(account, tokenID, amount, data);
 
-        // Establish custody - track per-custodian (wallet) amounts.
-        // msg.sender is the node owner (custodian) — account is the recipient/buyer.
-        s.tokenCustodianAmounts[tokenID][msg.sender] += amount;
+        address custodian = account;
+        if (mintingNodeHash != bytes32(0)) {
+            address nodeOwner = s.nodes[mintingNodeHash].owner;
+            if (nodeOwner != address(0)) {
+                custodian = nodeOwner;
+            }
+        }
+
+        // Custody belongs to the node owner (custodian), while sellable
+        // entitlement stays with the ERC1155 holder receiving the minted asset.
+        s.tokenCustodianAmounts[tokenID][custodian] += amount;
         s.tokenCustodyAmount[tokenID] += amount;
 
         // Track per-node custody for multi-node wallets
@@ -357,7 +366,7 @@ contract AssetsFacet is IERC1155, IERC1155MetadataURI {
             _creditOwnerNodeSellable(s, account, tokenID, mintingNodeHash, amount);
         }
 
-        emit CustodyEstablished(tokenID, account, amount);
+        emit CustodyEstablished(tokenID, custodian, amount);
 
         // Get resolved class name
         string memory resolvedClassName = s.hashToClass[hash];

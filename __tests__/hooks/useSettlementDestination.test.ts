@@ -1,9 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act, cleanup } from '@testing-library/react';
 
-const mockGetPendingTokenDestinations = vi.fn();
-const mockSelectTokenDestination = vi.fn();
-const mockWait = vi.fn().mockResolvedValue({});
+const mockGetPendingOrders = vi.fn();
+const mockSelectDestination = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('@/hooks/useWallet', () => ({
   useWallet: vi.fn(() => ({
@@ -12,31 +11,11 @@ vi.mock('@/hooks/useWallet', () => ({
   })),
 }));
 
-vi.mock('@/infrastructure/contexts/repository-context', () => ({
-  RepositoryContext: {
-    getInstance: () => ({
-      getProvider: () => ({}),
-      getSigner: () => ({
-        getAddress: vi.fn().mockResolvedValue('0xBuyerAddress'),
-      }),
-    }),
-  },
-}));
-
-vi.mock('ethers', () => ({
-  ethers: {
-    Contract: vi.fn().mockImplementation(() => ({
-      getPendingTokenDestinations: mockGetPendingTokenDestinations,
-      selectTokenDestination: mockSelectTokenDestination,
-    })),
-    BrowserProvider: vi.fn().mockImplementation(() => ({
-      getSigner: vi.fn().mockResolvedValue({}),
-    })),
-  },
-}));
-
-vi.mock('@/chain-constants', () => ({
-  NEXT_PUBLIC_DIAMOND_ADDRESS: '0xDiamondAddress',
+vi.mock('@/infrastructure/services/settlement-service', () => ({
+  getSettlementService: () => ({
+    getPendingOrders: mockGetPendingOrders,
+    selectDestination: mockSelectDestination,
+  }),
 }));
 
 import { useWallet } from '@/hooks/useWallet';
@@ -45,8 +24,8 @@ import { useSettlementDestination } from '@/hooks/useSettlementDestination';
 describe('useSettlementDestination', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetPendingTokenDestinations.mockResolvedValue([]);
-    mockSelectTokenDestination.mockResolvedValue({ wait: mockWait });
+    mockGetPendingOrders.mockResolvedValue([]);
+    mockSelectDestination.mockResolvedValue(undefined);
     Object.defineProperty(window, 'ethereum', {
       value: {},
       writable: true,
@@ -68,7 +47,7 @@ describe('useSettlementDestination', () => {
     const orderId2 =
       '0x2222222222222222222222222222222222222222222222222222222222222222';
 
-    mockGetPendingTokenDestinations.mockResolvedValue([orderId1, orderId2]);
+    mockGetPendingOrders.mockResolvedValue([orderId1, orderId2]);
 
     const { result } = renderHook(() => useSettlementDestination());
 
@@ -80,13 +59,13 @@ describe('useSettlementDestination', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('should filter out zero bytes32 entries', async () => {
+  it('should surface the pending orders returned by the settlement service', async () => {
     const orderId =
       '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
     const zeroByte =
       '0x0000000000000000000000000000000000000000000000000000000000000000';
 
-    mockGetPendingTokenDestinations.mockResolvedValue([orderId, zeroByte]);
+    mockGetPendingOrders.mockResolvedValue([orderId, zeroByte]);
 
     const { result } = renderHook(() => useSettlementDestination());
 
@@ -94,7 +73,7 @@ describe('useSettlementDestination', () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    expect(result.current.pendingOrders).toEqual([orderId]);
+    expect(result.current.pendingOrders).toEqual([orderId, zeroByte]);
   });
 
   it('should return empty array when wallet not connected', async () => {
@@ -110,13 +89,11 @@ describe('useSettlementDestination', () => {
     });
 
     expect(result.current.pendingOrders).toEqual([]);
-    expect(mockGetPendingTokenDestinations).not.toHaveBeenCalled();
+    expect(mockGetPendingOrders).not.toHaveBeenCalled();
   });
 
   it('should set error state on contract failure', async () => {
-    mockGetPendingTokenDestinations.mockRejectedValue(
-      new Error('Contract call reverted'),
-    );
+    mockGetPendingOrders.mockRejectedValue(new Error('Contract call reverted'));
 
     const { result } = renderHook(() => useSettlementDestination());
 
@@ -142,11 +119,7 @@ describe('useSettlementDestination', () => {
       await result.current.selectDestination(orderId, null, true);
     });
 
-    expect(mockSelectTokenDestination).toHaveBeenCalledWith(
-      orderId,
-      '0x0000000000000000000000000000000000000000000000000000000000000000',
-      true,
-    );
+    expect(mockSelectDestination).toHaveBeenCalledWith(orderId, null, true);
   });
 
   it('should call contract with burn=false and provided nodeId', async () => {
@@ -165,10 +138,6 @@ describe('useSettlementDestination', () => {
       await result.current.selectDestination(orderId, nodeId, false);
     });
 
-    expect(mockSelectTokenDestination).toHaveBeenCalledWith(
-      orderId,
-      nodeId,
-      false,
-    );
+    expect(mockSelectDestination).toHaveBeenCalledWith(orderId, nodeId, false);
   });
 });

@@ -15,6 +15,8 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: pushMock,
   }),
+  usePathname: () => '/node/dashboard',
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock('@/hooks/useWallet', () => ({

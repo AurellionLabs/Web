@@ -242,7 +242,7 @@ contract AssetsFacetTest is DiamondTestBase {
 
         assertTrue(assets.isInCustody(id), 'Token should be in custody');
         
-        uint256 amount = assets.getCustodyInfo(id, user1);
+        uint256 amount = assets.getCustodyInfo(id, nodeOperator);
         assertEq(amount, 100, 'Custody amount should match');
         
         uint256 totalAmount = assets.getTotalCustodyAmount(id);
@@ -397,9 +397,9 @@ contract AssetsFacetTest is DiamondTestBase {
 
         // Non-custodian holder can redeem.
         vm.prank(user2);
-        assets.redeem(id, 50, user1);
+        assets.redeem(id, 50, nodeOperator);
 
-        uint256 custodyAmount = assets.getCustodyInfo(id, user1);
+        uint256 custodyAmount = assets.getCustodyInfo(id, nodeOperator);
         assertEq(custodyAmount, 50, 'Custody amount should decrease');
     }
 
@@ -419,7 +419,7 @@ contract AssetsFacetTest is DiamondTestBase {
         assets.safeTransferFrom(user1, user2, id, 50, '');
 
         vm.prank(user2);
-        assets.redeem(id, 50, user1);
+        assets.redeem(id, 50, nodeOperator);
 
         assertEq(assets.balanceOf(user2, id), 0, 'Redeemer balance should decrease');
         assertEq(assets.totalSupply(id), supplyBefore - 50, 'Supply should decrease');

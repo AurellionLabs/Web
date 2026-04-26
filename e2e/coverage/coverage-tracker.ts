@@ -122,13 +122,11 @@ export class CoverageTracker {
   mark(interfaceName: string, methodName: string): void {
     const interfaceCoverage = this.coverage.get(interfaceName);
     if (!interfaceCoverage) {
-      console.warn(`⚠️  Unknown interface: ${interfaceName}`);
       return;
     }
 
     const methodCoverage = interfaceCoverage.get(methodName);
     if (!methodCoverage) {
-      console.warn(`⚠️  Unknown method: ${interfaceName}.${methodName}`);
       return;
     }
 
@@ -153,7 +151,6 @@ export class CoverageTracker {
   markAll(interfaceName: string): void {
     const interfaceCoverage = this.coverage.get(interfaceName);
     if (!interfaceCoverage) {
-      console.warn(`⚠️  Unknown interface: ${interfaceName}`);
       return;
     }
 

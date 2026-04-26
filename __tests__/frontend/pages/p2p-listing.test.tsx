@@ -87,6 +87,7 @@ vi.mock('lucide-react', () => {
     Package: icon('package'),
     BarChart3: icon('bar-chart'),
     Handshake: icon('handshake'),
+    X: icon('x'),
   };
 });
 

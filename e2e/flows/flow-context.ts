@@ -17,6 +17,7 @@ import {
   CoverageTracker,
   getCoverageTracker,
 } from '../coverage/coverage-tracker';
+import { DIAMOND_ABI } from '@/infrastructure/contracts/diamond-abi.generated';
 
 // =============================================================================
 // TYPES
@@ -104,6 +105,7 @@ export class FlowContext {
     for (const [name, deployed] of result.contracts) {
       this.contracts.set(name, deployed);
     }
+    this.registerDiamondAliases();
     console.log('✓ Contracts stored');
 
     // Create default users
@@ -124,6 +126,35 @@ export class FlowContext {
     console.log('✓ Wallet mock created');
 
     console.log('✅ Flow context initialized\n');
+  }
+
+  /**
+   * Register Diamond-backed aliases for facet-based legacy names used by the
+   * E2E harness. This keeps the remaining diamond-native tests working without
+   * reintroducing standalone contracts into the deployment.
+   */
+  private registerDiamondAliases(): void {
+    const diamond = this.contracts.get('Diamond');
+    if (!diamond) {
+      return;
+    }
+
+    const diamondBackedNames = ['AuraAsset', 'AuSys', 'CLOB', 'RWYVault'];
+    for (const name of diamondBackedNames) {
+      if (this.contracts.has(name)) {
+        continue;
+      }
+
+      this.contracts.set(name, {
+        ...diamond,
+        name,
+        contract: new Contract(
+          diamond.address,
+          DIAMOND_ABI,
+          this.chain.getProvider(),
+        ),
+      });
+    }
   }
 
   /**
@@ -153,8 +184,19 @@ export class FlowContext {
     }
 
     try {
-      // 3. Setup AuStake admin roles
-      console.log('  📝 Step 3/5: Setting up AuStake roles...');
+      // 3. Configure node inventory paths that rely on the Diamond-only ERC1155
+      console.log('  📝 Step 3/5: Configuring Diamond node inventory...');
+      await this.configureNodeInventory();
+      console.log('  ✓ Diamond node inventory configured');
+    } catch (error) {
+      console.log(
+        `⚠️ Diamond node inventory setup failed: ${error instanceof Error ? error.message : 'unknown'}`,
+      );
+    }
+
+    try {
+      // 4. Setup AuStake admin roles
+      console.log('  📝 Step 4/5: Setting up AuStake roles...');
       await this.setupAuStakeRoles();
       console.log('  ✓ AuStake roles set');
     } catch (error) {
@@ -165,12 +207,7 @@ export class FlowContext {
 
     // Skip AuSys and RWYVault setup for now - they are hanging during transaction confirmation
     // These can be set up manually in individual tests that need them
-    console.log(
-      '  📝 Step 4/5: Skipping AuSys role setup (not needed for most tests)',
-    );
-    console.log(
-      '  📝 Step 5/5: Skipping RWYVault operator setup (not needed for most tests)',
-    );
+    console.log('  📝 Step 5/5: Skipping AuSys/RWYVault legacy setup');
 
     console.log('  ✅ All setup steps complete');
   }
@@ -186,7 +223,9 @@ export class FlowContext {
     }
 
     const deployer = this.getUser('deployer');
-    const auraContract = aura.contract.connect(deployer.signer) as Contract;
+    const auraContract = aura.contract.connect(
+      await this.getFreshSigner(deployer.address),
+    ) as Contract;
 
     // Mint a large amount to deployer first
     const mintAmount = 1000000; // 1 million tokens (contract multiplies by 10^18)
@@ -236,7 +275,7 @@ export class FlowContext {
 
     const deployer = this.getUser('deployer');
     const auraAssetContract = auraAsset.contract.connect(
-      deployer.signer,
+      await this.getFreshSigner(deployer.address),
     ) as Contract;
 
     // Mint tokens for each asset class (IDs 1-5: GOAT, SHEEP, COW, CHICKEN, DUCK)
@@ -245,6 +284,8 @@ export class FlowContext {
 
     const usersToFund = [
       'operator1',
+      'node1',
+      'node2',
       'investor1',
       'investor2',
       'customer1',
@@ -274,6 +315,50 @@ export class FlowContext {
   }
 
   /**
+   * Configure Diamond-only node inventory helpers for E2E.
+   */
+  private async configureNodeInventory(): Promise<void> {
+    const diamond = this.contracts.get('Diamond');
+    if (!diamond) {
+      this.log(
+        '⚠️ Diamond contract not deployed, skipping node inventory setup',
+      );
+      return;
+    }
+
+    const deployer = this.getUser('deployer');
+    const diamondContract = new Contract(
+      diamond.address,
+      [
+        'function getAuraAssetAddress() external view returns (address)',
+        'function setAuraAssetAddress(address _auraAsset) external',
+        'function setNodeRegistrar(address registrar, bool enable) external',
+      ],
+      await this.getFreshSigner(deployer.address),
+    );
+    const diamondAddress = diamond.address;
+
+    const currentAuraAsset = await diamondContract.getAuraAssetAddress();
+    if (currentAuraAsset.toLowerCase() !== diamondAddress.toLowerCase()) {
+      const tx = await diamondContract.setAuraAssetAddress(diamondAddress);
+      await tx.wait();
+      this.log('  ⚙️ Set Diamond as AuraAsset target');
+    }
+
+    const registrars = ['operator1', 'operator2', 'node1', 'node2'];
+    for (const userName of registrars) {
+      const user = this.users.get(userName);
+      if (!user) {
+        continue;
+      }
+
+      const tx = await diamondContract.setNodeRegistrar(user.address, true);
+      await tx.wait();
+      this.log(`  🪪 Enabled node registrar: ${userName}`);
+    }
+  }
+
+  /**
    * Setup AuStake admin roles
    */
   private async setupAuStakeRoles(): Promise<void> {
@@ -285,7 +370,7 @@ export class FlowContext {
 
     const deployer = this.getUser('deployer');
     const auStakeContract = auStake.contract.connect(
-      deployer.signer,
+      await this.getFreshSigner(deployer.address),
     ) as Contract;
 
     // Make providers admins so they can create operations
@@ -311,7 +396,9 @@ export class FlowContext {
     }
 
     const deployer = this.getUser('deployer');
-    const auSysContract = auSys.contract.connect(deployer.signer) as Contract;
+    const auSysContract = auSys.contract.connect(
+      await this.getFreshSigner(deployer.address),
+    ) as Contract;
 
     try {
       // Set deployer as admin first
@@ -367,7 +454,7 @@ export class FlowContext {
 
     const deployer = this.getUser('deployer');
     const rwyVaultContract = rwyVault.contract.connect(
-      deployer.signer,
+      await this.getFreshSigner(deployer.address),
     ) as Contract;
 
     // Approve operators
@@ -396,7 +483,7 @@ export class FlowContext {
 
     const deployer = this.getUser('deployer');
     const nodeManagerContract = nodeManager.contract.connect(
-      deployer.signer,
+      await this.getFreshSigner(deployer.address),
     ) as Contract;
 
     // First set deployer as admin
@@ -783,6 +870,10 @@ export class FlowContext {
     if (this.options.verbose) {
       console.log(`[FlowContext] ${message}`);
     }
+  }
+
+  async getFreshSigner(address: string): Promise<Signer> {
+    return this.chain.getProvider().getSigner(address);
   }
 }
 

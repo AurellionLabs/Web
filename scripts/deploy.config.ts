@@ -275,16 +275,26 @@ export const CONTRACTS: Record<string, ContractConfig> = {
         // FacetCutAction enum: Add = 0, Replace = 1, Remove = 2
         const FacetCutAction = { Add: 0, Replace: 1, Remove: 2 };
 
-        // Facets to add (DiamondCutFacet is already added in constructor)
-        const facetsToAdd = [
-          { name: 'DiamondLoupeFacet', address: addresses.DiamondLoupeFacet },
-          { name: 'OwnershipFacet', address: addresses.OwnershipFacet },
-          { name: 'NodesFacet', address: addresses.NodesFacet },
-          {
-            name: 'ERC1155ReceiverFacet',
-            address: addresses.ERC1155ReceiverFacet,
-          },
-        ];
+        // Add every deployed Diamond facet/core companion except the proxy
+        // itself and DiamondCutFacet, which is already wired in constructor.
+        const facetsToAdd = Object.entries(addresses)
+          .filter(([name, address]) => {
+            if (!address || name === 'Diamond' || name === 'DiamondCutFacet') {
+              return false;
+            }
+
+            const config = CONTRACTS[name];
+            if (!config) {
+              return false;
+            }
+
+            return (
+              config.category === 'facet' ||
+              name === 'DiamondLoupeFacet' ||
+              name === 'OwnershipFacet'
+            );
+          })
+          .map(([name, address]) => ({ name, address }));
 
         // Build facet cuts
         const selectorsInBatch = new Set<string>();
@@ -295,7 +305,31 @@ export const CONTRACTS: Record<string, ContractConfig> = {
             continue;
           }
 
-          const selectors = FACET_SELECTORS[facet.name];
+          let selectors: string[] | undefined;
+          try {
+            const factories = await import('../typechain-types');
+            const factoryName = `${facet.name}__factory`;
+            const Factory = (factories as any)[factoryName];
+            const iface = Factory?.createInterface?.();
+
+            if (iface) {
+              selectors = iface.fragments
+                .filter((fragment: any) => fragment.type === 'function')
+                .map(
+                  (fragment: any) =>
+                    iface.getFunction(fragment.format()).selector,
+                );
+            }
+          } catch (error) {
+            console.log(
+              `   ⚠ ${facet.name}: failed to derive selectors from factory: ${error instanceof Error ? error.message : error}`,
+            );
+          }
+
+          if (!selectors || selectors.length === 0) {
+            selectors = FACET_SELECTORS[facet.name];
+          }
+
           if (!selectors || selectors.length === 0) {
             console.log(`   ⚠ Skipping ${facet.name} - no selectors defined`);
             continue;
@@ -351,6 +385,10 @@ export const CONTRACTS: Record<string, ContractConfig> = {
 
         // Get the Diamond address
         const diamondAddress = await contract.getAddress();
+        const freshRunner =
+          'provider' in contract.runner && contract.runner.provider
+            ? await contract.runner.provider.getSigner()
+            : contract.runner;
 
         // Attach IDiamondCut interface to the Diamond address
         const diamondCutAbi = [
@@ -359,7 +397,7 @@ export const CONTRACTS: Record<string, ContractConfig> = {
         const diamondCut = new ethers.Contract(
           diamondAddress,
           diamondCutAbi,
-          contract.runner,
+          freshRunner,
         );
 
         // Wait for nonce state to settle before diamondCut (prevents nonce race on fast networks)
@@ -376,6 +414,21 @@ export const CONTRACTS: Record<string, ContractConfig> = {
         await tx.wait();
 
         console.log(`   ✅ Added ${facetCuts.length} facets to Diamond`);
+
+        if (addresses.NodesFacet && addresses.AssetsFacet) {
+          const nodesFacetAbi = [
+            'function setAuraAssetAddress(address _auraAsset) external',
+          ];
+          const nodesFacet = new ethers.Contract(
+            diamondAddress,
+            nodesFacetAbi,
+            freshRunner,
+          );
+          const setAuraAssetTx =
+            await nodesFacet.setAuraAssetAddress(diamondAddress);
+          await setAuraAssetTx.wait();
+          console.log('   ✅ Configured Diamond as AuraAsset target');
+        }
       } catch (error) {
         console.error('   ❌ Failed to add facets to Diamond:');
         console.error('   ', error instanceof Error ? error.message : error);
@@ -399,6 +452,7 @@ export const DEPLOYMENT_MODES: Record<string, DeploymentMode> = {
       'DiamondLoupeFacet',
       'OwnershipFacet',
       'NodesFacet',
+      'AssetsFacet',
       'ERC1155ReceiverFacet',
       'Diamond',
     ],

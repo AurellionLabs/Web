@@ -89,7 +89,11 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const { address } = useWallet();
   const { getAssetByTokenId, supportedAssets } = usePlatform();
-  const { diamondContext, initialized: diamondInitialized } = useDiamond();
+  const {
+    diamondContext,
+    initialized: diamondInitialized,
+    contextVersion,
+  } = useDiamond();
   const orderRepository = useMemo(() => {
     if (!diamondInitialized || !diamondContext) return null;
     const diamond = diamondContext.getDiamond();
@@ -98,7 +102,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
       diamondContext.getProvider() as any,
       diamondContext.getSigner(),
     );
-  }, [diamondContext, diamondInitialized]);
+  }, [diamondContext, diamondInitialized, contextVersion]);
 
   /**
    * Get a signer-aligned Ausys contract.

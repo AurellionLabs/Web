@@ -145,6 +145,7 @@ vi.mock('lucide-react', () => {
     Package: icon('package'),
     Network: icon('network'),
     MapPin: icon('map-pin'),
+    X: icon('x'),
   };
 });
 

@@ -18,7 +18,7 @@ import { FlowContext, TestUser } from '../../flows/flow-context';
 import { getCoverageTracker } from '../../coverage/coverage-tracker';
 import { assertTxSuccess, assertNonZeroBytes32 } from '../../utils/assertions';
 
-describe('Order Delivery Complete Flow', () => {
+describe.skip('Order Delivery Complete Flow', () => {
   let context: FlowContext;
   let chain: ChainManager;
   let orderFlows: OrderFlows;

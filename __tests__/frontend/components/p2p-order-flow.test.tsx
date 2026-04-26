@@ -50,6 +50,7 @@ vi.mock('lucide-react', () => ({
   Flame: () => <span data-testid="icon-flame" />,
   MapPin: () => <span data-testid="icon-mappin" />,
   Plus: () => <span data-testid="icon-plus" />,
+  X: () => <span data-testid="icon-x" />,
 }));
 
 // Mock nodes provider

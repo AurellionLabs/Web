@@ -99,6 +99,7 @@ vi.mock('lucide-react', () => {
     Filter: icon('filter'),
     Handshake: icon('handshake'),
     Activity: icon('activity'),
+    X: icon('x'),
   };
 });
 

@@ -626,6 +626,7 @@ contract NodesFacet is Initializable, DiamondReentrancyGuard {
         
         // Update balance
         s.nodeTokenBalances[_node][_tokenId] += _amount;
+        _creditOwnerNodeSellable(s, s.nodes[_node].owner, _tokenId, _node, _amount);
         
         // Track token ID if new
         if (!s.nodeHasToken[_node][_tokenId]) {
@@ -652,10 +653,6 @@ contract NodesFacet is Initializable, DiamondReentrancyGuard {
         require(s.nodes[_node].owner == msg.sender, 'Not node owner');
         require(s.auraAssetAddress != address(0), 'AuraAsset not set');
         require(_amount > 0, 'Amount must be positive');
-        require(
-            s.ownerNodeSellableAmounts[msg.sender][_tokenId][_node] >= _amount,
-            'Insufficient node sellable amount'
-        );
         
         // Transfer tokens from caller to Diamond
         IERC1155(s.auraAssetAddress).safeTransferFrom(
@@ -668,7 +665,7 @@ contract NodesFacet is Initializable, DiamondReentrancyGuard {
         
         // Update internal balance
         s.nodeTokenBalances[_node][_tokenId] += _amount;
-        s.ownerNodeSellableAmounts[msg.sender][_tokenId][_node] -= _amount;
+        _creditOwnerNodeSellable(s, msg.sender, _tokenId, _node, _amount);
         
         // Track token ID if new
         if (!s.nodeHasToken[_node][_tokenId]) {
@@ -696,10 +693,14 @@ contract NodesFacet is Initializable, DiamondReentrancyGuard {
         require(s.auraAssetAddress != address(0), 'AuraAsset not set');
         require(_amount > 0, 'Amount must be positive');
         require(s.nodeTokenBalances[_node][_tokenId] >= _amount, 'Insufficient node balance');
+        require(
+            s.ownerNodeSellableAmounts[msg.sender][_tokenId][_node] >= _amount,
+            'Insufficient node sellable amount'
+        );
         
         // Update internal balance first (checks-effects-interactions)
         s.nodeTokenBalances[_node][_tokenId] -= _amount;
-        _creditOwnerNodeSellable(s, msg.sender, _tokenId, _node, _amount);
+        s.ownerNodeSellableAmounts[msg.sender][_tokenId][_node] -= _amount;
         
         // Transfer tokens from Diamond to caller
         IERC1155(s.auraAssetAddress).safeTransferFrom(
@@ -732,10 +733,16 @@ contract NodesFacet is Initializable, DiamondReentrancyGuard {
         require(s.nodes[_toNode].owner == msg.sender, 'Not dest node owner');
         require(_amount > 0, 'Amount must be positive');
         require(s.nodeTokenBalances[_fromNode][_tokenId] >= _amount, 'Insufficient source balance');
+        require(
+            s.ownerNodeSellableAmounts[msg.sender][_tokenId][_fromNode] >= _amount,
+            'Insufficient node sellable amount'
+        );
         
         // Update balances
         s.nodeTokenBalances[_fromNode][_tokenId] -= _amount;
         s.nodeTokenBalances[_toNode][_tokenId] += _amount;
+        s.ownerNodeSellableAmounts[msg.sender][_tokenId][_fromNode] -= _amount;
+        _creditOwnerNodeSellable(s, msg.sender, _tokenId, _toNode, _amount);
         
         // Track token ID on destination if new
         if (!s.nodeHasToken[_toNode][_tokenId]) {
@@ -791,6 +798,13 @@ contract NodesFacet is Initializable, DiamondReentrancyGuard {
         require(_amount > 0, 'Amount must be positive');
         require(s.nodeTokenBalances[_node][_tokenId] >= _amount, 'Insufficient node balance');
         s.nodeTokenBalances[_node][_tokenId] -= _amount;
+        address owner = s.nodes[_node].owner;
+        uint256 sellable = s.ownerNodeSellableAmounts[owner][_tokenId][_node];
+        if (sellable >= _amount) {
+            s.ownerNodeSellableAmounts[owner][_tokenId][_node] = sellable - _amount;
+        } else {
+            s.ownerNodeSellableAmounts[owner][_tokenId][_node] = 0;
+        }
     }
 
     // ======= NODE TOKEN INVENTORY VIEW FUNCTIONS =======

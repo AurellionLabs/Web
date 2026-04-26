@@ -59,6 +59,7 @@ interface DiamondContextType {
   error: Error | null;
   isReadOnly: boolean;
   diamondContext: DiamondContext | null;
+  contextVersion: number;
 
   // Services
   nodeRepository: NodeRepository | null;
@@ -170,6 +171,10 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
   const [diamondContext, setDiamondContext] = useState<DiamondContext | null>(
     null,
   );
+  const [contextVersion, setContextVersion] = useState(0);
+  const [initializedWalletAddress, setInitializedWalletAddress] = useState<
+    string | null
+  >(null);
   const [nodeRepository, setNodeRepository] =
     useState<DiamondNodeRepository | null>(null);
   const [nodeService, setNodeService] = useState<DiamondNodeService | null>(
@@ -218,6 +223,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
   // Initialize Diamond context - supports both connected wallet and read-only mode
   useEffect(() => {
     async function initializeDiamond() {
+      const normalizedAddress = address?.toLowerCase() ?? null;
       // Check if we need to re-initialize due to wallet connection change
       const needsWalletUpgrade =
         initialized &&
@@ -226,6 +232,14 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
         isConnected &&
         connectedWallet &&
         address;
+      const needsWriteWalletRefresh =
+        initialized &&
+        !isReadOnly &&
+        !forceReadOnly &&
+        isConnected &&
+        connectedWallet &&
+        normalizedAddress !== null &&
+        normalizedAddress !== initializedWalletAddress;
       const needsModeSwitch = initialized && isReadOnly !== forceReadOnly;
       const needsReadOnlyChainSwitch =
         initialized &&
@@ -237,6 +251,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
       if (
         !needsInitialInit &&
         !needsWalletUpgrade &&
+        !needsWriteWalletRefresh &&
         !needsModeSwitch &&
         !needsReadOnlyChainSwitch
       ) {
@@ -258,11 +273,22 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
           setNodeAssetService(null);
           setP2PService(null);
           setP2PRepository(null);
+          setInitializedWalletAddress(null);
           setInitialized(false);
           setIsReadOnly(true);
+          setContextVersion((version) => version + 1);
           setError(new Error(publicChain.error || 'Unsupported public chain.'));
           setLoading(false);
           return;
+        }
+
+        if (
+          needsWalletUpgrade ||
+          needsWriteWalletRefresh ||
+          needsModeSwitch ||
+          needsReadOnlyChainSwitch
+        ) {
+          context.disconnect();
         }
 
         if (IS_E2E) {
@@ -273,6 +299,9 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
             return; // Wait for E2EAuthProvider to finish initializing
           }
           await context.initializeWithSigner(e2eSigner, e2eProvider);
+          setInitializedWalletAddress(
+            (await e2eSigner.getAddress()).toLowerCase(),
+          );
           setIsReadOnly(false);
         } else if (
           !forceReadOnly &&
@@ -284,6 +313,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
           const ethereumProvider = await connectedWallet.getEthereumProvider();
           const browserProvider = new BrowserProvider(ethereumProvider);
           await context.initialize(browserProvider);
+          setInitializedWalletAddress(normalizedAddress);
           setIsReadOnly(false);
         } else {
           if (!fallbackReadOnlyChainId) {
@@ -309,6 +339,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
             networkConfig.rpcUrl,
             fallbackReadOnlyChainId,
           );
+          setInitializedWalletAddress(null);
           setIsReadOnly(true);
         }
 
@@ -337,6 +368,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
         setP2PService(p2pSvc);
         setP2PRepository(p2pRepo);
         setInitialized(true);
+        setContextVersion((version) => version + 1);
       } catch (err) {
         console.error('[DiamondProvider] Initialization error:', err);
         setError(
@@ -359,6 +391,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     initialized,
     diamondContext,
     isReadOnly,
+    initializedWalletAddress,
     requestedReadOnlyChainId,
     currentContextChainId,
     mainConnected, // re-run when E2E wallet signals ready
@@ -796,6 +829,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     error,
     isReadOnly,
     diamondContext,
+    contextVersion,
     nodeRepository,
     nodeService,
     nodeAssetService,

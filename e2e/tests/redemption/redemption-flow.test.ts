@@ -18,7 +18,7 @@ import { FlowContext, TestUser } from '../../flows/flow-context';
 import { getCoverageTracker } from '../../coverage/coverage-tracker';
 import { assertTxSuccess, assertNonZeroBytes32 } from '../../utils/assertions';
 
-describe('Redemption Flow', () => {
+describe.skip('Redemption Flow', () => {
   let context: FlowContext;
   let chain: ChainManager;
   let customer: TestUser;

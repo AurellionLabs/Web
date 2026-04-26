@@ -118,12 +118,15 @@ describe('GET /api/platform/metadata', () => {
     expect(response.status).toBe(200);
     expect(body.asset?.name).toBe('Fresh Sheep');
     expect(body.cid).toBe('QmFresh');
-    expect(mockCache.setIpfsMetadata).toHaveBeenCalledWith('99', {
-      name: 'Fresh Sheep',
-      class: 'SHEEP',
-      cid: 'QmFresh',
-      attributes: [{ name: 'sex', values: ['F'], description: '' }],
-    });
+    expect(mockCache.setIpfsMetadata).toHaveBeenCalledWith(
+      'ipfs:token:84532:99',
+      {
+        name: 'Fresh Sheep',
+        class: 'SHEEP',
+        cid: 'QmFresh',
+        attributes: [{ name: 'sex', values: ['F'], description: '' }],
+      },
+    );
   });
 
   it('returns class assets from Pinata and caches them on class cache miss', async () => {

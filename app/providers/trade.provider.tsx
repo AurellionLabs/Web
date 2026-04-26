@@ -46,6 +46,7 @@ export function TradeProvider({ children }: { children: ReactNode }) {
     diamondContext,
     initialized: diamondInitialized,
     nodeRepository,
+    contextVersion,
   } = useDiamond();
   const orderRepository = useMemo(() => {
     if (!diamondInitialized || !diamondContext) return null;
@@ -54,14 +55,14 @@ export function TradeProvider({ children }: { children: ReactNode }) {
       diamondContext.getProvider() as any,
       diamondContext.getSigner(),
     );
-  }, [diamondContext, diamondInitialized]);
+  }, [diamondContext, diamondInitialized, contextVersion]);
   const orderService = useMemo(() => {
     if (!diamondInitialized || !diamondContext) return null;
     return new OrderService(
       diamondContext.getDiamond() as any,
       diamondContext.getSigner() as any,
     );
-  }, [diamondContext, diamondInitialized]);
+  }, [diamondContext, diamondInitialized, contextVersion]);
 
   const fetchAssets = useCallback(async () => {
     setIsLoading(true);

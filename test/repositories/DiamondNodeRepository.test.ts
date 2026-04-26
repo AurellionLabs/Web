@@ -203,6 +203,7 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
   const mockContext = {
     getDiamond: vi.fn(),
     getAuraAsset: vi.fn(),
+    getChainId: vi.fn().mockReturnValue(84532),
   } as any;
 
   beforeEach(() => {
@@ -230,6 +231,7 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
 
   it('should return P2P orders when ownerAddress is provided and the order is linked to this node', async () => {
     const p2pCreated = makeP2POfferCreatedEvent();
+    const p2pAccepted = makeP2POfferAcceptedEvent();
     mockDiamond.getAuSysOrder.mockResolvedValueOnce({ sellerNode: NODE_HASH });
 
     graphqlRequestMock
@@ -243,7 +245,9 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
         // 3: all P2P details
         diamondP2POfferCreatedEventss: { items: [p2pCreated] },
       })
-      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 4: all accepted events
+      .mockResolvedValueOnce({
+        diamondP2POfferAcceptedEventss: { items: [p2pAccepted] },
+      }) // 4: all accepted events
       .mockResolvedValueOnce(EMPTY_STATUS) // 5
       .mockResolvedValueOnce(EMPTY_JOURNEYS) // 6
       .mockResolvedValueOnce(EMPTY_JOURNEY_STATUS); // 7
@@ -484,6 +488,7 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
   it('should handle mixed CLOB + P2P results correctly', async () => {
     const clobEvent = makeUnifiedOrderEvent({ unified_order_id: '0xClobOnly' });
     const p2pCreated = makeP2POfferCreatedEvent({ order_id: '0xP2POnly' });
+    const p2pAccepted = makeP2POfferAcceptedEvent({ order_id: '0xP2POnly' });
     const logisticsEvent = makeLogisticsEvent({
       unified_order_id: '0xClobOnly',
       node: NODE_HASH,
@@ -508,7 +513,9 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
       .mockResolvedValueOnce({
         diamondP2POfferCreatedEventss: { items: [p2pCreated] },
       }) // 3
-      .mockResolvedValueOnce(EMPTY_P2P_ACCEPTED) // 4
+      .mockResolvedValueOnce({
+        diamondP2POfferAcceptedEventss: { items: [p2pAccepted] },
+      }) // 4
       .mockResolvedValueOnce(EMPTY_STATUS) // 5
       .mockResolvedValueOnce({
         diamondJourneyCreatedEventss: { items: [journey] },
@@ -574,11 +581,10 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
     expect(orders.some((o) => o.id === '0xThirdPartyOffer')).toBe(false);
   });
 
-  it('should show newly created seller offers on the selected node via sellerNode fallback', async () => {
+  it('should NOT show newly created seller offers before they are accepted', async () => {
     const p2pCreated = makeP2POfferCreatedEvent({
       order_id: '0xFreshSellerOffer',
     });
-    mockDiamond.getAuSysOrder.mockResolvedValueOnce({ sellerNode: NODE_HASH });
 
     graphqlRequestMock
       .mockResolvedValueOnce(EMPTY_UNIFIED) // 0
@@ -596,6 +602,6 @@ describe('DiamondNodeRepository.getNodeOrders', () => {
 
     const orders = await repository.getNodeOrders(NODE_HASH, WALLET_ADDRESS);
 
-    expect(orders.some((o) => o.id === '0xFreshSellerOffer')).toBe(true);
+    expect(orders.some((o) => o.id === '0xFreshSellerOffer')).toBe(false);
   });
 });
