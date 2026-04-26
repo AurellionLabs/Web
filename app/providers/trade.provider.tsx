@@ -45,24 +45,29 @@ export function TradeProvider({ children }: { children: ReactNode }) {
   const {
     diamondContext,
     initialized: diamondInitialized,
+    isReadOnly,
+    canWrite: diamondCanWrite,
     nodeRepository,
     contextVersion,
   } = useDiamond();
+  const canWrite =
+    diamondCanWrite ??
+    (diamondInitialized && !isReadOnly && diamondContext !== null);
   const orderRepository = useMemo(() => {
-    if (!diamondInitialized || !diamondContext) return null;
+    if (!diamondInitialized || !diamondContext || !canWrite) return null;
     return new OrderRepository(
       diamondContext.getDiamond() as any,
       diamondContext.getProvider() as any,
       diamondContext.getSigner(),
     );
-  }, [diamondContext, diamondInitialized, contextVersion]);
+  }, [canWrite, diamondContext, diamondInitialized, contextVersion]);
   const orderService = useMemo(() => {
-    if (!diamondInitialized || !diamondContext) return null;
+    if (!diamondInitialized || !diamondContext || !canWrite) return null;
     return new OrderService(
       diamondContext.getDiamond() as any,
       diamondContext.getSigner() as any,
     );
-  }, [diamondContext, diamondInitialized, contextVersion]);
+  }, [canWrite, diamondContext, diamondInitialized, contextVersion]);
 
   const fetchAssets = useCallback(async () => {
     setIsLoading(true);
@@ -110,13 +115,16 @@ export function TradeProvider({ children }: { children: ReactNode }) {
   );
 
   const loadOrders = useCallback(async () => {
+    if (!address || !canWrite || !orderRepository) {
+      setOrders([]);
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
-      if (!orderRepository) {
-        setOrders([]);
-        return;
-      }
       const fetchedOrders = await orderRepository.getBuyerOrders(
         address as string,
       );
@@ -128,7 +136,7 @@ export function TradeProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [orderRepository, address]);
+  }, [address, canWrite, orderRepository]);
 
   const placeOrder = useCallback(
     async (orderData: Order): Promise<boolean> => {
@@ -136,8 +144,16 @@ export function TradeProvider({ children }: { children: ReactNode }) {
       setError(null);
 
       try {
-        if (!orderService || !diamondContext) {
+        if (!diamondInitialized || !diamondContext) {
           throw new Error('Diamond not initialized');
+        }
+        if (!address) {
+          throw new Error('Wallet not connected or address unavailable.');
+        }
+        if (!canWrite || !orderService) {
+          throw new Error(
+            'Diamond is in read-only mode. Connect a wallet to place orders.',
+          );
         }
         const signer = diamondContext.getSigner();
         const walletAddress = await signer.getAddress();
@@ -168,7 +184,14 @@ export function TradeProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       }
     },
-    [orderService, diamondContext, loadOrders],
+    [
+      address,
+      canWrite,
+      diamondContext,
+      diamondInitialized,
+      loadOrders,
+      orderService,
+    ],
   );
 
   return (

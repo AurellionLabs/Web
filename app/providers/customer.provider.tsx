@@ -92,43 +92,58 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
   const {
     diamondContext,
     initialized: diamondInitialized,
+    isReadOnly,
+    canWrite: diamondCanWrite,
     contextVersion,
   } = useDiamond();
+  const canWrite =
+    diamondCanWrite ??
+    (diamondInitialized && !isReadOnly && diamondContext !== null);
   const orderRepository = useMemo(() => {
-    if (!diamondInitialized || !diamondContext) return null;
+    if (!diamondInitialized || !diamondContext || !canWrite) return null;
     const diamond = diamondContext.getDiamond();
     return new OrderRepository(
       diamond as any,
       diamondContext.getProvider() as any,
       diamondContext.getSigner(),
     );
-  }, [diamondContext, diamondInitialized, contextVersion]);
+  }, [canWrite, diamondContext, diamondInitialized, contextVersion]);
+
+  const requireWritableDiamondContext = useCallback(() => {
+    if (!diamondInitialized || !diamondContext) {
+      throw new Error('Diamond not initialized');
+    }
+    if (!address) {
+      throw new Error('Wallet not connected');
+    }
+    if (!canWrite) {
+      throw new Error(
+        'Diamond is in read-only mode. Connect a wallet to continue.',
+      );
+    }
+    return diamondContext;
+  }, [address, canWrite, diamondContext, diamondInitialized]);
 
   /**
    * Get a signer-aligned Ausys contract.
    * Get the Diamond AuSys-compatible contract.
    */
   const getAlignedAusysContract = useCallback(async () => {
-    if (!diamondContext) throw new Error('Diamond not initialized');
-    const ausys = diamondContext.getDiamond();
-    if (!address) throw new Error('Wallet not connected');
+    const context = requireWritableDiamondContext();
+    const ausys = context.getDiamond();
 
     return ausys;
-  }, [diamondContext, address]);
+  }, [requireWritableDiamondContext]);
   const loadCustomerOrders = useCallback(async () => {
-    if (!orderRepository) {
-      setError('Order Repository not available.');
+    if (!address || !canWrite || !orderRepository) {
+      setOrders([]);
+      setError(null);
       setIsLoading(false);
       return;
     }
     try {
       setIsLoading(true);
       setError(null);
-
-      if (!address) {
-        setOrders([]);
-        return;
-      }
 
       const userAddr = address;
 
@@ -188,7 +203,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [orderRepository, address, getAssetByTokenId]);
+  }, [address, canWrite, getAssetByTokenId, orderRepository]);
 
   useEffect(() => {
     if (orders.length === 0 || supportedAssets.length === 0) return;
@@ -231,8 +246,8 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
     async (orderId: string) => {
       try {
         setIsLoading(true);
-        if (!diamondContext) throw new Error('Diamond not initialized');
-        const p2pService = new DiamondP2PService(diamondContext);
+        const context = requireWritableDiamondContext();
+        const p2pService = new DiamondP2PService(context);
         await p2pService.cancelOffer(orderId);
 
         // Optimistically update local state; refreshOrders will sync from chain
@@ -258,7 +273,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       }
     },
-    [diamondContext, loadCustomerOrders],
+    [loadCustomerOrders, requireWritableDiamondContext],
   );
 
   const confirmReceipt = useCallback(
@@ -717,8 +732,8 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         setIsLoading(true);
         setError(null);
         // Use the Diamond contract (has createOrderJourney), not the Ausys contract
-        if (!diamondContext) throw new Error('Diamond not initialized');
-        const diamond = diamondContext.getDiamond();
+        const context = requireWritableDiamondContext();
+        const diamond = context.getDiamond();
         const walletAddress = normalizeAddress(address);
         if (isZeroAddress(walletAddress)) {
           throw new Error(
@@ -896,7 +911,7 @@ export function CustomerProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       }
     },
-    [diamondContext, loadCustomerOrders],
+    [address, loadCustomerOrders, requireWritableDiamondContext],
   );
 
   const refreshOrders = useCallback(async () => {

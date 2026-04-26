@@ -56,21 +56,44 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   const {
     diamondContext,
     initialized: diamondInitialized,
+    isReadOnly,
+    canWrite: diamondCanWrite,
     contextVersion,
   } = useDiamond();
+  const canWrite =
+    diamondCanWrite ??
+    (diamondInitialized && !isReadOnly && diamondContext !== null);
   const repository = useMemo(() => {
-    if (!diamondInitialized || !diamondContext) return null;
+    if (!diamondInitialized || !diamondContext || !canWrite) return null;
     const diamond = diamondContext.getDiamond();
     return new DriverRepository(
       diamond as any,
       diamondContext.getProvider() as any,
       diamondContext.getSigner(),
     );
-  }, [diamondContext, diamondInitialized, contextVersion]);
+  }, [canWrite, diamondContext, diamondInitialized, contextVersion]);
+
+  const requireWritableDiamond = () => {
+    if (!diamondInitialized || !diamondContext) {
+      throw new Error('Diamond not initialized');
+    }
+    if (!driverWalletAddress) {
+      throw new Error('Wallet not connected');
+    }
+    if (!canWrite) {
+      throw new Error(
+        'Diamond is in read-only mode. Connect a wallet to continue.',
+      );
+    }
+    return diamondContext;
+  };
 
   const refreshDeliveries = async () => {
-    if (!driverWalletAddress) {
-      setError('Wallet not connected');
+    if (!driverWalletAddress || !canWrite || !repository) {
+      setAvailableDeliveries([]);
+      setMyDeliveries([]);
+      setError(null);
+      setIsLoading(false);
       return;
     }
 
@@ -146,9 +169,8 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
    * Get the Diamond AuSys-compatible contract.
    */
   const getSignerAlignedContract = async () => {
-    if (!diamondContext) throw new Error('Diamond not initialized');
-    const ausys = diamondContext.getDiamond();
-    if (!driverWalletAddress) throw new Error('Wallet not connected');
+    const context = requireWritableDiamond();
+    const ausys = context.getDiamond();
     return ausys;
   };
 
@@ -450,12 +472,16 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    if (driverWalletAddress) {
+    if (driverWalletAddress && canWrite) {
       refreshDeliveries();
     } else {
+      setAvailableDeliveries([]);
+      setMyDeliveries([]);
+      setError(null);
+      setIsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [driverWalletAddress]);
+  }, [driverWalletAddress, canWrite]);
 
   return (
     <DriverContext.Provider

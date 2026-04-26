@@ -10,25 +10,31 @@ const getOwnedNodesMock = vi.fn();
 const getNodeMock = vi.fn();
 const registerNodeMock = vi.fn();
 const pushMock = vi.fn();
+const mockWalletState = {
+  address: WALLET_ADDRESS,
+};
+const mockMainProviderState = {
+  connected: true,
+};
+const mockRouteState = {
+  pathname: '/node/dashboard',
+  searchParams: new URLSearchParams(),
+};
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: pushMock,
   }),
-  usePathname: () => '/node/dashboard',
-  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => mockRouteState.pathname,
+  useSearchParams: () => mockRouteState.searchParams,
 }));
 
 vi.mock('@/hooks/useWallet', () => ({
-  useWallet: () => ({
-    address: WALLET_ADDRESS,
-  }),
+  useWallet: () => mockWalletState,
 }));
 
 vi.mock('@/app/providers/main.provider', () => ({
-  useMainProvider: () => ({
-    connected: true,
-  }),
+  useMainProvider: () => mockMainProviderState,
 }));
 
 vi.mock('@/app/providers/diamond.provider', () => ({
@@ -51,6 +57,10 @@ function createWrapper() {
 describe('NodesProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockWalletState.address = WALLET_ADDRESS;
+    mockMainProviderState.connected = true;
+    mockRouteState.pathname = '/node/dashboard';
+    mockRouteState.searchParams = new URLSearchParams();
     getOwnedNodesMock.mockResolvedValue([NODE_HASH]);
     getNodeMock.mockResolvedValue({
       address: NODE_HASH,
@@ -96,5 +106,20 @@ describe('NodesProvider', () => {
     });
 
     expect(getOwnedNodesMock).toHaveBeenCalledWith(WALLET_ADDRESS);
+  });
+
+  it('does not load owned nodes on the public read-only route', async () => {
+    mockRouteState.pathname = '/node/explorer';
+
+    const { result } = renderHook(() => useNodes(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(getOwnedNodesMock).not.toHaveBeenCalled();
+    expect(result.current.nodes).toEqual([]);
   });
 });

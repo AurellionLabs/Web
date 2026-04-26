@@ -58,6 +58,7 @@ interface DiamondContextType {
   loading: boolean;
   error: Error | null;
   isReadOnly: boolean;
+  canWrite: boolean;
   diamondContext: DiamondContext | null;
   contextVersion: number;
 
@@ -207,6 +208,12 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
 
   // Track if we're in read-only mode
   const [isReadOnly, setIsReadOnly] = useState(false);
+  const canWrite =
+    initialized &&
+    !isReadOnly &&
+    diamondContext !== null &&
+    diamondContext.isInitialized() &&
+    diamondContext.hasSigner();
 
   // Helper to create Pinata SDK
   const createPinataSDK = (): PinataSDK | undefined => {
@@ -828,6 +835,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     loading,
     error,
     isReadOnly,
+    canWrite,
     diamondContext,
     contextVersion,
     nodeRepository,

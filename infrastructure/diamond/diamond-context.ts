@@ -115,6 +115,13 @@ export class DiamondContext {
   }
 
   /**
+   * Check if a signer is available for write operations
+   */
+  hasSigner(): boolean {
+    return this.signer !== null;
+  }
+
+  /**
    * Get the Diamond contract instance
    * All facet functions are called through this single contract
    */
@@ -133,7 +140,9 @@ export class DiamondContext {
   getSigner(): Signer {
     if (!this.signer) {
       throw new Error(
-        'DiamondContext not initialized. Call initialize() first.',
+        this.initialized
+          ? 'DiamondContext is initialized in read-only mode. Connect a wallet before requesting a signer.'
+          : 'DiamondContext not initialized. Call initialize() first.',
       );
     }
     return this.signer;
@@ -187,6 +196,8 @@ export class DiamondContext {
     this.provider = null;
     this.diamond = null;
     this.initialized = false;
+    this.readOnly = false;
+    this.chainId = 0;
   }
 }
 
