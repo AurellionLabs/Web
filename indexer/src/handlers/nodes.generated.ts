@@ -1,5 +1,5 @@
 // Auto-generated handler for nodes domain
-// Generated at: 2026-04-24T14:07:27.188Z
+// Generated at: 2026-04-17T23:44:28.746Z
 //
 // Inline aggregate writes: raw event insert + aggregate table upsert in ONE ponder.on() handler.
 // This avoids the Ponder 0.16 restriction: only one ponder.on() per event name is allowed.
