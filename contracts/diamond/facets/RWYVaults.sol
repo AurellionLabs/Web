@@ -11,7 +11,7 @@ import {Memory} from "@openzeppelin/contracts/utils/Memory.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import { DiamondStorage } from '../libraries/DiamondStorage.sol';
 
-abstract contract ERC4626 is ERC20, IERC4626 {
+abstract contract AuVault is ERC20, IERC4626 {
     using Math for uint256;
 
     IERC20 private immutable _asset;
@@ -88,8 +88,14 @@ abstract contract ERC4626 is ERC20, IERC4626 {
     function totalAssets() public view virtual returns (uint256) {
         return assetsUSD;
     }
+    modifier isNodeOwner(address caller) {
+        require(caller==node.owner);
+        _;
 
-    function updateAssets() public {
+
+    }
+
+    function updateAssets() isNodeOwner(msg.sender) public {
        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
        uint256 count = s.totalNodeAssets[nodeHash];
        uint tempAssetsUSD;
