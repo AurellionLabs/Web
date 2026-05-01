@@ -8,6 +8,11 @@ import { WalletConnection } from '@/app/components/ui/wallet-connection';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { resolvePublicDashboardEnvironmentLabel } from '@/app/components/layout/public-dashboard-network-badge';
 import { useWallet } from '@/hooks/useWallet';
+import {
+  getAppChainEnvironmentLabel,
+  resolveChainMismatch,
+  resolveExpectedAppChain,
+} from '@/lib/app-chain';
 import { cn } from '@/lib/utils';
 import ConnectButton from '../ConnectButtont';
 import { TrapButton } from '@/app/components/eva/eva-components';
@@ -151,7 +156,20 @@ export function ClientHeader() {
   const { chainId } = useWallet();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const isMainnet = chainId === MAINNET_CHAIN_ID;
+  const expectedAppChain = resolveExpectedAppChain({
+    pathname,
+    searchParams,
+  });
+  const chainMismatch = resolveChainMismatch({
+    pathname,
+    searchParams,
+    walletChainId: chainId,
+  });
+  const isMainnet = expectedAppChain.expectedChainId === MAINNET_CHAIN_ID;
+  const expectedEnvironmentLabel = getAppChainEnvironmentLabel(
+    expectedAppChain.expectedChainId,
+    expectedAppChain.expectedChainName,
+  );
   const publicDashboardEnvironmentLabel =
     resolvePublicDashboardEnvironmentLabel({
       pathname,
@@ -159,18 +177,20 @@ export function ClientHeader() {
       walletChainId: chainId,
     });
 
-  // Show prompt to switch chain if on unsupported non-testnet chain
-  const needsSwitch =
-    chainId !== null &&
-    chainId !== MAINNET_CHAIN_ID &&
-    chainId !== TESTNET_CHAIN_ID;
+  const needsSwitch = chainMismatch.mismatch;
 
-  const switchToMainnet = async () => {
+  const switchToExpectedChain = async () => {
+    if (chainMismatch.expectedChainId === null) return;
+
     try {
       if (typeof window !== 'undefined' && (window as any).ethereum) {
         await (window as any).ethereum.request({
           method: 'wallet_switchEthereumChain',
-          params: [{ chainId: '0xa4b1' }], // 42161 in hex
+          params: [
+            {
+              chainId: `0x${chainMismatch.expectedChainId.toString(16)}`,
+            },
+          ],
         });
       }
     } catch (e) {
@@ -328,7 +348,10 @@ export function ClientHeader() {
         {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-[2px]">
           {currentUserRole === 'customer' && (
-            <CustomerNav pathname={pathname} chainId={chainId} />
+            <CustomerNav
+              pathname={pathname}
+              chainId={expectedAppChain.expectedChainId}
+            />
           )}
           {currentUserRole === 'node' && <NodeNav pathname={pathname} />}
           {currentUserRole === 'driver' && <DriverNav pathname={pathname} />}
@@ -343,11 +366,13 @@ export function ClientHeader() {
           {/* Chain indicator / switch prompt */}
           {needsSwitch ? (
             <button
-              onClick={switchToMainnet}
+              onClick={switchToExpectedChain}
               className="hidden md:flex items-center gap-2 px-3 py-1.5 text-xs font-mono uppercase tracking-wider border border-amber-500/50 bg-amber-500/[0.1] text-amber-400 hover:bg-amber-500/[0.2] transition-colors"
             >
               <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-              Switch to Mainnet
+              {expectedEnvironmentLabel
+                ? `Switch to ${expectedEnvironmentLabel}`
+                : 'Wrong Network'}
             </button>
           ) : (
             <div className="hidden md:flex items-center gap-2 px-3 py-1.5 text-xs font-mono uppercase tracking-wider border border-emerald-500/25 bg-emerald-500/[0.04] text-emerald-400">
@@ -356,6 +381,7 @@ export function ClientHeader() {
                 <div className="absolute inset-0 w-2 h-2 rounded-full bg-emerald-500 animate-ping opacity-30" />
               </div>
               {publicDashboardEnvironmentLabel ||
+                expectedEnvironmentLabel ||
                 (isMainnet ? 'Mainnet' : 'Testnet')}
             </div>
           )}
@@ -458,6 +484,17 @@ export function ClientHeader() {
               </MobileNavLink>
             </nav>
             <div className="pt-2 border-t border-border/25">
+              {needsSwitch && (
+                <button
+                  onClick={switchToExpectedChain}
+                  className="mb-3 flex w-full items-center justify-center gap-2 px-3 py-2 text-xs font-mono uppercase tracking-wider border border-amber-500/50 bg-amber-500/[0.1] text-amber-400 hover:bg-amber-500/[0.2] transition-colors"
+                >
+                  <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                  {expectedEnvironmentLabel
+                    ? `Switch to ${expectedEnvironmentLabel}`
+                    : 'Wrong Network'}
+                </button>
+              )}
               <RoleSelector />
             </div>
           </div>
