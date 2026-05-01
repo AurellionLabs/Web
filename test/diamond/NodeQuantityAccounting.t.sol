@@ -402,6 +402,149 @@ contract NodeQuantityAccountingTest is DiamondTestBase {
             "destination node balance after transfer");
     }
 
+    function test_DepositTokensToNode_ConsumesWalletSellableAndCreditsInventory() public {
+        uint256 minted = 300;
+        uint256 deposit = 200;
+
+        _nodeMintForNode(nodeOwnerA, nodeOwnerA, minted, nodeA);
+
+        vm.prank(nodeOwnerA);
+        AssetsFacet(address(diamond)).setApprovalForAll(address(diamond), true);
+
+        vm.prank(nodeOwnerA);
+        NodesFacet(address(diamond)).depositTokensToNode(nodeA, tokenId, deposit);
+
+        assertEq(
+            AssetsFacet(address(diamond)).balanceOf(nodeOwnerA, tokenId),
+            minted - deposit,
+            "wallet balance should decrease by deposited amount"
+        );
+        assertEq(
+            AssetsFacet(address(diamond)).balanceOf(address(diamond), tokenId),
+            deposit,
+            "diamond ERC1155 balance should equal deposited inventory"
+        );
+        assertEq(
+            NodesFacet(address(diamond)).getNodeTokenBalance(nodeA, tokenId),
+            deposit,
+            "node inventory should increase by deposited amount"
+        );
+        assertEq(
+            AssetsFacet(address(diamond)).getNodeSellableAmount(nodeOwnerA, tokenId, nodeA),
+            minted - deposit,
+            "wallet-held sellable allocation should be reduced by the deposited amount"
+        );
+    }
+
+    function test_WithdrawTokensFromNode_RestoresWalletSellable() public {
+        uint256 minted = 300;
+        uint256 deposit = 200;
+        uint256 withdraw = 80;
+
+        _nodeMintForNode(nodeOwnerA, nodeOwnerA, minted, nodeA);
+
+        vm.prank(nodeOwnerA);
+        AssetsFacet(address(diamond)).setApprovalForAll(address(diamond), true);
+
+        vm.prank(nodeOwnerA);
+        NodesFacet(address(diamond)).depositTokensToNode(nodeA, tokenId, deposit);
+
+        vm.prank(nodeOwnerA);
+        NodesFacet(address(diamond)).withdrawTokensFromNode(nodeA, tokenId, withdraw);
+
+        assertEq(
+            AssetsFacet(address(diamond)).balanceOf(nodeOwnerA, tokenId),
+            minted - deposit + withdraw,
+            "wallet balance should recover the withdrawn amount"
+        );
+        assertEq(
+            AssetsFacet(address(diamond)).balanceOf(address(diamond), tokenId),
+            deposit - withdraw,
+            "diamond ERC1155 balance should decrease by withdrawn amount"
+        );
+        assertEq(
+            NodesFacet(address(diamond)).getNodeTokenBalance(nodeA, tokenId),
+            deposit - withdraw,
+            "node inventory should decrease by withdrawn amount"
+        );
+        assertEq(
+            AssetsFacet(address(diamond)).getNodeSellableAmount(nodeOwnerA, tokenId, nodeA),
+            minted - deposit + withdraw,
+            "wallet-held sellable allocation should be restored on withdraw"
+        );
+    }
+
+    function test_TransferBetweenNodes_DoesNotMoveWalletHeldSellable() public {
+        uint256 minted = 300;
+        uint256 deposit = 200;
+        uint256 transfer = 70;
+
+        _nodeMintForNode(nodeOwnerA, nodeOwnerA, minted, nodeA);
+
+        vm.prank(nodeOwnerA);
+        AssetsFacet(address(diamond)).setApprovalForAll(address(diamond), true);
+
+        vm.prank(nodeOwnerA);
+        NodesFacet(address(diamond)).depositTokensToNode(nodeA, tokenId, deposit);
+
+        vm.prank(nodeOwnerA);
+        NodesFacet(address(diamond)).transferTokensBetweenNodes(nodeA, nodeA2, tokenId, transfer);
+
+        assertEq(
+            NodesFacet(address(diamond)).getNodeTokenBalance(nodeA, tokenId),
+            deposit - transfer,
+            "source inventory should decrease by transferred amount"
+        );
+        assertEq(
+            NodesFacet(address(diamond)).getNodeTokenBalance(nodeA2, tokenId),
+            transfer,
+            "destination inventory should increase by transferred amount"
+        );
+        assertEq(
+            AssetsFacet(address(diamond)).getNodeSellableAmount(nodeOwnerA, tokenId, nodeA),
+            minted - deposit,
+            "wallet-held sellable attribution should stay on the wallet and keep its original node allocation"
+        );
+        assertEq(
+            AssetsFacet(address(diamond)).getNodeSellableAmount(nodeOwnerA, tokenId, nodeA2),
+            0,
+            "inter-node inventory transfer should not create wallet-held sellable on the destination node"
+        );
+    }
+
+    function test_DebitNodeTokens_DoesNotChangeWalletHeldSellable() public {
+        uint256 minted = 300;
+        uint256 deposit = 200;
+        uint256 debit = 50;
+
+        _nodeMintForNode(nodeOwnerA, nodeOwnerA, minted, nodeA);
+
+        vm.prank(nodeOwnerA);
+        AssetsFacet(address(diamond)).setApprovalForAll(address(diamond), true);
+
+        vm.prank(nodeOwnerA);
+        NodesFacet(address(diamond)).depositTokensToNode(nodeA, tokenId, deposit);
+
+        vm.prank(nodeOwnerA);
+        NodesFacet(address(diamond)).debitNodeTokens(nodeA, tokenId, debit);
+
+        assertEq(
+            NodesFacet(address(diamond)).getNodeTokenBalance(nodeA, tokenId),
+            deposit - debit,
+            "node inventory should be reduced by debit amount"
+        );
+        assertEq(
+            AssetsFacet(address(diamond)).balanceOf(address(diamond), tokenId),
+            deposit,
+            "internal debit should not move ERC1155 balances out of the diamond"
+        );
+        assertEq(
+            AssetsFacet(address(diamond)).getNodeSellableAmount(nodeOwnerA, tokenId, nodeA),
+            minted - deposit,
+            "wallet-held sellable allocation should be unchanged by internal inventory debit"
+        );
+    }
+
     function test_TransferBetweenNodes_MoreThanBalance_Reverts() public {
         vm.prank(address(diamond));
         NodesFacet(address(diamond)).creditNodeTokens(nodeA, tokenId, 100);
