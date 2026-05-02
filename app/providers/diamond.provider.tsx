@@ -227,6 +227,20 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     return undefined;
   };
 
+  const clearPublishedState = useCallback((nextReadOnly: boolean) => {
+    setCurrentChainId(null);
+    setDiamondContext(null);
+    setNodeRepository(null);
+    setNodeService(null);
+    setNodeAssetService(null);
+    setP2PService(null);
+    setP2PRepository(null);
+    setInitializedWalletAddress(null);
+    setInitialized(false);
+    setIsReadOnly(nextReadOnly);
+    setContextVersion((version) => version + 1);
+  }, []);
+
   // Initialize Diamond context - supports both connected wallet and read-only mode
   useEffect(() => {
     async function initializeDiamond() {
@@ -273,17 +287,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
 
         if (forceReadOnly && requestedReadOnlyChainId === null) {
           context.disconnect();
-          setCurrentChainId(null);
-          setDiamondContext(null);
-          setNodeRepository(null);
-          setNodeService(null);
-          setNodeAssetService(null);
-          setP2PService(null);
-          setP2PRepository(null);
-          setInitializedWalletAddress(null);
-          setInitialized(false);
-          setIsReadOnly(true);
-          setContextVersion((version) => version + 1);
+          clearPublishedState(true);
           setError(new Error(publicChain.error || 'Unsupported public chain.'));
           setLoading(false);
           return;
@@ -295,6 +299,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
           needsModeSwitch ||
           needsReadOnlyChainSwitch
         ) {
+          clearPublishedState(forceReadOnly);
           context.disconnect();
         }
 
@@ -404,6 +409,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     mainConnected, // re-run when E2E wallet signals ready
     e2eSigner, // re-run when E2E signer becomes available
     e2eProvider, // re-run when E2E provider becomes available
+    clearPublishedState,
   ]);
 
   // Node operations
@@ -419,23 +425,23 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
 
   const getNode = useCallback(
     async (nodeHash: string): Promise<Node | null> => {
-      if (!nodeRepository) {
+      if (!initialized || loading || !nodeRepository) {
         throw new Error('Diamond not initialized');
       }
       return nodeRepository.getNode(nodeHash);
     },
-    [nodeRepository],
+    [initialized, loading, nodeRepository],
   );
 
   const getOwnedNodes = useCallback(
     async (ownerAddress?: string): Promise<string[]> => {
       const queryAddress = ownerAddress ?? address;
-      if (!nodeRepository || !queryAddress) {
+      if (!initialized || loading || !nodeRepository || !queryAddress) {
         return [];
       }
       return nodeRepository.getOwnedNodes(queryAddress);
     },
-    [nodeRepository, address],
+    [initialized, loading, nodeRepository, address],
   );
 
   const updateNodeStatus = useCallback(
@@ -516,22 +522,22 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
 
   const getNodeAssets = useCallback(
     async (nodeHash: string): Promise<TokenizedAsset[]> => {
-      if (!nodeRepository) {
+      if (!initialized || loading || !nodeRepository) {
         return [];
       }
       return nodeRepository.getNodeAssets(nodeHash);
     },
-    [nodeRepository],
+    [initialized, loading, nodeRepository],
   );
 
   const getAssetAttributes = useCallback(
     async (fileHash: string): Promise<TokenizedAssetAttribute[]> => {
-      if (!nodeRepository) {
+      if (!initialized || loading || !nodeRepository) {
         return [];
       }
       return nodeRepository.getAssetAttributes(fileHash);
     },
-    [nodeRepository],
+    [initialized, loading, nodeRepository],
   );
 
   // Trading operations - deposit tokens from user wallet to node for selling on CLOB
@@ -788,12 +794,12 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
   // Get supporting documents for a node
   const getSupportingDocuments = useCallback(
     async (nodeHash: string): Promise<SupportingDocument[]> => {
-      if (!nodeRepository) {
+      if (!initialized || loading || !nodeRepository) {
         return [];
       }
       return nodeRepository.getSupportingDocuments(nodeHash);
     },
-    [nodeRepository],
+    [initialized, loading, nodeRepository],
   );
 
   // Add a supporting document to a node
