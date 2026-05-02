@@ -6,18 +6,12 @@ import { setCurrentChainId } from '@/infrastructure/config/indexer-endpoint';
 
 export const IS_E2E_TEST_MODE =
   process.env.NEXT_PUBLIC_E2E_TEST_MODE === 'true';
-const SHOULD_LOG_PRIVY_DEBUG = process.env.NODE_ENV !== 'production';
 
 type AuthTransitionState =
   | 'idle'
   | 'connecting'
   | 'authenticating'
   | 'disconnecting';
-
-function logPrivyDebug(message: string, details?: Record<string, unknown>) {
-  if (!SHOULD_LOG_PRIVY_DEBUG) return;
-  console.info(`[PrivyDebug] ${message}`, details ?? {});
-}
 
 const normalizeAddress = (address: string | null | undefined): string | null =>
   address ? address.toLowerCase() : null;
@@ -117,7 +111,6 @@ function useWalletPrivy() {
   );
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const currentUserId = privy.user?.id ?? null;
 
   useEffect(() => {
     if (!privy.ready || !privyWallets.ready || repository) return;
@@ -159,26 +152,6 @@ function useWalletPrivy() {
 
     previousAddressRef.current = normalizedAddress;
   }, [address, repository]);
-
-  useEffect(() => {
-    logPrivyDebug('wallet hook snapshot', {
-      authenticated: privy.authenticated,
-      userId: currentUserId,
-      connectedWalletAddress: connectedWallet?.address ?? null,
-      address,
-      chainId,
-      isConnected,
-      isLoading,
-    });
-  }, [
-    address,
-    chainId,
-    connectedWallet,
-    currentUserId,
-    isConnected,
-    isLoading,
-    privy.authenticated,
-  ]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

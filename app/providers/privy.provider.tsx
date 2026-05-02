@@ -150,17 +150,6 @@ interface PrivyProviderWrapperProps {
   children: ReactNode;
 }
 
-const SHOULD_LOG_PRIVY_DEBUG = process.env.NODE_ENV !== 'production';
-
-function logPrivyDebug(message: string, details?: Record<string, unknown>) {
-  if (!SHOULD_LOG_PRIVY_DEBUG) return;
-  console.info(`[PrivyDebug] ${message}`, details ?? {});
-}
-
-function logPrivyEvent(event: string, details?: Record<string, unknown>) {
-  console.info(`[PrivyEvent] ${event}`, details ?? {});
-}
-
 function logPrivyError(
   event: string,
   error: string,
@@ -180,25 +169,6 @@ function PrivyEventObserver() {
 
   const loginCallbacks = useMemo(
     () => ({
-      onComplete: ({
-        isNewUser,
-        wasAlreadyAuthenticated,
-        loginMethod,
-        loginAccount,
-      }: {
-        isNewUser: boolean;
-        wasAlreadyAuthenticated: boolean;
-        loginMethod: string | null;
-        loginAccount: { type?: string } | null;
-      }) => {
-        logPrivyEvent('login', {
-          isNewUser,
-          wasAlreadyAuthenticated,
-          loginMethod,
-          loginAccountType: loginAccount?.type ?? null,
-          userId: currentUserId,
-        });
-      },
       onError: (error: string) => {
         logPrivyError('login', error, {
           userId: currentUserId,
@@ -210,17 +180,6 @@ function PrivyEventObserver() {
 
   const connectWalletCallbacks = useMemo(
     () => ({
-      onSuccess: ({
-        wallet,
-      }: {
-        wallet: { address?: string; walletClientType?: string };
-      }) => {
-        logPrivyEvent('connectWallet', {
-          address: wallet.address ?? null,
-          walletClientType: wallet.walletClientType ?? null,
-          userId: currentUserId,
-        });
-      },
       onError: (error: string) => {
         logPrivyError('connectWallet', error, {
           userId: currentUserId,
@@ -232,19 +191,6 @@ function PrivyEventObserver() {
 
   const linkAccountCallbacks = useMemo(
     () => ({
-      onSuccess: ({
-        linkMethod,
-        linkedAccount,
-      }: {
-        linkMethod: string;
-        linkedAccount: { type?: string };
-      }) => {
-        logPrivyEvent('linkAccount', {
-          linkMethod,
-          linkedAccountType: linkedAccount?.type ?? null,
-          userId: currentUserId,
-        });
-      },
       onError: (error: string, details?: { linkMethod?: string }) => {
         logPrivyError('linkAccount', error, {
           linkMethod: details?.linkMethod ?? null,
@@ -255,26 +201,7 @@ function PrivyEventObserver() {
     [currentUserId],
   );
 
-  const logoutCallbacks = useMemo(
-    () => ({
-      onSuccess: () => {
-        logPrivyEvent('logout', {
-          userId: currentUserId,
-        });
-      },
-    }),
-    [currentUserId],
-  );
-
-  useEffect(() => {
-    logPrivyDebug('auth snapshot', {
-      ready: privy.ready,
-      authenticated: privy.authenticated,
-      userId: currentUserId,
-      walletsReady,
-      walletCount: wallets?.length ?? 0,
-    });
-  }, [currentUserId, privy.authenticated, privy.ready, wallets, walletsReady]);
+  const logoutCallbacks = useMemo(() => ({}), []);
 
   useEffect(() => {
     if (!privy.ready || !walletsReady) return;
@@ -286,10 +213,6 @@ function PrivyEventObserver() {
 
     if (hasRequestedEmptyWalletLogout.current) return;
     hasRequestedEmptyWalletLogout.current = true;
-
-    logPrivyEvent('logoutNoConnectedWallets', {
-      userId: currentUserId,
-    });
 
     void privy.logout().catch((error) => {
       hasRequestedEmptyWalletLogout.current = false;
