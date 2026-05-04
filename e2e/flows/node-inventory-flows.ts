@@ -96,6 +96,11 @@ export class NodeInventoryFlows {
     return new Contract(diamondAddress, nodesFacetAbi, user.signer);
   }
 
+  private async getDiamondForWrite(user: TestUser): Promise<Contract> {
+    const signer = await this.context.getFreshSigner(user.address);
+    return this.getDiamond({ ...user, signer });
+  }
+
   /**
    * Get the Diamond ERC1155 (AssetsFacet) contract
    */
@@ -106,6 +111,11 @@ export class NodeInventoryFlows {
       'function balanceOf(address account, uint256 id) external view returns (uint256)',
     ];
     return new Contract(diamondAddress, erc1155Abi, user.signer);
+  }
+
+  private async getDiamondAssetForWrite(user: TestUser): Promise<Contract> {
+    const signer = await this.context.getFreshSigner(user.address);
+    return this.getDiamondAsset({ ...user, signer });
   }
 
   // ---------------------------------------------------------------------------
@@ -125,7 +135,7 @@ export class NodeInventoryFlows {
       lng?: string;
     } = {},
   ): Promise<NodeRegistrationResult> {
-    const diamond = this.getDiamond(user);
+    const diamond = await this.getDiamondForWrite(user);
 
     const nodeType = options.nodeType ?? 'warehouse';
     const capacity = options.capacity ?? 1000;
@@ -191,7 +201,7 @@ export class NodeInventoryFlows {
     tokenId: bigint,
     amount: bigint,
   ): Promise<NodeInventoryResult> {
-    const diamond = this.getDiamond(user);
+    const diamond = await this.getDiamondForWrite(user);
 
     try {
       this.log(
@@ -221,8 +231,8 @@ export class NodeInventoryFlows {
     tokenId: bigint,
     amount: bigint,
   ): Promise<NodeInventoryResult> {
-    const diamond = this.getDiamond(user);
-    const diamondAsset = this.getDiamondAsset(user);
+    const diamond = await this.getDiamondForWrite(user);
+    const diamondAsset = await this.getDiamondAssetForWrite(user);
     const diamondAddress = this.context.getContractAddress('Diamond');
 
     try {
@@ -262,7 +272,7 @@ export class NodeInventoryFlows {
     tokenId: bigint,
     amount: bigint,
   ): Promise<NodeInventoryResult> {
-    const diamond = this.getDiamond(user);
+    const diamond = await this.getDiamondForWrite(user);
 
     try {
       this.log(
@@ -297,7 +307,7 @@ export class NodeInventoryFlows {
     tokenId: bigint,
     amount: bigint,
   ): Promise<NodeInventoryResult> {
-    const diamond = this.getDiamond(user);
+    const diamond = await this.getDiamondForWrite(user);
 
     try {
       this.log(
@@ -310,6 +320,8 @@ export class NodeInventoryFlows {
         tokenId,
         amount,
       );
+      this.log(`  Transaction sent: ${tx.hash}`);
+
       const receipt = await tx.wait();
 
       this.log(`  ✓ Tokens transferred`);
@@ -415,7 +427,7 @@ export class NodeInventoryFlows {
       this.log(`⚙️ Setting AuraAsset address on Diamond...`);
       this.log(`  Deployer: ${deployer.address}`);
 
-      const diamond = this.getDiamond(deployer);
+      const diamond = await this.getDiamondForWrite(deployer);
       const diamondAddress = this.context.getContractAddress('Diamond');
       const auraAssetAddress = this.context.getContractAddress('AuraAsset');
 

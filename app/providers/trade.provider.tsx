@@ -7,13 +7,15 @@ import React, {
   useCallback,
   ReactNode,
   useEffect,
+  useMemo,
 } from 'react';
-import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
-import { ServiceContext } from '@/infrastructure/contexts/service-context';
 import { handleContractError } from '@/utils/error-handler';
 import { TokenizedAsset } from '@/domain/node';
 import { Order } from '@/domain/orders';
 import { useWallet } from '@/hooks/useWallet';
+import { useDiamond } from './diamond.provider';
+import { OrderRepository } from '@/infrastructure/repositories/orders-repository';
+import { OrderService } from '@/infrastructure/services/order-service';
 
 export interface TokenizedAssetUI extends TokenizedAsset {
   // Additional UI-specific computed fields
@@ -40,17 +42,41 @@ export function TradeProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const repositoryContext = RepositoryContext.getInstance();
-  const nodeRepository = repositoryContext.getNodeRepository();
-  const orderRepository = repositoryContext.getOrderRepository();
-  const orderService = ServiceContext.getInstance().getOrderService();
+  const {
+    diamondContext,
+    initialized: diamondInitialized,
+    isReadOnly,
+    canWrite: diamondCanWrite,
+    nodeRepository,
+    contextVersion,
+  } = useDiamond();
+  const canWrite =
+    diamondCanWrite ??
+    (diamondInitialized && !isReadOnly && diamondContext !== null);
+  const orderRepository = useMemo(() => {
+    if (!diamondInitialized || !diamondContext || !canWrite) return null;
+    return new OrderRepository(
+      diamondContext.getDiamond() as any,
+      diamondContext.getProvider() as any,
+      diamondContext.getSigner(),
+    );
+  }, [canWrite, diamondContext, diamondInitialized, contextVersion]);
+  const orderService = useMemo(() => {
+    if (!diamondInitialized || !diamondContext || !canWrite) return null;
+    return new OrderService(
+      diamondContext.getDiamond() as any,
+      diamondContext.getSigner() as any,
+    );
+  }, [canWrite, diamondContext, diamondInitialized, contextVersion]);
 
   const fetchAssets = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const domainAssets = await nodeRepository.getAllNodeAssets();
+      const domainAssets = nodeRepository
+        ? await nodeRepository.getAllNodeAssets()
+        : [];
 
       if (domainAssets.length === 0) {
         setAssets([]);
@@ -89,6 +115,13 @@ export function TradeProvider({ children }: { children: ReactNode }) {
   );
 
   const loadOrders = useCallback(async () => {
+    if (!address || !canWrite || !orderRepository) {
+      setOrders([]);
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
@@ -103,7 +136,7 @@ export function TradeProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [orderRepository, address]);
+  }, [address, canWrite, orderRepository]);
 
   const placeOrder = useCallback(
     async (orderData: Order): Promise<boolean> => {
@@ -111,7 +144,18 @@ export function TradeProvider({ children }: { children: ReactNode }) {
       setError(null);
 
       try {
-        const signer = repositoryContext.getSigner();
+        if (!diamondInitialized || !diamondContext) {
+          throw new Error('Diamond not initialized');
+        }
+        if (!address) {
+          throw new Error('Wallet not connected or address unavailable.');
+        }
+        if (!canWrite || !orderService) {
+          throw new Error(
+            'Diamond is in read-only mode. Connect a wallet to place orders.',
+          );
+        }
+        const signer = diamondContext.getSigner();
         const walletAddress = await signer.getAddress();
 
         if (!walletAddress) {
@@ -140,7 +184,14 @@ export function TradeProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       }
     },
-    [orderService, repositoryContext, loadOrders],
+    [
+      address,
+      canWrite,
+      diamondContext,
+      diamondInitialized,
+      loadOrders,
+      orderService,
+    ],
   );
 
   return (

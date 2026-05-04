@@ -165,12 +165,12 @@ library RWYStorage {
         uint256 protocolFeeBps;            // 100 = 1% protocol fee
         uint256 defaultProcessingDays;     // 30 days default
 
-        // ======= ADDRESSES (from RWYVault.sol) =======
+        // ======= ADDRESSES =======
         address clobAddress;      // CLOB contract for selling processed goods
         address quoteToken;       // Quote token (payment token, e.g., AURUM)
         address feeRecipient;     // Protocol fee recipient
 
-        // ======= PAUSE STATE (from RWYVault.sol) =======
+        // ======= PAUSE STATE =======
         bool paused;
 
         // ======= REENTRANCY GUARD =======

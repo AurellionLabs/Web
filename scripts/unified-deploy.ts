@@ -12,7 +12,7 @@
  *   DEPLOY_MODE=full npx hardhat run scripts/unified-deploy.ts --network baseSepolia
  *   DEPLOY_MODE=diamond npx hardhat run scripts/unified-deploy.ts --network baseSepolia
  *   DEPLOY_MODE=rwy npx hardhat run scripts/unified-deploy.ts --network baseSepolia
- *   DEPLOY_CONTRACT=RWYVault npx hardhat run scripts/unified-deploy.ts --network baseSepolia
+ *   DEPLOY_CONTRACT=RWYStakingFacet npx hardhat run scripts/unified-deploy.ts --network baseSepolia
  *   DEPLOY_FACET=NodesFacet npx hardhat run scripts/unified-deploy.ts --network baseSepolia
  *   DEPLOY_FACET=CLOBFacet DEPLOY_ACTION=replace npx hardhat run scripts/unified-deploy.ts --network baseSepolia
  *   DEPLOY_LIST_MODES=true npx hardhat run scripts/unified-deploy.ts --network baseSepolia
@@ -968,123 +968,6 @@ async function postDeploymentConfig(
       expectedPayToken,
       'Expected pay token',
     );
-  }
-
-  // Set NodeManager in AuSys if both exist
-  if (resolvedAddresses.AuSys && resolvedAddresses.AurumNodeManager) {
-    console.log('   Setting NodeManager in AuSys...');
-    try {
-      const auSys = await ethers.getContractAt(
-        'Ausys',
-        resolvedAddresses.AuSys,
-      );
-      const [signer] = await ethers.getSigners();
-      const tx = await sendWithNonceRetry({
-        label: 'AuSys.setNodeManager',
-        getPendingNonce: () => signer.getNonce('pending'),
-        logger: console,
-        send: (overrides) =>
-          auSys.setNodeManager(
-            resolvedAddresses.AurumNodeManager,
-            overrides ?? {},
-          ),
-      });
-      await tx.wait();
-      console.log('   ✓ NodeManager set');
-    } catch (e: any) {
-      console.log(
-        `   ⚠️  Could not set NodeManager in standalone AuSys: ${e.message}`,
-      );
-    }
-  }
-
-  // Add AuraAsset token to AurumNodeManager
-  if (resolvedAddresses.AurumNodeManager && resolvedAddresses.AuraAsset) {
-    console.log('   Adding AuraAsset to AurumNodeManager...');
-    try {
-      const nodeManager = await ethers.getContractAt(
-        'AurumNodeManager',
-        resolvedAddresses.AurumNodeManager,
-      );
-      const [signer] = await ethers.getSigners();
-      const tx = await sendWithNonceRetry({
-        label: 'AurumNodeManager.addToken',
-        getPendingNonce: () => signer.getNonce('pending'),
-        logger: console,
-        send: (overrides) =>
-          nodeManager.addToken(resolvedAddresses.AuraAsset, overrides ?? {}),
-      });
-      await tx.wait();
-      console.log('   ✓ AuraAsset token added');
-    } catch (e: any) {
-      console.log(`   ⚠️  Could not add token: ${e.message}`);
-    }
-  }
-
-  // CRITICAL: Set Diamond as NodeManager for AuraAsset
-  // This allows AuraAsset.nodeMint() to validate the Diamond as a valid node
-  if (resolvedAddresses.Diamond && resolvedAddresses.AuraAsset) {
-    console.log('   Setting Diamond as NodeManager for AuraAsset...');
-    try {
-      const auraAsset = await ethers.getContractAt(
-        'AuraAsset',
-        resolvedAddresses.AuraAsset,
-      );
-      // Check current NodeManager first
-      let currentNodeManager: string | null = null;
-      try {
-        currentNodeManager = await auraAsset.NodeManager();
-      } catch {
-        // NodeManager getter might not exist
-      }
-
-      if (
-        currentNodeManager &&
-        currentNodeManager.toLowerCase() ===
-          resolvedAddresses.Diamond.toLowerCase()
-      ) {
-        console.log('   ✓ Diamond is already the NodeManager');
-      } else {
-        const [signer] = await ethers.getSigners();
-        const tx = await sendWithNonceRetry({
-          label: 'AuraAsset.setNodeManager',
-          getPendingNonce: () => signer.getNonce('pending'),
-          logger: console,
-          send: (overrides) =>
-            auraAsset.setNodeManager(
-              resolvedAddresses.Diamond,
-              overrides ?? {},
-            ),
-        });
-        await tx.wait();
-        console.log('   ✓ Diamond set as NodeManager for AuraAsset');
-      }
-
-      // Verify the configuration works
-      const diamond = await ethers.getContractAt(
-        'NodesFacet',
-        resolvedAddresses.Diamond,
-      );
-      try {
-        const status = await diamond.getNodeStatus(resolvedAddresses.Diamond);
-        if (status === '0x01') {
-          console.log(
-            '   ✓ Verified: Diamond returns status 1 (valid node) for itself',
-          );
-        } else {
-          console.log(
-            `   ⚠️  Diamond.getNodeStatus(Diamond) returned: ${status}`,
-          );
-        }
-      } catch (e: any) {
-        console.log(`   ⚠️  Could not verify getNodeStatus: ${e.message}`);
-      }
-    } catch (e: any) {
-      console.log(`   ⚠️  Could not set Diamond as NodeManager: ${e.message}`);
-      console.log(
-        `      You may need to run: npx hardhat run scripts/set-aura-asset-node-manager.ts --network baseSepolia`,
-      );
-    }
   }
 
   // Set AuraAsset address in Diamond's NodesFacet storage

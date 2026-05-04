@@ -77,6 +77,9 @@ vi.mock('@/hooks/useWallet', () => ({
 
 vi.mock('@/chain-constants', () => ({
   NEXT_PUBLIC_AURA_ASSET_ADDRESS: '0xb3090aBF81918FF50e921b166126aD6AB9a03944',
+  NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS: '0x00000000000000000000000000000000000000aa',
+  NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS: 18,
+  NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL: 'AURA',
 }));
 
 vi.mock('@/app/providers/customer.provider', () => ({
@@ -101,6 +104,15 @@ vi.mock('@/hooks/useSettlementDestination', () => ({
     showModal: false,
     setShowModal: vi.fn(),
     handleConfirm: vi.fn(),
+  }),
+}));
+
+vi.mock('@/hooks/useQuoteTokenMetadata', () => ({
+  useQuoteTokenMetadata: () => ({
+    address: '0x00000000000000000000000000000000000000aa',
+    decimals: 18,
+    symbol: 'AURA',
+    refresh: vi.fn(),
   }),
 }));
 

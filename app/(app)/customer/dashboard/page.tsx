@@ -9,6 +9,7 @@ import React, {
 } from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useCustomer } from '@/app/providers/customer.provider';
+import { useDiamond } from '@/app/providers/diamond.provider';
 import {
   EvaPanel,
   HexStatCard,
@@ -74,12 +75,9 @@ import {
   DeliveryFormData,
 } from '@/app/components/p2p/delivery-details-dialog';
 import { P2PDeliveryDetails, P2POffer, P2POfferStatus } from '@/domain/p2p';
-import { getWalletAddress } from '@/dapp-connectors/base-controller';
 import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
 import { getDefaultP2PDeliveryBountyWei } from '@/config/p2p';
 import { useWallet } from '@/hooks/useWallet';
-import { AUSYS_ABI } from '@/lib/constants/contracts';
-import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
 import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 import { type P2PStepTransactionMap } from '@/app/components/p2p/p2p-order-step-transactions';
@@ -157,6 +155,7 @@ export default function CustomerDashboard() {
     getP2PSignatureState,
     createP2PJourney,
   } = useCustomer();
+  const { diamondContext } = useDiamond();
   const { toast } = useToast();
   const { address: walletAddress, chainId: walletChainId } = useWallet();
   const { decimals: quoteTokenDecimals } = useQuoteTokenMetadata();
@@ -458,7 +457,11 @@ export default function CustomerDashboard() {
       }));
 
       try {
-        const ausys = RepositoryContext.getInstance().getAusysContract();
+        if (!diamondContext) {
+          throw new Error('Diamond not initialized');
+        }
+
+        const ausys = diamondContext.getDiamond();
         const stepTransactions = await loadP2PStepTransactionMap({
           order,
           indexerUrl: getCurrentIndexerUrl(),
@@ -491,7 +494,7 @@ export default function CustomerDashboard() {
         }));
       }
     },
-    [loadingP2PStepTransactions, p2pStepTransactions, toast],
+    [diamondContext, loadingP2PStepTransactions, p2pStepTransactions, toast],
   );
 
   const handleSignP2PDelivery = async (orderId: string, journeyId: string) => {

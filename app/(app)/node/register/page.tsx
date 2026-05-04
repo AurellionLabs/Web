@@ -39,15 +39,13 @@ import {
 } from '@/app/components/ui/popover';
 import { Check, ChevronsUpDown, Server, MapPin, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNodes } from '@/app/providers/nodes.provider';
-import { ethers } from 'ethers';
-import { initializeProvider } from '@/dapp-connectors/base-controller';
-import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { usePlatform } from '@/app/providers/platform.provider';
 import { useToast } from '@/hooks/use-toast';
+import { useWallet } from '@/hooks/useWallet';
 import CapacityInput from './CapacityInput';
 
 const formSchema = z.object({
@@ -136,6 +134,7 @@ export default function NodeRegistrationPage() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const { connected } = useMainProvider();
+  const { address: walletAddress } = useWallet();
   const { registerNode } = useNodes();
   const { supportedAssetClasses, isLoading } = usePlatform();
   const { toast } = useToast();
@@ -165,20 +164,6 @@ export default function NodeRegistrationPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.watch('supportedAssets')]); // form excluded: stable reference, watching specific field
 
-  useEffect(() => {
-    // Only attempt MetaMask initialisation when NOT in E2E test mode;
-    // in E2E mode the RepositoryContext is already seeded with the test signer.
-    if (process.env.NEXT_PUBLIC_E2E_TEST_MODE === 'true') return;
-    const init = async () => {
-      try {
-        await initializeProvider();
-      } catch (error) {
-        console.error('Failed to initialize provider:', error);
-      }
-    };
-    init();
-  }, []);
-
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       if (!connected) {
@@ -202,8 +187,6 @@ export default function NodeRegistrationPage() {
         return;
       }
 
-      const walletAddress =
-        await RepositoryContext.getInstance().getSignerAddress();
       if (!walletAddress) {
         toast({
           title: 'Error',

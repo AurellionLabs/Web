@@ -9,7 +9,7 @@ import { OperatorFacet } from 'contracts/diamond/facets/OperatorFacet.sol';
 
 /**
  * @title RWYStakingFacetTest
- * @notice Tests for RWYStakingFacet admin functions (RWYVault.sol parity)
+ * @notice Tests for RWYStakingFacet admin functions
  */
 contract RWYStakingFacetTest is DiamondTestBase {
     RWYStakingFacet public rwy;

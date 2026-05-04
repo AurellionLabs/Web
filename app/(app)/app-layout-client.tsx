@@ -1,7 +1,6 @@
 'use client';
 
 import { usePathname, useSearchParams } from 'next/navigation';
-import { RepositoryProvider } from '@/app/providers/RepositoryProvider';
 import { PlatformProvider } from '@/app/providers/platform.provider';
 import { NodesProvider } from '@/app/providers/nodes.provider';
 import { SelectedNodeProvider } from '@/app/providers/selected-node.provider';
@@ -33,22 +32,20 @@ export function AppLayoutClient({ children }: { children: React.ReactNode }) {
           </NodesProvider>
         </PlatformProvider>
       ) : (
-        <RepositoryProvider>
-          <PlatformProvider>
-            <NodesProvider>
-              <SelectedNodeProvider>
-                <CustomerProvider>
-                  <DriverProvider>
-                    <TradeProvider>
-                      {children}
-                      <SettlementGate />
-                    </TradeProvider>
-                  </DriverProvider>
-                </CustomerProvider>
-              </SelectedNodeProvider>
-            </NodesProvider>
-          </PlatformProvider>
-        </RepositoryProvider>
+        <PlatformProvider>
+          <NodesProvider>
+            <SelectedNodeProvider>
+              <CustomerProvider>
+                <DriverProvider>
+                  <TradeProvider>
+                    {children}
+                    <SettlementGate />
+                  </TradeProvider>
+                </DriverProvider>
+              </CustomerProvider>
+            </SelectedNodeProvider>
+          </NodesProvider>
+        </PlatformProvider>
       )}
     </DiamondProvider>
   );

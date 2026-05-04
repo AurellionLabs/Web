@@ -26,7 +26,7 @@ const pillars = [
     color: 'text-amber-400',
   },
   {
-    title: 'RWA-Backed Staking (AuStake)',
+    title: 'RWA-Backed Staking',
     description:
       'Earn sustainable yield by providing liquidity and funding verified real-world asset operations.',
     icon: Gem,

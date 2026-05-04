@@ -65,6 +65,16 @@ vi.mock('lucide-react', () => ({
   Truck: () => <span data-testid="icon-truck" />,
   Package: () => <span data-testid="icon-package" />,
   Network: () => <span data-testid="icon-network" />,
+  X: () => <span data-testid="icon-x" />,
+}));
+
+vi.mock('@/hooks/useQuoteTokenMetadata', () => ({
+  useQuoteTokenMetadata: () => ({
+    address: '0x00000000000000000000000000000000000000aa',
+    decimals: 18,
+    symbol: 'AURA',
+    refresh: vi.fn(),
+  }),
 }));
 
 function makeOffer(overrides: Partial<P2POffer> = {}): P2POffer {

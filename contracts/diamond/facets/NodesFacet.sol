@@ -43,12 +43,12 @@ interface ICLOBFacet {
 /**
  * @title NodesFacet
  * @notice Business logic facet for node registration, management, and node assets
- * @dev Combines AurumNodeManager + NodeAsset functionality
+ * @dev Diamond node registry and node asset functionality.
  */
 contract NodesFacet is Initializable, DiamondReentrancyGuard {
     bytes32 public constant NODE_REGISTRAR_ROLE = keccak256('NODE_REGISTRAR_ROLE');
 
-    // Events matching original AurumNodeManager
+    // Node registry events
     event NodeRegistered(
         bytes32 indexed nodeHash,
         address indexed owner,
@@ -464,7 +464,7 @@ contract NodesFacet is Initializable, DiamondReentrancyGuard {
     // ======= AURA ASSET COMPATIBILITY =======
 
     /**
-     * @notice Get node status for an address - compatible with AuraAsset's IAurumNodeManager interface
+     * @notice Get node status for an address.
      * @dev Returns bytes1(1) for active nodes. Validates:
      *      1. Diamond address itself (always valid)
      *      2. Node owner wallet addresses (if they own an active node)
@@ -999,7 +999,7 @@ contract NodesFacet is Initializable, DiamondReentrancyGuard {
     event NodeAdminRevoked(address indexed admin);
 
     /**
-     * @notice Set a node admin (from AurumNodeManager.setAdmin)
+     * @notice Set a node admin.
      */
     function setNodeAdmin(address _admin) external {
         LibDiamond.enforceIsContractOwner();
@@ -1137,11 +1137,11 @@ contract NodesFacet is Initializable, DiamondReentrancyGuard {
     }
 
     // ============================================================================
-    // CAPACITY MANAGEMENT (from AurumNodeManager)
+    // CAPACITY MANAGEMENT
     // ============================================================================
 
     /**
-     * @notice Reduce node capacity for an order (from AurumNodeManager.reduceCapacityForOrder)
+     * @notice Reduce node capacity for an order.
      * @dev Called by AuSysFacet when creating order journeys
      */
     function reduceCapacityForOrder(

@@ -15,7 +15,6 @@ import {
 } from '@/lib/contracts';
 import { ContractTransactionResponse, ethers, Provider, Signer } from 'ethers';
 import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
-import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 
 /**
  * Business logic service for Pool operations.
@@ -25,12 +24,12 @@ export class PoolService implements IPoolService {
   private contract: RWYStakingFacetContract;
   private signer: Signer;
   private provider: Provider;
-  private repositoryContext: RepositoryContext;
+  private poolRepository: IPoolRepository;
 
   constructor(
     provider: Provider,
     signer: Signer,
-    repositoryContext: RepositoryContext,
+    poolRepository: IPoolRepository,
     contractAddress: string = NEXT_PUBLIC_DIAMOND_ADDRESS,
   ) {
     if (!contractAddress) {
@@ -38,7 +37,7 @@ export class PoolService implements IPoolService {
     }
     this.provider = provider;
     this.signer = signer;
-    this.repositoryContext = repositoryContext;
+    this.poolRepository = poolRepository;
     this.contract = RWYStakingFacet__factory.connect(contractAddress, signer);
   }
 
@@ -447,7 +446,7 @@ export class PoolService implements IPoolService {
   async getPoolWithDynamicData(
     id: string,
   ): Promise<(Pool & PoolDynamicData) | null> {
-    const poolRepository = this.repositoryContext.getPoolRepository();
+    const poolRepository = this.poolRepository;
     const pool = await poolRepository.getPoolById(id);
     if (!pool) return null;
 
@@ -458,7 +457,7 @@ export class PoolService implements IPoolService {
   }
 
   async getAllPoolsWithDynamicData(): Promise<(Pool & PoolDynamicData)[]> {
-    const poolRepository = this.repositoryContext.getPoolRepository();
+    const poolRepository = this.poolRepository;
     const pools = await poolRepository.getAllPools();
 
     const poolsWithDynamicData = await Promise.all(
@@ -478,7 +477,7 @@ export class PoolService implements IPoolService {
   async getUserPoolsWithDynamicData(
     stakerAddress: Address,
   ): Promise<(Pool & PoolDynamicData)[]> {
-    const poolRepository = this.repositoryContext.getPoolRepository();
+    const poolRepository = this.poolRepository;
     const pools = await poolRepository.findPoolsByInvestor(stakerAddress);
 
     const poolsWithDynamicData = await Promise.all(
@@ -498,7 +497,7 @@ export class PoolService implements IPoolService {
   async getProviderPoolsWithDynamicData(
     providerAddress: Address,
   ): Promise<(Pool & PoolDynamicData)[]> {
-    const poolRepository = this.repositoryContext.getPoolRepository();
+    const poolRepository = this.poolRepository;
     const pools = await poolRepository.findPoolsByProvider(providerAddress);
 
     const poolsWithDynamicData = await Promise.all(
@@ -519,7 +518,7 @@ export class PoolService implements IPoolService {
     poolId: string,
     interval: '1H' | '1D' | '1W' | '1M' | '1Y',
   ): Promise<GroupedStakes> {
-    const poolRepository = this.repositoryContext.getPoolRepository();
+    const poolRepository = this.poolRepository;
     const stakeHistory = await poolRepository.getPoolStakeHistory(poolId);
 
     const grouped: GroupedStakes = {};
@@ -577,7 +576,7 @@ export class PoolService implements IPoolService {
     pool: Pool,
     stakeHistory?: StakeEvent[],
   ): Promise<PoolDynamicData> {
-    const poolRepository = this.repositoryContext.getPoolRepository();
+    const poolRepository = this.poolRepository;
     const history =
       stakeHistory || (await poolRepository.getPoolStakeHistory(pool.id));
 

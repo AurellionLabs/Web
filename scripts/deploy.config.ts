@@ -17,15 +17,6 @@ export type {
   ABIFragment,
 } from '../types/abi';
 
-import {
-  getSupportedAssetClasses,
-  loadSupportedAssetCatalog,
-} from './lib/supported-assets';
-
-const DEFAULT_SUPPORTED_ASSET_CLASSES = getSupportedAssetClasses(
-  loadSupportedAssetCatalog(),
-);
-
 export interface ContractConfig {
   name: string;
   contractName: string;
@@ -111,100 +102,6 @@ export function computeSelectorFromSignature(functionSig: string): string {
 // =============================================================================
 
 export const CONTRACTS: Record<string, ContractConfig> = {
-  // Core Contracts
-  Aura: {
-    name: 'Aura',
-    contractName: 'Aura',
-    category: 'core',
-    chainConstantKey: 'NEXT_PUBLIC_AURA_TOKEN_ADDRESS',
-    indexerConfig: { abiName: 'AuraAbi', startBlockKey: 'auraToken' },
-    postDeploy: async (contract) => {
-      console.log('   Minting initial tokens...');
-      const tx = await contract.mintTokenToTreasury(1000000);
-      await tx.wait();
-      console.log('   ✓ Minted 1,000,000 AURA tokens');
-    },
-  },
-
-  AuSys: {
-    name: 'AuSys',
-    contractName: 'Ausys',
-    category: 'core',
-    dependencies: ['Aura'],
-    constructorArgs: (addresses) => [addresses.Aura],
-    chainConstantKey: 'NEXT_PUBLIC_AUSYS_ADDRESS',
-    indexerConfig: { abiName: 'AusysAbi', startBlockKey: 'auSys' },
-  },
-
-  AurumNodeManager: {
-    name: 'AurumNodeManager',
-    contractName: 'AurumNodeManager',
-    category: 'core',
-    dependencies: ['AuSys'],
-    constructorArgs: (addresses) => [addresses.AuSys],
-    chainConstantKey: 'NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS',
-    indexerConfig: {
-      abiName: 'AurumNodeManagerAbi',
-      startBlockKey: 'aurumNodeManager',
-    },
-  },
-
-  AuStake: {
-    name: 'AuStake',
-    contractName: 'AuStake',
-    category: 'core',
-    constructorArgs: (_, deployer) => [deployer, deployer],
-    chainConstantKey: 'NEXT_PUBLIC_AUSTAKE_ADDRESS',
-    indexerConfig: { abiName: 'AuStakeAbi', startBlockKey: 'auStake' },
-  },
-
-  AuraAsset: {
-    name: 'AuraAsset',
-    contractName: 'AuraAsset',
-    category: 'core',
-    dependencies: ['AurumNodeManager'],
-    constructorArgs: (addresses, deployer) => [
-      deployer,
-      'https://aurellion.io/metadata/',
-      addresses.AurumNodeManager,
-    ],
-    chainConstantKey: 'NEXT_PUBLIC_AURA_ASSET_ADDRESS',
-    indexerConfig: { abiName: 'AuraAssetAbi', startBlockKey: 'auraAsset' },
-    postDeploy: async (contract, addresses) => {
-      console.log('   Adding default asset classes...');
-      for (const className of DEFAULT_SUPPORTED_ASSET_CLASSES) {
-        const tx = await contract.addSupportedClass(className);
-        await tx.wait();
-        console.log(`   ✓ Added class: ${className}`);
-      }
-    },
-  },
-
-  CLOB: {
-    name: 'CLOB',
-    contractName: 'CLOB',
-    category: 'core',
-    constructorArgs: (_, deployer) => [deployer, deployer],
-    chainConstantKey: 'NEXT_PUBLIC_CLOB_ADDRESS',
-    indexerConfig: { abiName: 'CLOBAbi', startBlockKey: 'clob' },
-  },
-
-  OrderBridge: {
-    name: 'OrderBridge',
-    contractName: 'OrderBridge',
-    category: 'standalone',
-    dependencies: ['AuSys', 'CLOB', 'AuraAsset'],
-    constructorArgs: (addresses, deployer) => [
-      addresses.AuSys,
-      addresses.CLOB,
-      addresses.AuraAsset,
-      deployer, // fee recipient
-    ],
-    chainConstantKey: 'NEXT_PUBLIC_ORDER_BRIDGE_ADDRESS',
-  },
-
-  // RWYVault removed - replaced by RWYStakingFacet as a Diamond facet
-
   // Diamond Facets
   DiamondCutFacet: {
     name: 'DiamondCutFacet',
@@ -378,16 +275,26 @@ export const CONTRACTS: Record<string, ContractConfig> = {
         // FacetCutAction enum: Add = 0, Replace = 1, Remove = 2
         const FacetCutAction = { Add: 0, Replace: 1, Remove: 2 };
 
-        // Facets to add (DiamondCutFacet is already added in constructor)
-        const facetsToAdd = [
-          { name: 'DiamondLoupeFacet', address: addresses.DiamondLoupeFacet },
-          { name: 'OwnershipFacet', address: addresses.OwnershipFacet },
-          { name: 'NodesFacet', address: addresses.NodesFacet },
-          {
-            name: 'ERC1155ReceiverFacet',
-            address: addresses.ERC1155ReceiverFacet,
-          },
-        ];
+        // Add every deployed Diamond facet/core companion except the proxy
+        // itself and DiamondCutFacet, which is already wired in constructor.
+        const facetsToAdd = Object.entries(addresses)
+          .filter(([name, address]) => {
+            if (!address || name === 'Diamond' || name === 'DiamondCutFacet') {
+              return false;
+            }
+
+            const config = CONTRACTS[name];
+            if (!config) {
+              return false;
+            }
+
+            return (
+              config.category === 'facet' ||
+              name === 'DiamondLoupeFacet' ||
+              name === 'OwnershipFacet'
+            );
+          })
+          .map(([name, address]) => ({ name, address }));
 
         // Build facet cuts
         const selectorsInBatch = new Set<string>();
@@ -398,7 +305,31 @@ export const CONTRACTS: Record<string, ContractConfig> = {
             continue;
           }
 
-          const selectors = FACET_SELECTORS[facet.name];
+          let selectors: string[] | undefined;
+          try {
+            const factories = await import('../typechain-types');
+            const factoryName = `${facet.name}__factory`;
+            const Factory = (factories as any)[factoryName];
+            const iface = Factory?.createInterface?.();
+
+            if (iface) {
+              selectors = iface.fragments
+                .filter((fragment: any) => fragment.type === 'function')
+                .map(
+                  (fragment: any) =>
+                    iface.getFunction(fragment.format()).selector,
+                );
+            }
+          } catch (error) {
+            console.log(
+              `   ⚠ ${facet.name}: failed to derive selectors from factory: ${error instanceof Error ? error.message : error}`,
+            );
+          }
+
+          if (!selectors || selectors.length === 0) {
+            selectors = FACET_SELECTORS[facet.name];
+          }
+
           if (!selectors || selectors.length === 0) {
             console.log(`   ⚠ Skipping ${facet.name} - no selectors defined`);
             continue;
@@ -454,6 +385,10 @@ export const CONTRACTS: Record<string, ContractConfig> = {
 
         // Get the Diamond address
         const diamondAddress = await contract.getAddress();
+        const freshRunner =
+          'provider' in contract.runner && contract.runner.provider
+            ? await contract.runner.provider.getSigner()
+            : contract.runner;
 
         // Attach IDiamondCut interface to the Diamond address
         const diamondCutAbi = [
@@ -462,7 +397,7 @@ export const CONTRACTS: Record<string, ContractConfig> = {
         const diamondCut = new ethers.Contract(
           diamondAddress,
           diamondCutAbi,
-          contract.runner,
+          freshRunner,
         );
 
         // Wait for nonce state to settle before diamondCut (prevents nonce race on fast networks)
@@ -479,6 +414,21 @@ export const CONTRACTS: Record<string, ContractConfig> = {
         await tx.wait();
 
         console.log(`   ✅ Added ${facetCuts.length} facets to Diamond`);
+
+        if (addresses.NodesFacet && addresses.AssetsFacet) {
+          const nodesFacetAbi = [
+            'function setAuraAssetAddress(address _auraAsset) external',
+          ];
+          const nodesFacet = new ethers.Contract(
+            diamondAddress,
+            nodesFacetAbi,
+            freshRunner,
+          );
+          const setAuraAssetTx =
+            await nodesFacet.setAuraAssetAddress(diamondAddress);
+          await setAuraAssetTx.wait();
+          console.log('   ✅ Configured Diamond as AuraAsset target');
+        }
       } catch (error) {
         console.error('   ❌ Failed to add facets to Diamond:');
         console.error('   ', error instanceof Error ? error.message : error);
@@ -496,38 +446,43 @@ export const DEPLOYMENT_MODES: Record<string, DeploymentMode> = {
   // Test deployment for E2E tests - minimal contracts needed
   test: {
     name: 'Test Deployment',
-    description: 'Deploy minimal contracts for E2E testing including Diamond',
+    description: 'Deploy minimal Diamond contracts for E2E testing',
     contracts: [
-      'Aura',
-      'AuSys',
-      'AurumNodeManager',
-      'AuStake',
-      'AuraAsset',
-      'CLOB',
-      // RWYVault removed - replaced by RWYStakingFacet as a Diamond facet
-      // Diamond for node inventory testing
       'DiamondCutFacet',
       'DiamondLoupeFacet',
       'OwnershipFacet',
       'NodesFacet',
+      'AssetsFacet',
       'ERC1155ReceiverFacet',
       'Diamond',
     ],
   },
 
-  // Full deployment of all core contracts
+  // Full Diamond deployment
   full: {
     name: 'Full Deployment',
-    description:
-      'Deploy all core contracts (AuSys, AurumNodeManager, AuStake, AuraAsset, CLOB)',
+    description: 'Deploy Diamond proxy with all facets',
     contracts: [
-      // Note: Aura excluded - only exists on Base Sepolia/Testnet
-      // Production (Arbitrum One) uses USDC as quote token
-      'AuSys',
-      'AurumNodeManager',
-      'AuStake',
-      'AuraAsset',
-      'CLOB',
+      'DiamondCutFacet',
+      'DiamondLoupeFacet',
+      'OwnershipFacet',
+      'ERC1155ReceiverFacet',
+      'NodesFacet',
+      'AssetsFacet',
+      'OrdersFacet',
+      'BridgeFacet',
+      'CLOBFacet',
+      'CLOBFacetV2',
+      'OrderRouterFacet',
+      'RWYStakingFacet',
+      'OperatorFacet',
+      'CLOBMEVFacet',
+      'OrderMatchingFacet',
+      'AuSysFacet',
+      'AuSysAdminFacet',
+      'AuSysViewFacet',
+      'CLOBLogisticsFacet',
+      'Diamond',
     ],
   },
 
@@ -591,33 +546,11 @@ export const DEPLOYMENT_MODES: Record<string, DeploymentMode> = {
     contracts: ['RWYStakingFacet', 'OperatorFacet'],
   },
 
-  // Order Bridge only
-  bridge: {
-    name: 'Order Bridge Deployment',
-    description: 'Deploy only the Order Bridge contract',
-    contracts: ['OrderBridge'],
-  },
-
-  // All standalone contracts
-  standalone: {
-    name: 'Standalone Contracts',
-    description: 'Deploy all standalone contracts (OrderBridge)',
-    contracts: ['OrderBridge'],
-  },
-
   // Everything
   all: {
     name: 'Complete Deployment',
-    description: 'Deploy everything: core, diamond, and standalone contracts',
+    description: 'Deploy Diamond proxy with all facets',
     contracts: [
-      // Core
-      'Aura',
-      'AuSys',
-      'AurumNodeManager',
-      'AuStake',
-      'AuraAsset',
-      'CLOB',
-      // Diamond
       'DiamondCutFacet',
       'DiamondLoupeFacet',
       'OwnershipFacet',
@@ -631,8 +564,6 @@ export const DEPLOYMENT_MODES: Record<string, DeploymentMode> = {
       'AuSysFacet',
       'AuSysAdminFacet',
       'Diamond',
-      // Standalone
-      'OrderBridge',
     ],
   },
 };

@@ -6,8 +6,8 @@ import {
   BigNumberString,
 } from '../../domain/rwy';
 
-// ABI for RWYVault contract (write functions)
-const RWY_VAULT_ABI = [
+// ABI for Diamond RWY staking functions.
+const RWY_STAKING_ABI = [
   'function createOpportunity(string name, string description, address inputToken, uint256 inputTokenId, uint256 targetAmount, address outputToken, uint256 expectedOutputAmount, uint256 promisedYieldBps, uint256 operatorFeeBps, uint256 minSalePrice, uint256 fundingDays, uint256 processingDays) payable returns (bytes32)',
   'function stake(bytes32 opportunityId, uint256 amount)',
   'function unstake(bytes32 opportunityId, uint256 amount)',
@@ -35,7 +35,7 @@ const ERC1155_ABI = [
 ];
 
 /**
- * Service implementation for RWY Vault business logic
+ * Service implementation for Diamond RWY staking business logic.
  */
 export class RWYService implements IRWYService {
   private contract: Contract;
@@ -45,7 +45,11 @@ export class RWYService implements IRWYService {
   constructor(contractAddress: string, signer: Signer) {
     this.contractAddress = contractAddress;
     this.signer = signer;
-    this.contract = new ethers.Contract(contractAddress, RWY_VAULT_ABI, signer);
+    this.contract = new ethers.Contract(
+      contractAddress,
+      RWY_STAKING_ABI,
+      signer,
+    );
   }
 
   /**

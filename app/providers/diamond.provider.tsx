@@ -58,7 +58,9 @@ interface DiamondContextType {
   loading: boolean;
   error: Error | null;
   isReadOnly: boolean;
+  canWrite: boolean;
   diamondContext: DiamondContext | null;
+  contextVersion: number;
 
   // Services
   nodeRepository: NodeRepository | null;
@@ -170,6 +172,10 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
   const [diamondContext, setDiamondContext] = useState<DiamondContext | null>(
     null,
   );
+  const [contextVersion, setContextVersion] = useState(0);
+  const [initializedWalletAddress, setInitializedWalletAddress] = useState<
+    string | null
+  >(null);
   const [nodeRepository, setNodeRepository] =
     useState<DiamondNodeRepository | null>(null);
   const [nodeService, setNodeService] = useState<DiamondNodeService | null>(
@@ -197,11 +203,17 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
       ? diamondContext.getChainId()
       : null;
   // E2E signer comes directly from E2EAuthProvider — do NOT go through
-  // RepositoryContext.getSigner() which requires full initialization first.
+  // Diamond signer setup requires full initialization first.
   const { signer: e2eSigner, provider: e2eProvider } = useE2EAuth();
 
   // Track if we're in read-only mode
   const [isReadOnly, setIsReadOnly] = useState(false);
+  const canWrite =
+    initialized &&
+    !isReadOnly &&
+    diamondContext !== null &&
+    diamondContext.isInitialized() &&
+    diamondContext.hasSigner();
 
   // Helper to create Pinata SDK
   const createPinataSDK = (): PinataSDK | undefined => {
@@ -215,9 +227,24 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     return undefined;
   };
 
+  const clearPublishedState = useCallback((nextReadOnly: boolean) => {
+    setCurrentChainId(null);
+    setDiamondContext(null);
+    setNodeRepository(null);
+    setNodeService(null);
+    setNodeAssetService(null);
+    setP2PService(null);
+    setP2PRepository(null);
+    setInitializedWalletAddress(null);
+    setInitialized(false);
+    setIsReadOnly(nextReadOnly);
+    setContextVersion((version) => version + 1);
+  }, []);
+
   // Initialize Diamond context - supports both connected wallet and read-only mode
   useEffect(() => {
     async function initializeDiamond() {
+      const normalizedAddress = address?.toLowerCase() ?? null;
       // Check if we need to re-initialize due to wallet connection change
       const needsWalletUpgrade =
         initialized &&
@@ -226,6 +253,14 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
         isConnected &&
         connectedWallet &&
         address;
+      const needsWriteWalletRefresh =
+        initialized &&
+        !isReadOnly &&
+        !forceReadOnly &&
+        isConnected &&
+        connectedWallet &&
+        normalizedAddress !== null &&
+        normalizedAddress !== initializedWalletAddress;
       const needsModeSwitch = initialized && isReadOnly !== forceReadOnly;
       const needsReadOnlyChainSwitch =
         initialized &&
@@ -237,6 +272,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
       if (
         !needsInitialInit &&
         !needsWalletUpgrade &&
+        !needsWriteWalletRefresh &&
         !needsModeSwitch &&
         !needsReadOnlyChainSwitch
       ) {
@@ -251,28 +287,33 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
 
         if (forceReadOnly && requestedReadOnlyChainId === null) {
           context.disconnect();
-          setCurrentChainId(null);
-          setDiamondContext(null);
-          setNodeRepository(null);
-          setNodeService(null);
-          setNodeAssetService(null);
-          setP2PService(null);
-          setP2PRepository(null);
-          setInitialized(false);
-          setIsReadOnly(true);
+          clearPublishedState(true);
           setError(new Error(publicChain.error || 'Unsupported public chain.'));
           setLoading(false);
           return;
         }
 
+        if (
+          needsWalletUpgrade ||
+          needsWriteWalletRefresh ||
+          needsModeSwitch ||
+          needsReadOnlyChainSwitch
+        ) {
+          clearPublishedState(forceReadOnly);
+          context.disconnect();
+        }
+
         if (IS_E2E) {
-          // E2E mode: signer comes directly from E2EAuthProvider (no RepositoryContext needed).
+          // E2E mode: signer comes directly from E2EAuthProvider.
           // mainConnected is set by WalletConnectionE2E once E2EAuthProvider is ready.
           if (!mainConnected || !e2eSigner || !e2eProvider) {
             setLoading(false);
             return; // Wait for E2EAuthProvider to finish initializing
           }
           await context.initializeWithSigner(e2eSigner, e2eProvider);
+          setInitializedWalletAddress(
+            (await e2eSigner.getAddress()).toLowerCase(),
+          );
           setIsReadOnly(false);
         } else if (
           !forceReadOnly &&
@@ -284,6 +325,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
           const ethereumProvider = await connectedWallet.getEthereumProvider();
           const browserProvider = new BrowserProvider(ethereumProvider);
           await context.initialize(browserProvider);
+          setInitializedWalletAddress(normalizedAddress);
           setIsReadOnly(false);
         } else {
           if (!fallbackReadOnlyChainId) {
@@ -309,6 +351,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
             networkConfig.rpcUrl,
             fallbackReadOnlyChainId,
           );
+          setInitializedWalletAddress(null);
           setIsReadOnly(true);
         }
 
@@ -337,6 +380,7 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
         setP2PService(p2pSvc);
         setP2PRepository(p2pRepo);
         setInitialized(true);
+        setContextVersion((version) => version + 1);
       } catch (err) {
         console.error('[DiamondProvider] Initialization error:', err);
         setError(
@@ -359,11 +403,13 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     initialized,
     diamondContext,
     isReadOnly,
+    initializedWalletAddress,
     requestedReadOnlyChainId,
     currentContextChainId,
     mainConnected, // re-run when E2E wallet signals ready
     e2eSigner, // re-run when E2E signer becomes available
     e2eProvider, // re-run when E2E provider becomes available
+    clearPublishedState,
   ]);
 
   // Node operations
@@ -379,23 +425,23 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
 
   const getNode = useCallback(
     async (nodeHash: string): Promise<Node | null> => {
-      if (!nodeRepository) {
+      if (!initialized || loading || !nodeRepository) {
         throw new Error('Diamond not initialized');
       }
       return nodeRepository.getNode(nodeHash);
     },
-    [nodeRepository],
+    [initialized, loading, nodeRepository],
   );
 
   const getOwnedNodes = useCallback(
     async (ownerAddress?: string): Promise<string[]> => {
       const queryAddress = ownerAddress ?? address;
-      if (!nodeRepository || !queryAddress) {
+      if (!initialized || loading || !nodeRepository || !queryAddress) {
         return [];
       }
       return nodeRepository.getOwnedNodes(queryAddress);
     },
-    [nodeRepository, address],
+    [initialized, loading, nodeRepository, address],
   );
 
   const updateNodeStatus = useCallback(
@@ -476,22 +522,22 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
 
   const getNodeAssets = useCallback(
     async (nodeHash: string): Promise<TokenizedAsset[]> => {
-      if (!nodeRepository) {
+      if (!initialized || loading || !nodeRepository) {
         return [];
       }
       return nodeRepository.getNodeAssets(nodeHash);
     },
-    [nodeRepository],
+    [initialized, loading, nodeRepository],
   );
 
   const getAssetAttributes = useCallback(
     async (fileHash: string): Promise<TokenizedAssetAttribute[]> => {
-      if (!nodeRepository) {
+      if (!initialized || loading || !nodeRepository) {
         return [];
       }
       return nodeRepository.getAssetAttributes(fileHash);
     },
-    [nodeRepository],
+    [initialized, loading, nodeRepository],
   );
 
   // Trading operations - deposit tokens from user wallet to node for selling on CLOB
@@ -748,12 +794,12 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
   // Get supporting documents for a node
   const getSupportingDocuments = useCallback(
     async (nodeHash: string): Promise<SupportingDocument[]> => {
-      if (!nodeRepository) {
+      if (!initialized || loading || !nodeRepository) {
         return [];
       }
       return nodeRepository.getSupportingDocuments(nodeHash);
     },
-    [nodeRepository],
+    [initialized, loading, nodeRepository],
   );
 
   // Add a supporting document to a node
@@ -795,7 +841,9 @@ export function DiamondProvider({ children }: { children: ReactNode }) {
     loading,
     error,
     isReadOnly,
+    canWrite,
     diamondContext,
+    contextVersion,
     nodeRepository,
     nodeService,
     nodeAssetService,

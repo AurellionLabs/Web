@@ -109,16 +109,14 @@ const mockSigner = {
     .mockResolvedValue('0x742d35Cc6634C0532925a3b844Bc9e7595f2bD4c'),
 };
 
-const mockRepositoryContext = {
-  getAusysContract: vi.fn(),
-  getSigner: vi.fn().mockReturnValue(mockSigner),
-  getInstance: vi.fn(),
+const mockDiamondRuntime = {
+  getDiamondContract: vi.fn(),
+  getDiamondSigner: vi.fn().mockReturnValue(mockSigner),
 };
 
-vi.mock('@/infrastructure/contexts/repository-context', () => ({
-  RepositoryContext: {
-    getInstance: () => mockRepositoryContext,
-  },
+vi.mock('@/infrastructure/diamond', () => ({
+  getDiamondContract: () => mockDiamondRuntime.getDiamondContract(),
+  getDiamondSigner: () => mockDiamondRuntime.getDiamondSigner(),
 }));
 
 // Import after mocking
@@ -132,10 +130,10 @@ describe('DriverService', () => {
     vi.clearAllMocks();
     capturedMethod = null;
     capturedArgs = [];
-    mockRepositoryContext.getAusysContract.mockReturnValue(
+    mockDiamondRuntime.getDiamondContract.mockReturnValue(
       createMockAusysContract(),
     );
-    service = new DriverService(mockRepositoryContext as any);
+    service = new DriverService(createMockAusysContract() as any);
   });
 
   describe('acceptDelivery', () => {
@@ -167,11 +165,8 @@ describe('DriverService', () => {
     });
 
     it('should throw if contract is not initialized', async () => {
-      const badContext = {
-        getAusysContract: vi.fn().mockReturnValue(null),
-        getSigner: vi.fn().mockReturnValue(mockSigner),
-      };
-      const badService = new DriverService(badContext as any);
+      mockDiamondRuntime.getDiamondContract.mockReturnValue(null);
+      const badService = new DriverService();
 
       await expect(badService.acceptDelivery('0xjourney')).rejects.toThrow();
     });

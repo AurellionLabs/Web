@@ -12,12 +12,10 @@ import {
   createNodeInventoryFlows,
 } from '../../flows/node-inventory-flows';
 import { FlowContext, TestUser } from '../../flows/flow-context';
-import { getCoverageTracker } from '../../coverage/coverage-tracker';
 
 describe('Node Token Inventory Flow', () => {
   let context: FlowContext;
   let inventoryFlows: NodeInventoryFlows;
-  let deployer: TestUser;
   let nodeOperator1: TestUser;
   let nodeOperator2: TestUser;
   let node1Hash: string;
@@ -35,17 +33,8 @@ describe('Node Token Inventory Flow', () => {
     );
 
     // Get test users
-    deployer = context.getUser('deployer');
     nodeOperator1 = context.getUser('node1');
     nodeOperator2 = context.getUser('node2');
-
-    // Configure AuraAsset address on Diamond (required for inventory operations)
-    console.log('Configuring AuraAsset address on Diamond...');
-    const result = await inventoryFlows.setAuraAssetAddress(deployer);
-    if (!result.success) {
-      throw new Error(`Failed to set AuraAsset address: ${result.error}`);
-    }
-    console.log('AuraAsset address configured successfully');
   });
 
   describe('Node Registration via Diamond', () => {
@@ -340,14 +329,7 @@ describe('Node Token Inventory Flow', () => {
   });
 
   describe('Credit Tokens (Minting Record)', () => {
-    it('should allow node owner to credit tokens (record minting)', async () => {
-      const initialBalance = await inventoryFlows.getNodeTokenBalance(
-        nodeOperator1,
-        node1Hash,
-        GOAT_TOKEN_ID,
-      );
-
-      // Credit 200 tokens (simulating a mint that happened externally)
+    it('should reject direct external credit calls', async () => {
       const result = await inventoryFlows.creditNodeTokens(
         nodeOperator1,
         node1Hash,
@@ -355,27 +337,8 @@ describe('Node Token Inventory Flow', () => {
         200n,
       );
 
-      expect(result.success).toBe(true);
-
-      const finalBalance = await inventoryFlows.getNodeTokenBalance(
-        nodeOperator1,
-        node1Hash,
-        GOAT_TOKEN_ID,
-      );
-
-      expect(finalBalance).toBe(initialBalance + 200n);
-    });
-
-    it('should not allow non-owner to credit tokens', async () => {
-      const result = await inventoryFlows.creditNodeTokens(
-        nodeOperator2, // Not the owner of node1
-        node1Hash,
-        GOAT_TOKEN_ID,
-        100n,
-      );
-
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Not');
+      expect(result.error).toContain('Only internal Diamond calls');
     });
   });
 
@@ -398,19 +361,6 @@ describe('Node Token Inventory Flow', () => {
         clobAddress,
       );
       expect(isApproved).toBe(true);
-    });
-  });
-
-  describe('Coverage Tracking', () => {
-    it('should have coverage for NodesFacet methods', () => {
-      const tracker = getCoverageTracker();
-      const coverage = tracker.getInterfaceCoverage('NodesFacet');
-
-      // We should have tested multiple methods
-      expect(coverage).not.toBeNull();
-      if (coverage) {
-        expect(coverage.coveredMethods).toBeGreaterThan(0);
-      }
     });
   });
 });

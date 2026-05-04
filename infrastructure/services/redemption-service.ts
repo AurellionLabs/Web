@@ -1,12 +1,12 @@
 'use client';
 
 import { ethers } from 'ethers';
-import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
-import { ServiceContext } from '@/infrastructure/contexts/service-context';
 import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
 import { Order, OrderStatus } from '@/domain/orders/order';
 import { ParcelData } from '@/domain/shared';
 import { RouteCalculationService } from './route-calculation-service';
+import { getDiamondContract, getDiamondSigner } from '@/infrastructure/diamond';
+import { OrderService } from './order-service';
 
 /**
  * Parameters for requesting a redemption
@@ -63,13 +63,9 @@ const ERC20_ABI = [
  * This decouples CLOB trading (instant, digital) from physical delivery (on-demand)
  */
 export class RedemptionService {
-  private repositoryContext: RepositoryContext;
-  private serviceContext: ServiceContext;
   private routeCalculationService: RouteCalculationService;
 
   constructor() {
-    this.repositoryContext = RepositoryContext.getInstance();
-    this.serviceContext = ServiceContext.getInstance();
     this.routeCalculationService = new RouteCalculationService();
   }
 
@@ -93,7 +89,7 @@ export class RedemptionService {
     } = params;
 
     try {
-      const signer = this.repositoryContext.getSigner();
+      const signer = getDiamondSigner();
       const signerAddress = await signer.getAddress();
 
       // Step 1: Verify user owns enough tokens
@@ -215,7 +211,10 @@ export class RedemptionService {
       };
 
       // Step 6: Create the logistics order via OrderService
-      const orderService = this.serviceContext.getOrderService();
+      const orderService = new OrderService(
+        getDiamondContract() as any,
+        signer as any,
+      );
       const orderId = await orderService.createOrder(order);
 
       // Step 7: Create journeys for each leg of the route

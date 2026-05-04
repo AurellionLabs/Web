@@ -9,7 +9,7 @@
 
 import React from 'react';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ethers } from 'ethers';
 
 // --- Mock contract with Diamond method names ---
@@ -58,6 +58,10 @@ const mockRepository = {
   getMyDeliveries: vi.fn().mockResolvedValue([]),
 };
 
+const mockWalletState = {
+  address: '0x742d35Cc6634C0532925a3b844Bc9e7595f2bD4c',
+};
+
 const mockSigner = {
   getAddress: vi
     .fn()
@@ -65,27 +69,38 @@ const mockSigner = {
   provider: null,
 };
 
-const mockRepoContext = {
-  getAusysContract: vi.fn().mockReturnValue(mockDiamondContract),
+const mockDiamondContext = {
+  getDiamond: vi.fn().mockReturnValue(mockDiamondContract),
   getDriverRepository: vi.fn().mockReturnValue(mockRepository),
   getSigner: vi.fn().mockReturnValue(mockSigner),
-  getSignerAddress: vi
-    .fn()
-    .mockResolvedValue('0x742d35Cc6634C0532925a3b844Bc9e7595f2bD4c'),
+  getProvider: vi.fn().mockReturnValue({}),
 };
 
-vi.mock('@/infrastructure/contexts/repository-context', () => {
-  return {
-    RepositoryContext: {
-      getInstance: () => mockRepoContext,
-    },
-  };
-});
+const mockDiamondState = {
+  diamondContext: mockDiamondContext,
+  initialized: true,
+  isReadOnly: false,
+  canWrite: true,
+  contextVersion: 0,
+};
+
+vi.mock('@/app/providers/diamond.provider', () => ({
+  useDiamond: () => ({
+    ...mockDiamondState,
+  }),
+}));
+
+vi.mock('@/infrastructure/repositories/driver-repository', () => ({
+  DriverRepository: vi.fn().mockImplementation(() => ({
+    getAvailableDeliveries: (...args: unknown[]) =>
+      mockRepository.getAvailableDeliveries(...args),
+    getMyDeliveries: (...args: unknown[]) =>
+      mockRepository.getMyDeliveries(...args),
+  })),
+}));
 
 vi.mock('@/hooks/useWallet', () => ({
-  useWallet: () => ({
-    address: '0x742d35Cc6634C0532925a3b844Bc9e7595f2bD4c',
-  }),
+  useWallet: () => mockWalletState,
 }));
 
 vi.mock('@/chain-constants', () => ({
@@ -128,24 +143,24 @@ describe('DriverProvider', () => {
     // Reset repository mocks
     mockRepository.getAvailableDeliveries = vi.fn().mockResolvedValue([]);
     mockRepository.getMyDeliveries = vi.fn().mockResolvedValue([]);
-    // Reset context mocks
-    mockRepoContext.getAusysContract = vi
+    // Reset Diamond context mocks
+    mockDiamondContext.getDiamond = vi
       .fn()
       .mockReturnValue(mockDiamondContract);
-    mockRepoContext.getDriverRepository = vi
+    mockDiamondContext.getDriverRepository = vi
       .fn()
       .mockReturnValue(mockRepository);
-    mockRepoContext.getSigner = vi.fn().mockReturnValue(mockSigner);
-    mockRepoContext.getSignerAddress = vi
-      .fn()
-      .mockResolvedValue('0x742d35Cc6634C0532925a3b844Bc9e7595f2bD4c');
+    mockDiamondContext.getSigner = vi.fn().mockReturnValue(mockSigner);
+    mockDiamondContext.getProvider = vi.fn().mockReturnValue({});
     mockSigner.getAddress = vi
       .fn()
       .mockResolvedValue('0x742d35Cc6634C0532925a3b844Bc9e7595f2bD4c');
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
+    mockWalletState.address = '0x742d35Cc6634C0532925a3b844Bc9e7595f2bD4c';
+    mockDiamondState.diamondContext = mockDiamondContext;
+    mockDiamondState.initialized = true;
+    mockDiamondState.isReadOnly = false;
+    mockDiamondState.canWrite = true;
+    mockDiamondState.contextVersion = 0;
   });
 
   describe('acceptDelivery - contract method names', () => {
@@ -202,7 +217,7 @@ describe('DriverProvider', () => {
           wait: vi.fn().mockResolvedValue({ blockNumber: 1 }),
         }),
       };
-      mockRepoContext.getAusysContract = vi
+      mockDiamondContext.getDiamond = vi
         .fn()
         .mockReturnValue(legacyOnlyContract);
 
@@ -360,6 +375,27 @@ describe('DriverProvider', () => {
 
       expect(result.current.error).toBeTruthy();
       expect(result.current.error).toContain('GraphQL fetch failed');
+    });
+
+    it('stays idle in read-only mode without constructing signer-backed state', async () => {
+      mockWalletState.address = undefined as unknown as string;
+      mockDiamondState.isReadOnly = true;
+      mockDiamondState.canWrite = false;
+
+      const { result } = renderHook(() => useDriver(), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.availableDeliveries).toEqual([]);
+      expect(result.current.myDeliveries).toEqual([]);
+      expect(result.current.error).toBeNull();
+      expect(mockRepository.getAvailableDeliveries).not.toHaveBeenCalled();
+      expect(mockRepository.getMyDeliveries).not.toHaveBeenCalled();
+      expect(mockDiamondContext.getSigner).not.toHaveBeenCalled();
     });
   });
 

@@ -49,7 +49,7 @@ const mocks = vi.hoisted(() => {
     setApprovalForAll: vi.fn(),
     connect: vi.fn(),
   };
-  const repoCtx = {
+  const diamondRuntime = {
     getSigner: vi.fn(),
     getProvider: vi.fn(),
     getSignerAddress: vi.fn(),
@@ -62,17 +62,17 @@ const mocks = vi.hoisted(() => {
     adminContract,
     quoteTokenContract,
     baseTokenContract,
-    repoCtx,
+    diamondRuntime,
     orderBookRepo,
   };
 });
 
 // ─── Module mocks ─────────────────────────────────────────────────────────────
 
-vi.mock('@/infrastructure/contexts/repository-context', () => ({
-  RepositoryContext: {
-    getInstance: () => mocks.repoCtx,
-  },
+vi.mock('@/infrastructure/diamond', () => ({
+  getDiamondSigner: () => mocks.diamondRuntime.getSigner(),
+  getDiamondProvider: () => mocks.diamondRuntime.getProvider(),
+  getDiamondSignerAddress: () => mocks.diamondRuntime.getSignerAddress(),
 }));
 
 vi.mock('@/chain-constants', () => ({
@@ -198,10 +198,10 @@ describe('CLOBV2Service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Default repo-ctx stubs
-    mocks.repoCtx.getSigner.mockReturnValue({ address: SIGNER_ADDRESS });
-    mocks.repoCtx.getProvider.mockReturnValue({});
-    mocks.repoCtx.getSignerAddress.mockResolvedValue(SIGNER_ADDRESS);
+    // Default Diamond runtime stubs
+    mocks.diamondRuntime.getSigner.mockReturnValue({ address: SIGNER_ADDRESS });
+    mocks.diamondRuntime.getProvider.mockReturnValue({});
+    mocks.diamondRuntime.getSignerAddress.mockResolvedValue(SIGNER_ADDRESS);
 
     // Default ERC20 allowance: already sufficient (no approval needed)
     mocks.quoteTokenContract.allowance.mockResolvedValue(BigInt(2) ** 128n);

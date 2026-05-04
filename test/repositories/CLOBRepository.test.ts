@@ -5,7 +5,7 @@ import { expect, describe, it, beforeEach, vi } from 'vitest';
 import { ethers } from 'ethers';
 
 // Mock dependencies
-const mockRepositoryContext = {
+const mockDiamondRuntime = {
   getSigner: vi.fn(),
   getProvider: vi.fn(),
   getSignerAddress: vi.fn(),
@@ -22,16 +22,15 @@ const mockProvider = {
   getBlockNumber: vi.fn().mockResolvedValue(100),
 };
 
-vi.mock('@/infrastructure/contexts/repository-context', () => ({
-  RepositoryContext: {
-    getInstance: () => mockRepositoryContext,
-  },
+vi.mock('@/infrastructure/diamond', () => ({
+  getDiamondSigner: () => mockDiamondRuntime.getSigner(),
+  getDiamondProvider: () => mockDiamondRuntime.getProvider(),
+  getDiamondSignerAddress: () => mockDiamondRuntime.getSignerAddress(),
 }));
 
 vi.mock('@/chain-constants', () => ({
   getIndexerUrl: () => 'http://localhost:42069',
-  NEXT_PUBLIC_AURUM_SUBGRAPH_URL: 'https://indexer.test/graphql',
-  NEXT_PUBLIC_CLOB_ADDRESS: '0x2b9D42594Bb18FAFaA64FFEC4f5e69C8ac328aAc',
+  NEXT_PUBLIC_DIAMOND_ADDRESS: '0x2b9D42594Bb18FAFaA64FFEC4f5e69C8ac328aAc',
   NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS: '0x0000000000000000000000000000000000000002',
 }));
 
@@ -48,9 +47,9 @@ describe('CLOBRepository', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockRepositoryContext.getSigner.mockReturnValue(mockSigner);
-    mockRepositoryContext.getProvider.mockReturnValue(mockProvider);
-    mockRepositoryContext.getSignerAddress.mockResolvedValue(
+    mockDiamondRuntime.getSigner.mockReturnValue(mockSigner);
+    mockDiamondRuntime.getProvider.mockReturnValue(mockProvider);
+    mockDiamondRuntime.getSignerAddress.mockResolvedValue(
       '0x742d35Cc6634C0532925a3b844Bc9e7595f2bD4c',
     );
 

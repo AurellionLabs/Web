@@ -1,10 +1,16 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { ethers } from 'ethers';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { Delivery, DeliveryStatus } from '@/domain/driver/driver';
 import { useWallet } from '@/hooks/useWallet';
-import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
+import { useDiamond } from './diamond.provider';
+import { DriverRepository } from '@/infrastructure/repositories/driver-repository';
 import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
 import {
@@ -46,13 +52,48 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   const [myDeliveries, setMyDeliveries] = useState<Delivery[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { address: driverWalletAddress, connectedWallet } = useWallet();
-  const repoContext = RepositoryContext.getInstance();
-  const repository = repoContext.getDriverRepository();
+  const { address: driverWalletAddress } = useWallet();
+  const {
+    diamondContext,
+    initialized: diamondInitialized,
+    isReadOnly,
+    canWrite: diamondCanWrite,
+    contextVersion,
+  } = useDiamond();
+  const canWrite =
+    diamondCanWrite ??
+    (diamondInitialized && !isReadOnly && diamondContext !== null);
+  const repository = useMemo(() => {
+    if (!diamondInitialized || !diamondContext || !canWrite) return null;
+    const diamond = diamondContext.getDiamond();
+    return new DriverRepository(
+      diamond as any,
+      diamondContext.getProvider() as any,
+      diamondContext.getSigner(),
+    );
+  }, [canWrite, diamondContext, diamondInitialized, contextVersion]);
+
+  const requireWritableDiamond = () => {
+    if (!diamondInitialized || !diamondContext) {
+      throw new Error('Diamond not initialized');
+    }
+    if (!driverWalletAddress) {
+      throw new Error('Wallet not connected');
+    }
+    if (!canWrite) {
+      throw new Error(
+        'Diamond is in read-only mode. Connect a wallet to continue.',
+      );
+    }
+    return diamondContext;
+  };
 
   const refreshDeliveries = async () => {
-    if (!driverWalletAddress) {
-      setError('Wallet not connected');
+    if (!driverWalletAddress || !canWrite || !repository) {
+      setAvailableDeliveries([]);
+      setMyDeliveries([]);
+      setError(null);
+      setIsLoading(false);
       return;
     }
 
@@ -61,8 +102,8 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const [available, mine] = await Promise.all([
-        repository.getAvailableDeliveries(),
-        repository.getMyDeliveries(driverWalletAddress),
+        repository?.getAvailableDeliveries() ?? Promise.resolve([]),
+        repository?.getMyDeliveries(driverWalletAddress) ?? Promise.resolve([]),
       ]);
 
       // Calculate ETAs for all deliveries
@@ -125,34 +166,11 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
 
   /**
    * Get a signer-aligned Ausys contract.
-   * If the RepositoryContext signer doesn't match the current wallet,
-   * derive a fresh signer from the Privy wallet's Ethereum provider.
+   * Get the Diamond AuSys-compatible contract.
    */
   const getSignerAlignedContract = async () => {
-    const ausys = repoContext.getAusysContract();
-    if (!driverWalletAddress) throw new Error('Wallet not connected');
-
-    const signerAddr = await repoContext.getSignerAddress();
-    if (signerAddr.toLowerCase() === driverWalletAddress.toLowerCase()) {
-      return ausys; // Already aligned
-    }
-
-    console.warn(
-      `[DriverProvider] Signer mismatch: stored=${signerAddr}, wallet=${driverWalletAddress}. Reconnecting...`,
-    );
-
-    if (connectedWallet) {
-      const ethereumProvider = await connectedWallet.getEthereumProvider();
-      const provider = new ethers.BrowserProvider(ethereumProvider);
-      const freshSigner = await provider.getSigner();
-      await repoContext.updateSigner(freshSigner);
-      return repoContext.getAusysContract();
-    }
-
-    // Fallback: return existing contract (may still fail)
-    console.warn(
-      '[DriverProvider] No Privy wallet available for signer alignment',
-    );
+    const context = requireWritableDiamond();
+    const ausys = context.getDiamond();
     return ausys;
   };
 
@@ -454,12 +472,16 @@ export function DriverProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    if (driverWalletAddress) {
+    if (driverWalletAddress && canWrite) {
       refreshDeliveries();
     } else {
+      setAvailableDeliveries([]);
+      setMyDeliveries([]);
+      setError(null);
+      setIsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [driverWalletAddress]);
+  }, [driverWalletAddress, canWrite]);
 
   return (
     <DriverContext.Provider

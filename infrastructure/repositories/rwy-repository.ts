@@ -14,8 +14,8 @@ import {
   formatTimeRemaining,
 } from '../../domain/rwy';
 
-// ABI for RWYVault contract (minimal required functions)
-const RWY_VAULT_ABI = [
+// ABI for Diamond RWY staking read functions.
+const RWY_STAKING_ABI = [
   'function getOpportunity(bytes32 opportunityId) view returns (tuple(bytes32 id, address operator, string name, string description, address inputToken, uint256 inputTokenId, uint256 targetAmount, uint256 stakedAmount, address outputToken, uint256 outputTokenId, uint256 expectedOutputAmount, uint256 promisedYieldBps, uint256 operatorFeeBps, uint256 minSalePrice, uint256 fundingDeadline, uint256 processingDeadline, uint256 createdAt, uint256 fundedAt, uint256 completedAt, uint8 status, uint256 operatorCollateral))',
   'function getStake(bytes32 opportunityId, address staker) view returns (tuple(uint256 amount, uint256 stakedAt, bool claimed))',
   'function getOpportunityStakers(bytes32 opportunityId) view returns (address[])',
@@ -31,7 +31,7 @@ const RWY_VAULT_ABI = [
 ];
 
 /**
- * Repository implementation for RWY Vault data access
+ * Repository implementation for Diamond RWY staking data access.
  */
 export class RWYRepository implements IRWYRepository {
   private contract: Contract;
@@ -41,7 +41,7 @@ export class RWYRepository implements IRWYRepository {
     this.provider = provider;
     this.contract = new ethers.Contract(
       contractAddress,
-      RWY_VAULT_ABI,
+      RWY_STAKING_ABI,
       provider,
     );
   }

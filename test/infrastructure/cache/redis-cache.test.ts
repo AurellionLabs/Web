@@ -17,9 +17,12 @@ import { RedisCache } from '@/infrastructure/cache/redis-cache';
 // Test Redis URL - separate database for tests
 const TEST_REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379/15';
 
-// Skip tests in CI (no Redis available) or when explicitly disabled
+// Skip unless Redis-backed integration tests are explicitly enabled.
+// This avoids failing the unit matrix when no external Redis service is running.
 const shouldRunTests =
-  !process.env.CI && process.env.SKIP_REDIS_TESTS !== 'true';
+  !process.env.CI &&
+  process.env.SKIP_REDIS_TESTS !== 'true' &&
+  (Boolean(process.env.REDIS_URL) || process.env.RUN_REDIS_TESTS === 'true');
 
 describe.skipIf(!shouldRunTests)('RedisCache', () => {
   let cache: RedisCache;

@@ -522,7 +522,7 @@ contract RWYStakingFacet {
     }
 
     /**
-     * @notice Set CLOB address for RWY integration (from RWYVault.sol)
+     * @notice Set CLOB address for RWY integration
      */
     function setRWYCLOBAddress(address _clob) external onlyOwner {
         RWYStorage.RWYAppStorage storage rs = RWYStorage.rwyStorage();
@@ -530,7 +530,7 @@ contract RWYStakingFacet {
     }
 
     /**
-     * @notice Set quote token (payment token) address (from RWYVault.sol)
+     * @notice Set quote token (payment token) address
      */
     function setRWYQuoteToken(address _quoteToken) external onlyOwner {
         RWYStorage.RWYAppStorage storage rs = RWYStorage.rwyStorage();
@@ -538,7 +538,7 @@ contract RWYStakingFacet {
     }
 
     /**
-     * @notice Set fee recipient address (from RWYVault.sol)
+     * @notice Set fee recipient address
      */
     function setRWYFeeRecipient(address _feeRecipient) external onlyOwner {
         require(_feeRecipient != address(0), "Invalid address");
@@ -547,7 +547,7 @@ contract RWYStakingFacet {
     }
 
     /**
-     * @notice Pause RWY staking (from RWYVault.sol)
+     * @notice Pause RWY staking
      */
     function pauseRWY() external onlyOwner {
         RWYStorage.RWYAppStorage storage rs = RWYStorage.rwyStorage();
@@ -555,7 +555,7 @@ contract RWYStakingFacet {
     }
 
     /**
-     * @notice Unpause RWY staking (from RWYVault.sol)
+     * @notice Unpause RWY staking
      */
     function unpauseRWY() external onlyOwner {
         RWYStorage.RWYAppStorage storage rs = RWYStorage.rwyStorage();

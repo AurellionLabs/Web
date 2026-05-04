@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
-import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { encodeBytes32String } from 'ethers';
+import { useDiamond } from '@/app/providers/diamond.provider';
+import { listenForSignature } from '@/infrastructure/services/signature-listener.service';
 
 type SignatureStatus = 'idle' | 'signing' | 'waiting' | 'complete' | 'error';
 
@@ -29,8 +30,7 @@ export function usePackageSignatureProcess({
 }: UsePackageSignatureProcessProps): UsePackageSignatureProcessReturn {
   const [status, setStatus] = useState<SignatureStatus>('idle');
   const [error, setError] = useState<string | null>(null);
-
-  const repoContext = RepositoryContext.getInstance(); // Get singleton instance
+  const { diamondContext } = useDiamond();
 
   const signAndListen = useCallback(async () => {
     setStatus('signing');
@@ -62,9 +62,10 @@ export function usePackageSignatureProcess({
     }
 
     try {
-      // Step 1: Get contract and call packageSign
-      // Assumes the stored contract in repoContext is connected to the correct signer (current user)
-      const contract = repoContext.getAusysContract();
+      if (!diamondContext) {
+        throw new Error('Diamond not initialized');
+      }
+      const contract = diamondContext.getDiamond();
 
       // IMPORTANT: This assumes the current connected user (via repoContext.signer)
       // is either the senderAddress or the driverAddress passed to this hook,
@@ -77,7 +78,7 @@ export function usePackageSignatureProcess({
 
       // Step 2: Transaction successful, start listening
       setStatus('waiting');
-      await repoContext.listenForSignature(jobId, driverAddress); // Listen for driver's signature
+      await listenForSignature(contract as any, jobId, 30000);
 
       // Step 3: Listener resolved successfully
       setStatus('complete');
@@ -93,7 +94,7 @@ export function usePackageSignatureProcess({
       setStatus('error');
       // Note: If waitForSignaturesForJob times out, it rejects, landing here.
     }
-  }, [repoContext, jobId, driverAddress, senderAddress]);
+  }, [diamondContext, jobId, driverAddress, senderAddress]);
 
   const reset = useCallback(() => {
     setStatus('idle');

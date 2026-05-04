@@ -12,6 +12,8 @@ import { DiamondNodeRepository } from '@/infrastructure/diamond/diamond-node-rep
 // Mock chain-constants
 vi.mock('@/chain-constants', () => ({
   getIndexerUrl: () => 'http://localhost:42069',
+  getIpfsGroupId: () => 'test-group-84532',
+  NEXT_PUBLIC_DEFAULT_CHAIN_ID: 84532,
   NEXT_PUBLIC_INDEXER_URL: 'https://mock-indexer.test/graphql',
   NEXT_PUBLIC_AURA_ASSET_ADDRESS: '0x1234567890abcdef1234567890abcdef12345678',
 }));
@@ -146,6 +148,7 @@ function createMockContext(
     getDiamond: vi.fn().mockReturnValue(diamond),
     getProvider: vi.fn(),
     getSigner: vi.fn(),
+    getChainId: vi.fn().mockReturnValue(84532),
     _diamond: diamond,
   } as any;
 }
@@ -189,7 +192,7 @@ describe('DiamondNodeRepository', () => {
       const result = await repo.getAssetAttributes('QmHash123');
 
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/platform/metadata?hash=QmHash123',
+        '/api/platform/metadata?hash=QmHash123&chainId=84532',
       );
       expect(result).toEqual([
         {
@@ -326,13 +329,13 @@ describe('DiamondNodeRepository', () => {
       expect(assets.length).toBe(1);
       expect(assets[0].id).toBe(tokenId);
       expect(fetchMock).toHaveBeenCalledWith(
-        `/api/platform/metadata?tokenId=${tokenId}`,
+        `/api/platform/metadata?tokenId=${tokenId}&chainId=84532`,
       );
       expect(assets[0].name).toBe('API Goat');
       expect(assets[0].class).toBe('GOAT');
       expect(assets[0].fileHash).toBe('QmApiCid');
       expect(assets[0].amount).toBe('20');
-      expect(assets[0].capacity).toBe('100');
+      expect(assets[0].capacity).toBe('20');
     });
 
     it('should fetch metadata from IPFS when pinata is available', async () => {

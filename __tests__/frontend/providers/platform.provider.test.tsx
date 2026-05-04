@@ -13,23 +13,54 @@ import { render, screen, waitFor, act } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { Asset } from '@/domain/shared';
 
-// Mock the RepositoryContext
-const mockGetSupportedAssets = vi.fn();
-const mockGetSupportedAssetClasses = vi.fn();
-const mockGetClassAssets = vi.fn();
-const mockGetAssetByTokenId = vi.fn();
+const mocks = vi.hoisted(() => ({
+  getSupportedAssets: vi.fn(),
+  getSupportedAssetClasses: vi.fn(),
+  getClassAssets: vi.fn(),
+  getAssetByTokenId: vi.fn(),
+  getVolumeByBaseTokenId: vi.fn(),
+  setCurrentChainId: vi.fn(),
+}));
 
-vi.mock('@/infrastructure/contexts/repository-context', () => ({
-  RepositoryContext: {
-    getInstance: () => ({
-      getPlatformRepository: () => ({
-        getSupportedAssets: mockGetSupportedAssets,
-        getSupportedAssetClasses: mockGetSupportedAssetClasses,
-        getClassAssets: mockGetClassAssets,
-        getAssetByTokenId: mockGetAssetByTokenId,
-      }),
-    }),
-  },
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/app',
+  useSearchParams: () => new URLSearchParams(),
+}));
+
+vi.mock('@/hooks/useWallet', () => ({
+  useWallet: () => ({
+    chainId: 84532,
+  }),
+}));
+
+vi.mock('@/chain-constants', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/chain-constants')>();
+  return {
+    ...actual,
+    NEXT_PUBLIC_DEFAULT_CHAIN_ID: 84532,
+    NEXT_PUBLIC_RPC_URL_42161: 'https://arb1.example',
+    NEXT_PUBLIC_RPC_URL_84532: 'https://base-sepolia.example',
+    NEXT_PUBLIC_RPC_URL_8453: 'https://base.example',
+  };
+});
+
+vi.mock('@/infrastructure/config/indexer-endpoint', () => ({
+  setCurrentChainId: mocks.setCurrentChainId,
+}));
+
+vi.mock('@/infrastructure/repositories/platform-repository', () => ({
+  PlatformRepository: vi.fn().mockImplementation(() => ({
+    getSupportedAssets: mocks.getSupportedAssets,
+    getSupportedAssetClasses: mocks.getSupportedAssetClasses,
+    getClassAssets: mocks.getClassAssets,
+    getAssetByTokenId: mocks.getAssetByTokenId,
+  })),
+}));
+
+vi.mock('@/infrastructure/repositories/clob-v2-repository', () => ({
+  CLOBV2Repository: vi.fn().mockImplementation(() => ({
+    getVolumeByBaseTokenId: mocks.getVolumeByBaseTokenId,
+  })),
 }));
 
 // Import after mocks
@@ -60,16 +91,17 @@ function TestConsumer({
 describe('PlatformProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetSupportedAssets.mockResolvedValue([]);
-    mockGetSupportedAssetClasses.mockResolvedValue([]);
-    mockGetClassAssets.mockResolvedValue([]);
-    mockGetAssetByTokenId.mockResolvedValue(null);
+    mocks.getSupportedAssets.mockResolvedValue([]);
+    mocks.getSupportedAssetClasses.mockResolvedValue([]);
+    mocks.getClassAssets.mockResolvedValue([]);
+    mocks.getAssetByTokenId.mockResolvedValue(null);
+    mocks.getVolumeByBaseTokenId.mockResolvedValue(new Map());
   });
 
   describe('initial load', () => {
     it('should fetch supported assets and classes on mount', async () => {
-      mockGetSupportedAssets.mockResolvedValue([]);
-      mockGetSupportedAssetClasses.mockResolvedValue(['GOAT', 'SHEEP']);
+      mocks.getSupportedAssets.mockResolvedValue([]);
+      mocks.getSupportedAssetClasses.mockResolvedValue(['GOAT', 'SHEEP']);
 
       const onContext = vi.fn();
 
@@ -83,12 +115,12 @@ describe('PlatformProvider', () => {
         expect(screen.getByTestId('classes').textContent).toBe('GOAT,SHEEP');
       });
 
-      expect(mockGetSupportedAssets).toHaveBeenCalledTimes(1);
-      expect(mockGetSupportedAssetClasses).toHaveBeenCalledTimes(1);
+      expect(mocks.getSupportedAssets).toHaveBeenCalledTimes(1);
+      expect(mocks.getSupportedAssetClasses).toHaveBeenCalledTimes(1);
     });
 
     it('should set error state when fetch fails', async () => {
-      mockGetSupportedAssets.mockRejectedValue(new Error('Indexer offline'));
+      mocks.getSupportedAssets.mockRejectedValue(new Error('Indexer offline'));
 
       render(
         <PlatformProvider>
@@ -114,7 +146,7 @@ describe('PlatformProvider', () => {
           { name: 'weight', values: ['S', 'M', 'L'], description: '' },
         ],
       };
-      mockGetAssetByTokenId.mockResolvedValue(mockAsset);
+      mocks.getAssetByTokenId.mockResolvedValue(mockAsset);
 
       let capturedCtx: ReturnType<typeof usePlatform> | null = null;
       render(
@@ -129,14 +161,14 @@ describe('PlatformProvider', () => {
 
       const result = await capturedCtx!.getAssetByTokenId('12345');
 
-      expect(mockGetAssetByTokenId).toHaveBeenCalledWith('12345');
+      expect(mocks.getAssetByTokenId).toHaveBeenCalledWith('12345');
       expect(result).toEqual(mockAsset);
       expect(result!.attributes).toHaveLength(1);
       expect(result!.attributes[0].name).toBe('weight');
     });
 
     it('should return null on repository error (not throw)', async () => {
-      mockGetAssetByTokenId.mockRejectedValue(new Error('Pinata down'));
+      mocks.getAssetByTokenId.mockRejectedValue(new Error('Pinata down'));
 
       let capturedCtx: ReturnType<typeof usePlatform> | null = null;
       render(
@@ -154,7 +186,7 @@ describe('PlatformProvider', () => {
     });
 
     it('should hydrate past cached assets with empty attributes', async () => {
-      mockGetSupportedAssets.mockResolvedValue([
+      mocks.getSupportedAssets.mockResolvedValue([
         {
           assetClass: 'GOAT',
           tokenId: '12345',
@@ -175,7 +207,7 @@ describe('PlatformProvider', () => {
           },
         ],
       };
-      mockGetAssetByTokenId.mockResolvedValue(hydratedAsset);
+      mocks.getAssetByTokenId.mockResolvedValue(hydratedAsset);
 
       let capturedCtx: ReturnType<typeof usePlatform> | null = null;
       render(
@@ -190,7 +222,7 @@ describe('PlatformProvider', () => {
 
       const result = await capturedCtx!.getAssetByTokenId('12345');
 
-      expect(mockGetAssetByTokenId).toHaveBeenCalledWith('12345');
+      expect(mocks.getAssetByTokenId).toHaveBeenCalledWith('12345');
       expect(result?.name).toBe('Hydrated Goat');
       expect(result?.attributes).toHaveLength(1);
       expect(result?.attributes[0].name).toBe('weight');
@@ -223,7 +255,7 @@ describe('PlatformProvider', () => {
           attributes: [],
         },
       ];
-      mockGetClassAssets.mockResolvedValue(assets);
+      mocks.getClassAssets.mockResolvedValue(assets);
 
       let capturedCtx: ReturnType<typeof usePlatform> | null = null;
       render(
@@ -249,7 +281,7 @@ describe('PlatformProvider', () => {
       const assets: Asset[] = [
         { assetClass: 'GOAT', tokenId: '1', name: 'AUGOAT', attributes: [] },
       ];
-      mockGetClassAssets.mockResolvedValue(assets);
+      mocks.getClassAssets.mockResolvedValue(assets);
 
       let capturedCtx: ReturnType<typeof usePlatform> | null = null;
       render(
@@ -264,11 +296,11 @@ describe('PlatformProvider', () => {
 
       // First call -> hits repository
       await capturedCtx!.getClassAssets('GOAT');
-      expect(mockGetClassAssets).toHaveBeenCalledTimes(1);
+      expect(mocks.getClassAssets).toHaveBeenCalledTimes(1);
 
       // Second call -> should use cache
       await capturedCtx!.getClassAssets('GOAT');
-      expect(mockGetClassAssets).toHaveBeenCalledTimes(1); // Still 1
+      expect(mocks.getClassAssets).toHaveBeenCalledTimes(1); // Still 1
     });
 
     it('should serve fresh data after invalidateCache', async () => {
@@ -278,7 +310,7 @@ describe('PlatformProvider', () => {
       const assets2: Asset[] = [
         { assetClass: 'GOAT', tokenId: '1', name: 'New', attributes: [] },
       ];
-      mockGetClassAssets
+      mocks.getClassAssets
         .mockResolvedValueOnce(assets1)
         .mockResolvedValueOnce(assets2);
 
@@ -301,7 +333,7 @@ describe('PlatformProvider', () => {
 
       const result2 = await capturedCtx!.getClassAssets('GOAT');
       expect(result2[0].name).toBe('New');
-      expect(mockGetClassAssets).toHaveBeenCalledTimes(2);
+      expect(mocks.getClassAssets).toHaveBeenCalledTimes(2);
     });
   });
 

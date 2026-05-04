@@ -7,7 +7,7 @@ import { CLOBLib } from './CLOBLib.sol';
  * @title DiamondStorage
  * @notice Library to access Diamond AppStorage at a specific storage slot
  * @dev Production-ready storage with gas-optimized CLOB structures
- *      Aligned with legacy contracts: AuraAsset, Aurum, AuSys, RWYVault, OrderBridge
+ *      Shared by Diamond facets for assets, nodes, logistics, staking, and bridge flows.
  */
 library DiamondStorage {
     bytes32 constant APP_STORAGE_POSITION = keccak256('diamond.app.storage');
@@ -34,7 +34,7 @@ library DiamondStorage {
         mapping(bytes32 => mapping(uint256 => NodeAsset)) nodeAssets;
         mapping(bytes32 => uint256[]) nodeAssetIds;
         mapping(bytes32 => uint256) totalNodeAssets;
-        // Node admin system (from AurumNodeManager)
+        // Node admin system
         mapping(address => bool) nodeAdmins;
         // Allowed node registrars
         mapping(address => bool) nodeRegistrars;

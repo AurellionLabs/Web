@@ -7,6 +7,7 @@ import {
   useState,
   useCallback,
   useEffect,
+  useMemo,
 } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -19,9 +20,10 @@ import {
   GroupedStakes,
 } from '@/domain/pool';
 import { useWallet } from '@/hooks/useWallet';
-import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
-import { ServiceContext } from '@/infrastructure/contexts/service-context';
 import { useMainProvider } from './main.provider';
+import { useDiamond } from './diamond.provider';
+import { PoolRepository } from '@/infrastructure/repositories/pool-repository';
+import { PoolService } from '@/infrastructure/services/pool.service';
 
 type PoolContextType = {
   // State
@@ -112,10 +114,28 @@ export const PoolsProvider = ({ children }: { children: ReactNode }) => {
   const searchParams = useSearchParams();
   const { address } = useWallet();
   const { currentUserRole } = useMainProvider();
+  const {
+    diamondContext,
+    initialized: diamondInitialized,
+    contextVersion,
+  } = useDiamond();
 
   // Repository and Service instances
-  const poolRepository = RepositoryContext.getInstance().getPoolRepository();
-  const poolService = ServiceContext.getInstance().getPoolService();
+  const poolRepository = useMemo(() => {
+    if (!diamondInitialized || !diamondContext) return null;
+    return new PoolRepository(
+      diamondContext.getProvider(),
+      diamondContext.getSigner(),
+    );
+  }, [diamondContext, diamondInitialized, contextVersion]);
+  const poolService = useMemo(() => {
+    if (!poolRepository || !diamondContext) return null;
+    return new PoolService(
+      diamondContext.getProvider(),
+      diamondContext.getSigner(),
+      poolRepository,
+    );
+  }, [diamondContext, poolRepository, contextVersion]);
 
   // Helper function removed - now using repository for pool dynamics calculation
 

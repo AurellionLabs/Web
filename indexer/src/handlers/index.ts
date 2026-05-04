@@ -1,5 +1,5 @@
 // Auto-generated handler index - DO NOT EDIT
-// Generated at: 2026-03-11T00:43:03.888Z
+// Generated at: 2026-04-17T23:44:28.751Z
 
 import './nodes.generated';
 import './clob.generated';

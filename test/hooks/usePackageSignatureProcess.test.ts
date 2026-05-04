@@ -25,38 +25,32 @@ vi.mock('ethers', async () => {
   };
 });
 
-// Mock dependencies
-vi.mock('@/infrastructure/contexts/repository-context', () => ({
-  RepositoryContext: {
-    getInstance: vi.fn(() => ({
-      getAusysContract: vi.fn(),
-      listenForSignature: vi.fn(),
-    })),
-  },
+const mocks = vi.hoisted(() => ({
+  getDiamond: vi.fn(),
+  listenForSignature: vi.fn(),
 }));
 
-// Import after mocks
+vi.mock('@/app/providers/diamond.provider', () => ({
+  useDiamond: () => ({
+    diamondContext: { getDiamond: mocks.getDiamond },
+  }),
+}));
+
+vi.mock('@/infrastructure/services/signature-listener.service', () => ({
+  listenForSignature: (...args: unknown[]) => mocks.listenForSignature(...args),
+}));
+
 import { usePackageSignatureProcess } from '@/hooks/usePackageSignatureProcess';
-import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 
 describe('usePackageSignatureProcess', () => {
-  const mockRepositoryContext = RepositoryContext.getInstance as ReturnType<
-    typeof vi.fn
-  >;
-  const mockGetAusysContract = vi.fn();
-  const mockListenForSignature = vi.fn();
+  const mockGetDiamond = mocks.getDiamond;
+  const mockListenForSignature = mocks.listenForSignature;
 
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Setup default mock behavior
-    mockRepositoryContext.mockReturnValue({
-      getAusysContract: mockGetAusysContract,
-      listenForSignature: mockListenForSignature,
-    });
-
     // Default: successful transaction
-    mockGetAusysContract.mockReturnValue({
+    mockGetDiamond.mockReturnValue({
       packageSign: vi.fn().mockResolvedValue({
         wait: vi.fn().mockResolvedValue({ hash: '0xtest123' }),
       }),
@@ -170,7 +164,7 @@ describe('usePackageSignatureProcess', () => {
       expect(result.current.error).toBeNull();
 
       // Should have called contract method
-      const contract = mockGetAusysContract();
+      const contract = mockGetDiamond();
       expect(contract.packageSign).toHaveBeenCalled();
     });
 
@@ -188,8 +182,11 @@ describe('usePackageSignatureProcess', () => {
       });
 
       expect(mockListenForSignature).toHaveBeenCalledWith(
+        expect.objectContaining({
+          packageSign: expect.any(Function),
+        }),
         'test-job-123',
-        '0xDriver1234567890123456789012345678901234',
+        30000,
       );
     });
   });
@@ -197,7 +194,7 @@ describe('usePackageSignatureProcess', () => {
   describe('error handling', () => {
     it('should handle transaction failure', async () => {
       // Mock contract to throw
-      mockGetAusysContract.mockReturnValue({
+      mockGetDiamond.mockReturnValue({
         packageSign: vi
           .fn()
           .mockRejectedValue(new Error('Transaction reverted')),
@@ -223,7 +220,7 @@ describe('usePackageSignatureProcess', () => {
   describe('reset functionality', () => {
     it('should reset status and error when reset is called', async () => {
       // Make the first call error
-      mockGetAusysContract.mockReturnValue({
+      mockGetDiamond.mockReturnValue({
         packageSign: vi.fn().mockRejectedValue(new Error('Error')),
       });
 

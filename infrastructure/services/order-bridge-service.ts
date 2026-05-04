@@ -1,8 +1,6 @@
 'use client';
 
 import { ethers } from 'ethers';
-import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
-import { ServiceContext } from '@/infrastructure/contexts/service-context';
 import {
   clobRepository,
   PlaceLimitOrderParams,
@@ -11,10 +9,10 @@ import {
 } from '@/infrastructure/repositories/clob-repository';
 import {
   NEXT_PUBLIC_DIAMOND_ADDRESS,
-  NEXT_PUBLIC_ORDER_BRIDGE_ADDRESS,
   NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
 } from '@/chain-constants';
-// NEXT_PUBLIC_CLOB_ADDRESS no longer needed - CLOB is internal to Diamond
+import { getDiamondProvider, getDiamondSigner } from '@/infrastructure/diamond';
+// CLOB bridge calls go through Diamond facets.
 
 /**
  * Unified order status - tracks complete lifecycle from trade to delivery
@@ -70,6 +68,9 @@ export interface UnifiedOrder {
 export interface CreateUnifiedOrderParams {
   clobOrderId: string;
   sellerNode: string;
+  price?: bigint;
+  quantity?: bigint;
+  expiresAt?: bigint;
   deliveryData: DeliveryLocation;
 }
 
@@ -106,18 +107,11 @@ export interface BridgeTradeResult {
  * 4. Settlement releases funds when delivery confirmed
  */
 export class OrderBridgeService {
-  private repositoryContext: RepositoryContext;
-  private serviceContext: ServiceContext;
   private diamondAddress: string; // Diamond contains CLOBFacet
-  private bridgeAddress: string;
   private quoteTokenAddress: string;
 
   constructor() {
-    this.repositoryContext = RepositoryContext.getInstance();
-    this.serviceContext = ServiceContext.getInstance();
-    // CLOB is now internal to Diamond via CLOBFacet
     this.diamondAddress = NEXT_PUBLIC_DIAMOND_ADDRESS;
-    this.bridgeAddress = NEXT_PUBLIC_ORDER_BRIDGE_ADDRESS;
     this.quoteTokenAddress = NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS;
   }
 
@@ -156,6 +150,8 @@ export class OrderBridgeService {
         return await this.createUnifiedOrder({
           clobOrderId: orderResult.orderId,
           sellerNode: params.isBuy ? '' : '', // Will be set when trade matches
+          price: params.price,
+          quantity: params.amount,
           deliveryData,
         });
       }
@@ -208,19 +204,14 @@ export class OrderBridgeService {
     params: CreateUnifiedOrderParams,
   ): Promise<UnifiedOrderResult> {
     try {
-      const signer = this.repositoryContext.getSigner();
-      const signerAddress = await signer.getAddress();
+      const signer = getDiamondSigner();
 
-      // Get OrderBridge contract
       const bridgeABI = [
-        'function createUnifiedOrder(bytes32 clobOrderId, address sellerNode, (uint256 lat, uint256 lng, string startName, string endName) deliveryData) external returns (bytes32 unifiedOrderId)',
-        'function bridgeTradeToLogistics(bytes32 unifiedOrderId) external',
-        'function getUnifiedOrder(bytes32 unifiedOrderId) external view returns (bytes32 id, bytes32 clobOrderId, bytes32 clobTradeId, bytes32 ausysOrderId, address buyer, address seller, address sellerNode, address token, uint256 tokenId, uint256 tokenQuantity, uint256 price, uint256 bounty, uint8 status, uint8 logisticsStatus, uint256 createdAt, uint256 matchedAt, uint256 deliveredAt, uint256 settledAt)',
-        'function unifiedOrders(bytes32) external view returns (bytes32 id, bytes32 clobOrderId, bytes32 clobTradeId, bytes32 ausysOrderId, address buyer, address seller, address sellerNode, address token, uint256 tokenId, uint256 tokenQuantity, uint256 price, uint256 bounty, uint8 status, uint8 logisticsStatus, uint256 createdAt, uint256 matchedAt, uint256 deliveredAt, uint256 settledAt)',
+        'function createUnifiedOrder(bytes32 clobOrderId, address sellerNode, uint256 price, uint256 quantity, uint256 expiresAt, (int256 lat, int256 lng, string startName, string endName) deliveryData) external returns (bytes32 unifiedOrderId)',
       ];
 
       const bridgeContract = new ethers.Contract(
-        this.bridgeAddress,
+        this.diamondAddress,
         bridgeABI,
         signer,
       );
@@ -237,6 +228,9 @@ export class OrderBridgeService {
       const tx = await bridgeContract.createUnifiedOrder(
         params.clobOrderId,
         params.sellerNode,
+        params.price ?? 1n,
+        params.quantity ?? 1n,
+        params.expiresAt ?? BigInt(Math.floor(Date.now() / 1000) + 86400),
         deliveryData,
       );
 
@@ -270,31 +264,15 @@ export class OrderBridgeService {
     unifiedOrderId: string,
   ): Promise<BridgeTradeResult> {
     try {
-      const signer = this.repositoryContext.getSigner();
-
-      // Get OrderBridge contract
-      const bridgeABI = [
-        'function bridgeTradeToLogistics(bytes32 unifiedOrderId) external',
-        'function getUnifiedOrder(bytes32 unifiedOrderId) external view returns (bytes32 id, bytes32 clobOrderId, bytes32 clobTradeId, bytes32 ausysOrderId, address buyer, address seller, address sellerNode, address token, uint256 tokenId, uint256 tokenQuantity, uint256 price, uint256 bounty, uint8 status, uint8 logisticsStatus, uint256 createdAt, uint256 matchedAt, uint256 deliveredAt, uint256 settledAt)',
-      ];
-
-      const bridgeContract = new ethers.Contract(
-        this.bridgeAddress,
-        bridgeABI,
-        signer,
-      );
-
-      // Bridge the trade
-      const tx = await bridgeContract.bridgeTradeToLogistics(unifiedOrderId);
-      const receipt = await tx.wait();
-
-      // Get the updated unified order to get Ausys order ID
-      const order = await bridgeContract.getUnifiedOrder(unifiedOrderId);
+      const order = await this.getUnifiedOrder(unifiedOrderId);
 
       return {
-        success: true,
-        ausysOrderId: order.ausysOrderId,
-        journeyIds: [], // Would be populated from order.journeyIds
+        success: !!order,
+        ausysOrderId: order?.ausysOrderId,
+        journeyIds: order?.journeyIds ?? [],
+        error: order
+          ? undefined
+          : 'BridgeFacet bridgeTradeToLogistics requires signed trade context',
       };
     } catch (error) {
       console.error('[OrderBridgeService] Error bridging trade:', error);
@@ -312,22 +290,21 @@ export class OrderBridgeService {
    */
   async getUnifiedOrder(unifiedOrderId: string): Promise<UnifiedOrder | null> {
     try {
-      const signer = this.repositoryContext.getSigner();
-      const provider = this.repositoryContext.getProvider();
+      const provider = getDiamondProvider();
 
       const bridgeABI = [
-        'function getUnifiedOrder(bytes32 unifiedOrderId) external view returns (bytes32 id, bytes32 clobOrderId, bytes32 clobTradeId, bytes32 ausysOrderId, address buyer, address seller, address sellerNode, address token, uint256 tokenId, uint256 tokenQuantity, uint256 price, uint256 bounty, uint8 status, uint8 logisticsStatus, uint256 createdAt, uint256 matchedAt, uint256 deliveredAt, uint256 settledAt)',
+        'function getUnifiedOrder(bytes32 orderId) external view returns (bytes32 clobOrderId, bytes32 clobTradeId, bytes32 ausysOrderId, address buyer, address seller, address sellerNode, address token, uint256 tokenId, uint256 tokenQuantity, uint256 price, uint256 bounty, string status, uint8 logisticsStatus, uint256 createdAt, uint256 matchedAt, uint256 deliveredAt, uint256 settledAt)',
       ];
 
       const bridgeContract = new ethers.Contract(
-        this.bridgeAddress,
+        this.diamondAddress,
         bridgeABI,
         provider,
       );
 
       const order = await bridgeContract.getUnifiedOrder(unifiedOrderId);
 
-      if (order.id === ethers.ZeroHash) {
+      if (order.buyer === ethers.ZeroAddress) {
         return null;
       }
 
@@ -338,7 +315,7 @@ export class OrderBridgeService {
       );
 
       return {
-        id: order.id,
+        id: unifiedOrderId,
         clobOrderId: order.clobOrderId,
         clobTradeId: order.clobTradeId,
         ausysOrderId: order.ausysOrderId,
@@ -375,15 +352,14 @@ export class OrderBridgeService {
    */
   async getBuyerOrders(buyerAddress: string): Promise<string[]> {
     try {
-      const signer = this.repositoryContext.getSigner();
-      const provider = this.repositoryContext.getProvider();
+      const provider = getDiamondProvider();
 
       const bridgeABI = [
         'function getBuyerOrders(address buyer) external view returns (bytes32[])',
       ];
 
       const bridgeContract = new ethers.Contract(
-        this.bridgeAddress,
+        this.diamondAddress,
         bridgeABI,
         provider,
       );
@@ -405,14 +381,14 @@ export class OrderBridgeService {
     unifiedOrderId: string,
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const signer = this.repositoryContext.getSigner();
+      const signer = getDiamondSigner();
 
       const bridgeABI = [
         'function cancelUnifiedOrder(bytes32 unifiedOrderId) external',
       ];
 
       const bridgeContract = new ethers.Contract(
-        this.bridgeAddress,
+        this.diamondAddress,
         bridgeABI,
         signer,
       );
@@ -487,9 +463,23 @@ export class OrderBridgeService {
    * Map contract status to unified status
    */
   private mapContractStatus(
-    tradingStatus: number,
+    tradingStatus: number | string,
     logisticsStatus: number,
   ): UnifiedOrderStatus {
+    if (typeof tradingStatus === 'string') {
+      const normalized = tradingStatus.toLowerCase();
+      if (normalized === 'cancelled') return UnifiedOrderStatus.CANCELLED;
+      if (normalized === 'settled') return UnifiedOrderStatus.SETTLED;
+      if (normalized === 'delivered') return UnifiedOrderStatus.DELIVERED;
+      if (normalized === 'intransit') return UnifiedOrderStatus.IN_TRANSIT;
+      if (normalized === 'logisticscreated') {
+        return UnifiedOrderStatus.LOGISTICS_CREATED;
+      }
+      if (normalized === 'tradematched')
+        return UnifiedOrderStatus.TRADE_MATCHED;
+      if (normalized === 'pendingtrade')
+        return UnifiedOrderStatus.PENDING_TRADE;
+    }
     // Trading status: 0=None, 1=PendingTrade, 2=TradeMatched, 3=LogisticsCreated, 4=Settled, 5=Cancelled
     // Logistics status: 0=None, 1=Pending, 2=InTransit, 3=Delivered
 

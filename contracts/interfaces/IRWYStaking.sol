@@ -8,7 +8,7 @@ import {RWYStorage} from "../diamond/libraries/RWYStorage.sol";
  * @notice Interface for the Real World Yield Staking facet
  * @dev Diamond facet for commodity staking with token-based collateral
  *
- * Key changes from IRWYVault:
+ * Key Diamond staking behavior:
  * - Collateral is now token-based (ERC20 or ERC1155) instead of ETH
  * - Operator management moved to separate IOperatorFacet
  * - Part of Diamond proxy pattern

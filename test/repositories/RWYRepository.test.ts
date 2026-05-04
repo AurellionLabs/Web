@@ -45,7 +45,7 @@ vi.mock('@/infrastructure/repositories/rwy-repository', () => ({
 
 vi.mock('@/chain-constants', () => ({
   getIndexerUrl: () => 'http://localhost:42069',
-  NEXT_PUBLIC_RWY_VAULT_ADDRESS: '0xRWYVaultAddress',
+  NEXT_PUBLIC_DIAMOND_ADDRESS: '0xDiamondAddress',
 }));
 
 // ─── Imports ────────────────────────────────────────────────────────────────

@@ -22,8 +22,12 @@ import {
   NEXT_PUBLIC_DIAMOND_ADDRESS,
   NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS,
 } from '@/chain-constants';
-import { RepositoryContext } from '@/infrastructure/contexts/repository-context';
 import { clobV2Repository } from '@/infrastructure/repositories/clob-v2-repository';
+import {
+  getDiamondProvider,
+  getDiamondSigner,
+  getDiamondSignerAddress,
+} from '@/infrastructure/diamond';
 import { keccak256, encodePacked, toBytes } from 'viem';
 
 // =============================================================================
@@ -91,14 +95,12 @@ const ERC1155_ABI = [
 export class CLOBV2Service implements ICLOBService {
   private diamondAddress: string;
   private quoteTokenAddress: string;
-  private repositoryContext: RepositoryContext;
 
   constructor() {
     this.diamondAddress = NEXT_PUBLIC_CLOB_V2_DIAMOND_ADDRESS;
     this.quoteTokenAddress =
       NEXT_PUBLIC_QUOTE_TOKEN_ADDRESS ||
       '0x036CbD53842c5426634e7929541eC2318f3dCF7e';
-    this.repositoryContext = RepositoryContext.getInstance();
   }
 
   // ============================================================================
@@ -218,7 +220,7 @@ export class CLOBV2Service implements ICLOBService {
   ): Promise<OrderPlacementResult> {
     try {
       const contract = await this.getCLOBContract();
-      const signerAddress = await this.repositoryContext.getSignerAddress();
+      const signerAddress = await getDiamondSignerAddress();
 
       const tifNum = this.timeInForceToNumber(params.timeInForce);
       const expiry = params.expiry || 0;
@@ -461,8 +463,8 @@ export class CLOBV2Service implements ICLOBService {
   // ============================================================================
 
   private async getCLOBContract(): Promise<ethers.Contract> {
-    const signer = this.repositoryContext.getSigner();
-    const provider = this.repositoryContext.getProvider();
+    const signer = getDiamondSigner();
+    const provider = getDiamondProvider();
 
     const contract = new ethers.Contract(
       this.diamondAddress,
@@ -474,14 +476,14 @@ export class CLOBV2Service implements ICLOBService {
   }
 
   private async getCLOBAdminContract(): Promise<ethers.Contract> {
-    const provider = this.repositoryContext.getProvider();
+    const provider = getDiamondProvider();
     return new ethers.Contract(this.diamondAddress, CLOB_ADMIN_ABI, provider);
   }
 
   private async ensureQuoteTokenApproval(amount: bigint): Promise<void> {
-    const signer = this.repositoryContext.getSigner();
-    const provider = this.repositoryContext.getProvider();
-    const signerAddress = await this.repositoryContext.getSignerAddress();
+    const signer = getDiamondSigner();
+    const provider = getDiamondProvider();
+    const signerAddress = await getDiamondSignerAddress();
 
     const quoteToken = new ethers.Contract(
       this.quoteTokenAddress,
@@ -501,9 +503,9 @@ export class CLOBV2Service implements ICLOBService {
   }
 
   private async ensureBaseTokenApproval(baseToken: string): Promise<void> {
-    const signer = this.repositoryContext.getSigner();
-    const provider = this.repositoryContext.getProvider();
-    const signerAddress = await this.repositoryContext.getSignerAddress();
+    const signer = getDiamondSigner();
+    const provider = getDiamondProvider();
+    const signerAddress = await getDiamondSignerAddress();
 
     const token = new ethers.Contract(baseToken, ERC1155_ABI, provider).connect(
       signer,

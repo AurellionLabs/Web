@@ -18,20 +18,12 @@ const OUTPUT_FILE = path.join(
 );
 
 const CONTRACTS_TO_EXTRACT = {
-  AurumNodeManager: 'Aurum.sol/AurumNodeManager.json',
-  AurumNode: 'Aurum.sol/aurumNode.json',
-  AuraAsset: 'AuraAsset.sol/AuraAsset.json',
-  AuStake: 'AuStake.sol/AuStake.json',
-  Ausys: 'AuSys.sol/Ausys.json',
-  AuraGoatRed: 'AuraGoatRed.sol/AuraGoatRed.json',
-  CLOB: 'CLOB.sol/CLOB.json',
-  OrderBridge: 'OrderBridge.sol/OrderBridge.json',
-  RWYVault: 'RWYVault.sol/RWYVault.json',
   Diamond: 'diamond/Diamond.sol/Diamond.json',
   DiamondCutFacet: 'diamond/facets/DiamondCutFacet.sol/DiamondCutFacet.json',
   DiamondLoupeFacet:
     'diamond/facets/DiamondLoupeFacet.sol/DiamondLoupeFacet.json',
   OwnershipFacet: 'diamond/facets/OwnershipFacet.sol/OwnershipFacet.json',
+  RWYStakingFacet: 'diamond/facets/RWYStakingFacet.sol/RWYStakingFacet.json',
 };
 
 const abis = {};

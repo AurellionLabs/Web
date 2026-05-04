@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './dialog';
 import { useToast } from '@/hooks/use-toast';
 import { formatAddress } from '@/lib/formatters';
@@ -16,6 +17,7 @@ import {
   MoonpayCurrencyCode,
 } from '@privy-io/react-auth';
 import { useE2EAuth } from '@/app/providers/e2e-auth.provider';
+import { resolveExpectedAppChain } from '@/lib/app-chain';
 
 import {
   base,
@@ -69,6 +71,8 @@ export function WalletConnection() {
 }
 
 function WalletConnectionPrivy() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { setIsWalletConnected } = useMainProvider();
   const { ready, authenticated } = usePrivy();
   const { fundWallet } = useFundWallet();
@@ -76,12 +80,17 @@ function WalletConnectionPrivy() {
     connect,
     disconnect,
     address,
+    chainId: walletChainId,
     error,
     repository,
     isConnected,
     connectedWallet,
   } = useWallet();
   const { toast } = useToast();
+  const expectedAppChain = resolveExpectedAppChain({
+    pathname,
+    searchParams,
+  });
   const [isOpen, setIsOpen] = useState(false);
   const [currentChainId, setCurrentChainId] = useState<number>();
   const [isCorrectNetwork, setIsCorrectNetwork] = useState(false);
@@ -115,9 +124,14 @@ function WalletConnectionPrivy() {
     const wallet = connectedWallet;
     if (!wallet) return;
 
-    const numericChainId = parseInt(wallet.chainId.split(':')[1]);
+    const numericChainId =
+      walletChainId ?? parseInt(wallet.chainId.split(':')[1]);
     setCurrentChainId(numericChainId);
-    setIsCorrectNetwork(SUPPORTED_CHAINS.includes(numericChainId));
+    setIsCorrectNetwork(
+      expectedAppChain.expectedChainId !== null
+        ? numericChainId === expectedAppChain.expectedChainId
+        : SUPPORTED_CHAINS.includes(numericChainId),
+    );
   };
 
   useEffect(() => {
@@ -125,7 +139,7 @@ function WalletConnectionPrivy() {
       checkConnection();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authenticated, connectedWallet]);
+  }, [authenticated, connectedWallet, expectedAppChain.expectedChainId]);
 
   useEffect(() => {
     const fetchAllBalances = async () => {
@@ -235,7 +249,8 @@ function WalletConnectionPrivy() {
       return;
     }
     try {
-      const targetChainId = SUPPORTED_CHAINS[0];
+      const targetChainId =
+        expectedAppChain.expectedChainId ?? SUPPORTED_CHAINS[0];
       const chainIdHex = `0x${targetChainId.toString(16)}` as `0x${string}`;
       await wallet.switchChain(chainIdHex);
     } catch (error: any) {
@@ -482,6 +497,11 @@ function WalletConnectionPrivy() {
                 )}
 
               <div className="pt-2 space-y-2">
+                {!isCorrectNetwork && expectedAppChain.expectedChainName && (
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+                    Expected network: {expectedAppChain.expectedChainName}
+                  </div>
+                )}
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(address);
@@ -513,7 +533,9 @@ function WalletConnectionPrivy() {
                   onClick={switchNetwork}
                   className="w-full px-4 py-2 text-sm font-medium rounded-lg border border-amber-500/50 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-all"
                 >
-                  Switch to a Supported Network
+                  {expectedAppChain.expectedChainName
+                    ? `Switch to ${expectedAppChain.expectedChainName}`
+                    : 'Switch to a Supported Network'}
                 </button>
               )}
 

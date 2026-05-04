@@ -6,23 +6,13 @@
 // CONTRACT ADDRESSES - Base Sepolia
 // =============================================================================
 
-export const NEXT_PUBLIC_AUSTAKE_ADDRESS =
-  '0xd41b6Dc779558bbe674B13F6996BFD5679f75074';
 export const NEXT_PUBLIC_AURA_TOKEN_ADDRESS =
   '0x838Cb08335Ab4121CE4f438F38A002C9A62F69C1';
-export const NEXT_PUBLIC_AURUM_NODE_MANAGER_ADDRESS =
-  '0x6482Bf07f158D6ca7E6431c95d660a5D21eE505c';
-export const NEXT_PUBLIC_AUSYS_ADDRESS =
-  '0x84dC0BB1098aE6F4777C33F1C6221f11725EEfde';
 export const NEXT_PUBLIC_AURA_ASSET_ADDRESS =
   '0x1235E39477752713902bCE541Fc02ADeb6FF465b';
-export const NEXT_PUBLIC_CLOB_ADDRESS =
-  '0x2f17AF60e5Ca09Eb55560bFB9A374701711a4C49';
 // CLOB V2 Diamond - separate Diamond for CLOB trading (placeLimitOrder, matching, etc.)
 export const NEXT_PUBLIC_CLOB_V2_DIAMOND_ADDRESS =
   '0x2516CAdb7b3d4E94094bC4580C271B8559902e3f';
-export const NEXT_PUBLIC_ORDER_BRIDGE_ADDRESS =
-  '0xad1f2aBF1baE127464Ea5ADd8A540c7bfDade226';
 
 // RWY Staking is now part of the Diamond (RWYStakingFacet)
 // Use NEXT_PUBLIC_DIAMOND_ADDRESS for RWY staking operations
@@ -46,10 +36,6 @@ export const NEXT_PUBLIC_QUOTE_TOKEN_DECIMALS = Number(
 export const NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL =
   process.env.NEXT_PUBLIC_QUOTE_TOKEN_SYMBOL ||
   (quoteTokenIsArbitrumUsdc ? 'USDC' : 'AURA'); // Change to 'USDC' for production
-
-//
-// AuraGoat is the same as AuraAsset for now (ERC1155 token contract)
-export const NEXT_PUBLIC_AURA_GOAT_ADDRESS = NEXT_PUBLIC_AURA_ASSET_ADDRESS;
 
 // =============================================================================
 // EIP-2535 DIAMOND CONTRACTS - Base Sepolia
@@ -104,10 +90,6 @@ export const NEXT_PUBLIC_RPC_URL_8453 =
 // Ponder indexer GraphQL endpoint (custom domain with SSL)
 export const NEXT_PUBLIC_INDEXER_URL =
   'https://indexer.aurellionlabs.com/graphql';
-export const NEXT_PUBLIC_AUSYS_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
-export const NEXT_PUBLIC_AURA_ASSET_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
-export const NEXT_PUBLIC_AURUM_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
-export const NEXT_PUBLIC_AUSTAKE_SUBGRAPH_URL = NEXT_PUBLIC_INDEXER_URL;
 
 // =============================================================================
 // CHAIN CONFIG
@@ -122,10 +104,6 @@ export const NEXT_PUBLIC_DEFAULT_CHAIN_ID = 84532; // Base Sepolia
 
 export const DEPLOYMENT_BLOCKS = {
   // 0 = auto-detect
-  auraToken: 0,
-  auSys: 0,
-  aurumNodeManager: 0,
-  auStake: 0,
+  diamond: DIAMOND_DEPLOY_BLOCK,
   auraAsset: 0,
-  clob: 0,
 };

@@ -61,17 +61,12 @@ const mocks = vi.hoisted(() => {
     findPoolsByProvider: vi.fn().mockResolvedValue([]),
   };
 
-  const repoCtx = {
-    getPoolRepository: vi.fn().mockReturnValue(poolRepo),
-  };
-
   return {
     stakingContract,
     erc20Contract,
     erc1155Contract,
     mockSigner,
     poolRepo,
-    repoCtx,
   };
 });
 
@@ -172,13 +167,11 @@ describe('PoolService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // Re-apply mock return values after clearAllMocks / restoreAllMocks resets them
-    mocks.repoCtx.getPoolRepository.mockReturnValue(mocks.poolRepo);
     mocks.mockSigner.getAddress.mockResolvedValue(SIGNER_ADDR);
     service = new PoolService(
       {} as any,
       mocks.mockSigner as any,
-      mocks.repoCtx as any,
+      mocks.poolRepo as any,
       DIAMOND,
     );
   });
@@ -194,7 +187,7 @@ describe('PoolService', () => {
           new PoolService(
             {} as any,
             mocks.mockSigner as any,
-            mocks.repoCtx as any,
+            mocks.poolRepo as any,
             '',
           ),
       ).toThrow('[PoolService] Pool contract address is undefined');

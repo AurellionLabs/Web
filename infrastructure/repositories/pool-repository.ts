@@ -9,40 +9,6 @@ import {
   BigNumberString,
 } from '@/domain/pool';
 import {
-  AuStake__factory,
-  type AuStake as AuStakeContract,
-} from '@/lib/contracts';
-// Inlined from typechain-types (gitignored) to keep CI type-safe
-type AuStakeOperationStructOutput = [
-  id: string,
-  name: string,
-  description: string,
-  token: string,
-  provider: string,
-  deadline: bigint,
-  startDate: bigint,
-  rwaName: string,
-  reward: bigint,
-  tokenTvl: bigint,
-  operationStatus: bigint,
-  fundingGoal: bigint,
-  assetPrice: bigint,
-] & {
-  id: string;
-  name: string;
-  description: string;
-  token: string;
-  provider: string;
-  deadline: bigint;
-  startDate: bigint;
-  rwaName: string;
-  reward: bigint;
-  tokenTvl: bigint;
-  operationStatus: bigint;
-  fundingGoal: bigint;
-  assetPrice: bigint;
-};
-import {
   BigNumberish,
   BytesLike,
   ethers,
@@ -50,13 +16,9 @@ import {
   Provider,
   Signer,
 } from 'ethers';
-import {
-  NEXT_PUBLIC_AUSTAKE_ADDRESS,
-  NEXT_PUBLIC_DIAMOND_ADDRESS,
-} from '@/chain-constants';
+import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
 import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
 import { RpcProviderFactory } from '@/infrastructure/providers/rpc-provider-factory';
-import { readContract } from 'viem/actions';
 import { gql, request } from 'graphql-request';
 import {
   GET_COMMODITY_STAKED_EVENTS,
@@ -83,13 +45,10 @@ const RWY_STAKING_ABI = [
  * Uses dedicated RPC for read operations and user's signer for write operations.
  */
 export class PoolRepository implements IPoolRepository {
-  private readContract: AuStakeContract;
-  private writeContract: AuStakeContract;
   private diamondContract: Contract; // For RWY opportunities on Diamond
   private signer: Signer;
   private readProvider: Provider;
   private userProvider: Provider;
-  private contractAddress: string;
   private diamondAddress: string;
   private isInitialized = false;
   private get graphqlEndpoint() {
@@ -110,20 +69,17 @@ export class PoolRepository implements IPoolRepository {
   constructor(
     userProvider: Provider,
     signer: Signer,
-    contractAddress: string = NEXT_PUBLIC_AUSTAKE_ADDRESS,
+    diamondAddress: string = NEXT_PUBLIC_DIAMOND_ADDRESS,
   ) {
-    if (!contractAddress) {
+    if (!diamondAddress) {
       throw new Error('[PoolRepository] Pool contract address is undefined');
     }
     this.userProvider = userProvider;
     this.signer = signer;
-    this.contractAddress = contractAddress;
-    this.diamondAddress = NEXT_PUBLIC_DIAMOND_ADDRESS;
+    this.diamondAddress = diamondAddress;
 
     // Initialize with user provider as fallback
     this.readProvider = userProvider;
-    this.readContract = AuStake__factory.connect(contractAddress, userProvider);
-    this.writeContract = AuStake__factory.connect(contractAddress, signer);
 
     // Initialize Diamond contract for RWY opportunities
     this.diamondContract = new Contract(
@@ -140,12 +96,6 @@ export class PoolRepository implements IPoolRepository {
     try {
       const chainId = await RpcProviderFactory.getChainId(this.userProvider);
       this.readProvider = RpcProviderFactory.getReadOnlyProvider(chainId);
-
-      // Read contract uses dedicated RPC provider
-      this.readContract = AuStake__factory.connect(
-        this.contractAddress,
-        this.readProvider,
-      );
 
       // Update Diamond contract with dedicated RPC provider
       this.diamondContract = new Contract(
@@ -287,39 +237,20 @@ export class PoolRepository implements IPoolRepository {
     try {
       await this.ensureInitialized();
 
-      // First try to fetch from Diamond (RWY opportunities)
-      try {
-        const opportunity = await this.retryOnRateLimit(
-          () => this.diamondContract.getOpportunity(id),
-          `getOpportunity for pool ${id}`,
-        );
-
-        if (
-          opportunity &&
-          opportunity.id !== ethers.ZeroHash &&
-          opportunity.operator !== ethers.ZeroAddress
-        ) {
-          return this.mapDiamondOpportunityToPool(opportunity);
-        }
-      } catch (diamondError: any) {
-        // If Diamond call fails, fall back to legacy AuStake contract
-      }
-
-      // Fall back to legacy AuStake contract
-      const operation = await this.retryOnRateLimit(
-        () => this.readContract.getOperation(id),
-        `getOperation for pool ${id}`,
+      const opportunity = await this.retryOnRateLimit(
+        () => this.diamondContract.getOpportunity(id),
+        `getOpportunity for pool ${id}`,
       );
 
       if (
-        !operation ||
-        operation.id === ethers.ZeroHash ||
-        operation.token === ethers.ZeroAddress
+        !opportunity ||
+        opportunity.id === ethers.ZeroHash ||
+        opportunity.operator === ethers.ZeroAddress
       ) {
         throw new Error(`Pool with id ${id} not found`);
       }
 
-      return this.mapContractOperationToPool(operation);
+      return this.mapDiamondOpportunityToPool(opportunity);
     } catch (error) {
       console.error(
         `[PoolRepository.getPoolById] Error fetching pool ${id}:`,
@@ -727,38 +658,6 @@ export class PoolRepository implements IPoolRepository {
         `Failed to calculate dynamic data: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
-  }
-
-  private mapContractOperationToPool(
-    operation: AuStakeOperationStructOutput,
-  ): Pool {
-    const currentTime = Math.floor(Date.now() / 1000);
-    const deadline = Number(operation.deadline);
-    const actualStartDate = Number(operation.startDate);
-
-    // Determine status based on deadline and completion
-    let status: PoolStatus;
-    if (currentTime > deadline) {
-      status = PoolStatus.COMPLETE;
-    } else {
-      status = PoolStatus.ACTIVE;
-    }
-
-    return {
-      id: operation.id,
-      name: operation.name,
-      description: operation.description,
-      assetName: operation.rwaName,
-      tokenAddress: operation.token as Address,
-      providerAddress: operation.provider as Address,
-      fundingGoal: operation.fundingGoal.toString(),
-      totalValueLocked: operation.tokenTvl?.toString() || '0',
-      startDate: actualStartDate, // Use actual start date from contract
-      durationDays: Math.ceil((deadline - actualStartDate) / (24 * 60 * 60)), // Calculate original duration
-      rewardRate: Number(operation.reward) / 100, // Assuming reward is in basis points
-      assetPrice: operation.assetPrice.toString(), // Asset price from contract
-      status,
-    };
   }
 
   /**

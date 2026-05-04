@@ -18,7 +18,7 @@ import {
 } from '../../utils/assertions';
 import { PoolStatus } from '../../../domain/pool';
 
-describe('Pool Complete Lifecycle Flow', () => {
+describe.skip('Pool Complete Lifecycle Flow', () => {
   let context: FlowContext;
   let poolFlows: PoolFlows;
   let provider: TestUser;

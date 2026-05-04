@@ -18,6 +18,9 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 // Mock Privy hooks
 const mockUsePrivy = vi.fn();
 const mockUseWallets = vi.fn();
+const { mockPrivyWalletRepository } = vi.hoisted(() => ({
+  mockPrivyWalletRepository: vi.fn(),
+}));
 
 vi.mock('@privy-io/react-auth', () => ({
   usePrivy: (...args: unknown[]) => mockUsePrivy(...args),
@@ -26,30 +29,11 @@ vi.mock('@privy-io/react-auth', () => ({
 
 // Mock repository
 vi.mock('@/infrastructure/repositories/privy-wallet-repository', () => ({
-  PrivyWalletRepository: vi.fn().mockImplementation(() => ({
-    getAddress: vi.fn(),
-    getChainId: vi.fn(),
-    signMessage: vi.fn(),
-    clearProviderCache: vi.fn(),
-  })),
+  PrivyWalletRepository: mockPrivyWalletRepository,
 }));
 
 vi.mock('@/infrastructure/config/indexer-endpoint', () => ({
   setCurrentChainId: vi.fn(),
-}));
-
-vi.mock('@/dapp-connectors/base-controller', () => ({
-  setProvider: vi.fn(),
-  setSigner: vi.fn(),
-  setWalletAddress: vi.fn(),
-}));
-
-vi.mock('@/infrastructure/contexts/repository-context', () => ({
-  RepositoryContext: {
-    getInstance: vi.fn(() => ({
-      cleanup: vi.fn(),
-    })),
-  },
 }));
 
 // Set up E2E mode env var
@@ -58,6 +42,15 @@ beforeEach(() => {
   process.env.NEXT_PUBLIC_E2E_TEST_MODE = 'false';
   window.localStorage.clear();
   delete (window as Window & { ethereum?: unknown }).ethereum;
+  mockPrivyWalletRepository.mockImplementation(
+    (_privyWallets, _privyAuth, getActiveWallet) => ({
+      getAddress: vi.fn(),
+      getChainId: vi.fn(),
+      signMessage: vi.fn(),
+      clearProviderCache: vi.fn(),
+      getActiveWallet,
+    }),
+  );
 });
 afterEach(() => {
   process.env.NEXT_PUBLIC_E2E_TEST_MODE = originalE2E;
@@ -662,11 +655,17 @@ describe('useWallet', () => {
       });
 
       const { result, rerender } = renderHook(() => useWallet());
+      const getActiveWallet = mockPrivyWalletRepository.mock.calls[0][2];
+      const repository = result.current.repository;
 
       await act(async () => {
         await new Promise((resolve) => setTimeout(resolve, 0));
       });
 
+      expect(typeof getActiveWallet).toBe('function');
+      expect(getActiveWallet()?.address).toBe(
+        '0x1111111111111111111111111111111111111111',
+      );
       expect(result.current.connectedWallet?.address).toBe(
         '0x1111111111111111111111111111111111111111',
       );
@@ -681,6 +680,10 @@ describe('useWallet', () => {
       rerender();
 
       expect(mockLogout).not.toHaveBeenCalled();
+      expect(repository?.clearProviderCache).toHaveBeenCalledTimes(1);
+      expect(getActiveWallet()?.address).toBe(
+        '0x2222222222222222222222222222222222222222',
+      );
       expect(result.current.connectedWallet?.address).toBe(
         '0x2222222222222222222222222222222222222222',
       );
@@ -693,7 +696,7 @@ describe('useWallet', () => {
       expect(result.current.authTransitionState).toBe('idle');
     });
 
-    it('should only update address when the selected injected account is not in Privy wallets', async () => {
+    it('should keep the Privy address when the selected injected account is not in Privy wallets', async () => {
       const mockLogout = vi.fn();
       const listeners = new Map<string, (accounts: string[]) => void>();
       const ethereumProvider = {
@@ -731,6 +734,7 @@ describe('useWallet', () => {
       });
 
       const { result, rerender } = renderHook(() => useWallet());
+      const repository = result.current.repository;
 
       await act(async () => {
         await new Promise((resolve) => setTimeout(resolve, 0));
@@ -746,15 +750,75 @@ describe('useWallet', () => {
       rerender();
 
       expect(mockLogout).not.toHaveBeenCalled();
+      expect(repository?.clearProviderCache).toHaveBeenCalledTimes(1);
       expect(result.current.connectedWallet?.address).toBe(
         '0x1111111111111111111111111111111111111111',
       );
       expect(result.current.isConnected).toBe(true);
       expect(result.current.address).toBe(
-        '0x2222222222222222222222222222222222222222',
+        '0x1111111111111111111111111111111111111111',
       );
       expect(result.current.chainId).toBe(1);
       expect(result.current.isDisconnecting).toBe(false);
+    });
+
+    it('should pass a live active-wallet resolver into PrivyWalletRepository', async () => {
+      const listeners = new Map<string, (accounts: string[]) => void>();
+      const ethereumProvider = {
+        selectedAddress: '0x1111111111111111111111111111111111111111',
+        on: vi.fn((event: string, handler: (accounts: string[]) => void) => {
+          listeners.set(event, handler);
+        }),
+        removeListener: vi.fn((event: string) => {
+          listeners.delete(event);
+        }),
+      };
+
+      (window as Window & { ethereum?: unknown }).ethereum = ethereumProvider;
+
+      mockUsePrivy.mockReturnValue({
+        ready: true,
+        authenticated: true,
+        login: vi.fn(),
+        logout: vi.fn(),
+      });
+      mockUseWallets.mockReturnValue({
+        ready: true,
+        wallets: [
+          {
+            address: '0x1111111111111111111111111111111111111111',
+            chainId: 'eip155:1',
+            linked: true,
+            getEthereumProvider: vi.fn().mockResolvedValue(ethereumProvider),
+          },
+          {
+            address: '0x2222222222222222222222222222222222222222',
+            chainId: 'eip155:84532',
+            linked: true,
+            getEthereumProvider: vi.fn().mockResolvedValue(ethereumProvider),
+          },
+        ],
+      });
+
+      const { rerender } = renderHook(() => useWallet());
+      const getActiveWallet = mockPrivyWalletRepository.mock.calls[0][2];
+
+      expect(getActiveWallet()?.address).toBe(
+        '0x1111111111111111111111111111111111111111',
+      );
+
+      await act(async () => {
+        listeners.get('accountsChanged')?.([
+          '0x2222222222222222222222222222222222222222',
+        ]);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      rerender();
+
+      expect(getActiveWallet()?.address).toBe(
+        '0x2222222222222222222222222222222222222222',
+      );
     });
   });
 

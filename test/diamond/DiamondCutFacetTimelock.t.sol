@@ -16,19 +16,29 @@ contract DiamondCutFacetTimelockTest is DiamondTestBase {
         cutFacet = DiamondCutFacet(address(diamond));
     }
 
-    function test_defaultDiamondCutTimelock_isTwoDays() public view {
-        assertEq(cutFacet.getDiamondCutTimelock(), 2 days);
+    function test_defaultDiamondCutTimelock_isZero() public view {
+        assertEq(cutFacet.getDiamondCutTimelock(), 0);
     }
 
-    function test_diamondCut_revertsWhenNotScheduled() public {
+    function test_diamondCut_executesImmediatelyWhenTimelockIsZero() public {
         IDiamondCut.FacetCut[] memory cut = _ordersFacetCut();
 
         vm.prank(owner);
-        vm.expectRevert(DiamondCutFacet.DiamondCutNotScheduled.selector);
         IDiamondCut(address(diamond)).diamondCut(cut, address(0), '');
+
+        bytes4 selector = TimelockTestFacet.ping.selector;
+        assertEq(DiamondLoupeFacet(address(diamond)).facetAddress(selector), pendingFacet);
     }
 
-    function test_diamondCut_requiresDelayToElapse() public {
+    function test_diamondCut_requiresDelayToElapse_afterTimelockIsEnabled() public {
+        vm.prank(owner);
+        cutFacet.scheduleDiamondCutTimelockChange(3 days);
+
+        vm.prank(owner);
+        cutFacet.executeDiamondCutTimelockChange();
+
+        assertEq(cutFacet.getDiamondCutTimelock(), 3 days);
+
         IDiamondCut.FacetCut[] memory cut = _ordersFacetCut();
 
         vm.prank(owner);
@@ -46,15 +56,10 @@ contract DiamondCutFacetTimelockTest is DiamondTestBase {
         assertEq(DiamondLoupeFacet(address(diamond)).facetAddress(selector), pendingFacet);
     }
 
-    function test_timelockChange_isItselfTimelocked() public {
+    function test_timelockChange_executesImmediatelyWhenCurrentDelayIsZero() public {
         vm.prank(owner);
         cutFacet.scheduleDiamondCutTimelockChange(3 days);
 
-        vm.prank(owner);
-        vm.expectRevert();
-        cutFacet.executeDiamondCutTimelockChange();
-
-        vm.warp(block.timestamp + cutFacet.getDiamondCutTimelock());
         vm.prank(owner);
         cutFacet.executeDiamondCutTimelockChange();
 
