@@ -1,6 +1,7 @@
 'use client';
 //
 import { ReactNode, useEffect, useMemo, useRef } from 'react';
+import { useState } from 'react';
 import {
   addRpcUrlOverrideToChain,
   PrivyProvider,
@@ -364,7 +365,13 @@ function PrivyWalletSetupEffect() {
 
 export function PrivyProviderWrapper({ children }: PrivyProviderWrapperProps) {
   installE2ETestWalletShim();
+  const privyAppId = process.env.NEXT_PUBLIC_PRIVY_APP_ID?.trim();
   const privyClientId = process.env.NEXT_PUBLIC_PRIVY_CLIENT_ID || undefined;
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   const arbitrumOverride = addRpcUrlOverrideToChain(
     arbitrum,
@@ -381,6 +388,19 @@ export function PrivyProviderWrapper({ children }: PrivyProviderWrapperProps) {
     return <E2EAuthProvider>{children}</E2EAuthProvider>;
   }
 
+  // Keep the server render and first client render identical. After hydration
+  // we can safely mount the real Privy SDK on the browser only.
+  if (!isHydrated) {
+    return <>{children}</>;
+  }
+
+  if (!privyAppId) {
+    console.warn(
+      '[PrivyProviderWrapper] NEXT_PUBLIC_PRIVY_APP_ID is not set. Rendering without Privy until the client env is configured.',
+    );
+    return <>{children}</>;
+  }
+
   if (
     process.env.NODE_ENV !== 'production' &&
     !privyClientId &&
@@ -393,7 +413,7 @@ export function PrivyProviderWrapper({ children }: PrivyProviderWrapperProps) {
 
   return (
     <PrivyProvider
-      appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ''}
+      appId={privyAppId}
       clientId={privyClientId}
       config={{
         loginMethods: ['wallet', 'email', 'google', 'twitter'],
