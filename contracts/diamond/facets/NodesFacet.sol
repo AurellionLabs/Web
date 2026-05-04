@@ -2,13 +2,15 @@
 pragma solidity ^0.8.28;
 
 
-import {IERC20, IERC20Metadata, ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { DiamondStorage } from '../libraries/DiamondStorage.sol';
 import { LibDiamond } from '../libraries/LibDiamond.sol';
+import { NodeVaultStorage } from '../libraries/NodeVaultStorage.sol';
 import { Initializable } from '@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol';
 import { IERC1155 } from '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
+import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import { DiamondReentrancyGuard } from '../libraries/DiamondReentrancyGuard.sol';
-import "./RWYVaults.sol";
+import { INodeVault } from '../../interfaces/INodeVault.sol';
+import { NodeVault } from './NodeVault.sol';
 
 /**
  * @dev Interface for OrderRouterFacet - SINGLE ENTRY POINT for all order operations
@@ -112,6 +114,11 @@ contract NodesFacet is Initializable, DiamondReentrancyGuard {
         uint256 amount,
         address indexed depositor
     );
+    event NodeVaultCreated(
+        bytes32 indexed nodeHash,
+        address indexed vault,
+        address indexed asset
+    );
     event NodeRegistrarUpdated(address indexed registrar, bool enabled);
 
     // Supporting document events
@@ -205,8 +212,48 @@ contract NodesFacet is Initializable, DiamondReentrancyGuard {
         // All orders should go through OrderRouterFacet
         return address(this);
     }
-    function openVault(IERC20 asset_) public  {
-        new ERC20(asset_);
+
+    function createNodeVault(
+        bytes32 _nodeHash,
+        string calldata _name,
+        string calldata _symbol
+    ) external returns (address vault) {
+        DiamondStorage.AppStorage storage s = DiamondStorage.appStorage();
+        require(s.nodes[_nodeHash].validNode, 'Invalid node');
+        require(s.nodes[_nodeHash].owner == msg.sender, 'Not node owner');
+        require(s.quoteTokenAddress != address(0), 'Pay token not set');
+
+        NodeVaultStorage.Layout storage vs = NodeVaultStorage.layout();
+        require(vs.vaultByNode[_nodeHash] == address(0), 'Vault already exists');
+
+        vault = address(
+            new NodeVault(
+                address(this),
+                _nodeHash,
+                IERC20(s.quoteTokenAddress),
+                msg.sender,
+                _name,
+                _symbol
+            )
+        );
+
+        vs.vaultByNode[_nodeHash] = vault;
+        vs.nodeByVault[vault] = _nodeHash;
+
+        emit NodeVaultCreated(_nodeHash, vault, s.quoteTokenAddress);
+    }
+
+    function getNodeVault(bytes32 _nodeHash) external view returns (address) {
+        return NodeVaultStorage.layout().vaultByNode[_nodeHash];
+    }
+
+    function getNodeVaultNav(bytes32 _nodeHash) external view returns (uint256 navAssets) {
+        address vault = NodeVaultStorage.layout().vaultByNode[_nodeHash];
+        if (vault == address(0)) {
+            return _getNodeInventoryNav(DiamondStorage.appStorage(), _nodeHash);
+        }
+
+        return INodeVault(vault).grossManagedAssets();
     }
         
 
@@ -1181,6 +1228,29 @@ contract NodesFacet is Initializable, DiamondReentrancyGuard {
             if (s.nodeAssets[_nodeHash][assetId].capacity >= _quantityToReduce) {
                 s.nodeAssets[_nodeHash][assetId].capacity -= _quantityToReduce;
             }
+        }
+    }
+
+    function _getNodeInventoryNav(
+        DiamondStorage.AppStorage storage s,
+        bytes32 _node
+    ) internal view returns (uint256 navAssets) {
+        uint256[] storage assetIds = s.nodeAssetIds[_node];
+        uint256 count = assetIds.length;
+
+        for (uint256 i = 0; i < count; i++) {
+            uint256 assetId = assetIds[i];
+            DiamondStorage.NodeAsset storage nodeAsset = s.nodeAssets[_node][assetId];
+            if (!nodeAsset.active) {
+                continue;
+            }
+
+            uint256 balance = s.nodeTokenBalances[_node][nodeAsset.tokenId];
+            if (balance == 0) {
+                continue;
+            }
+
+            navAssets += nodeAsset.price * balance;
         }
     }
 

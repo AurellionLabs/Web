@@ -338,7 +338,7 @@ abstract contract DiamondTestBase is Test {
     }
 
     function _getNodesSelectors() internal pure returns (bytes4[] memory) {
-        bytes4[] memory selectors = new bytes4[](23);
+        bytes4[] memory selectors = new bytes4[](29);
         selectors[0] = NodesFacet.registerNode.selector;
         selectors[1] = NodesFacet.updateNode.selector;
         selectors[2] = NodesFacet.deactivateNode.selector;
@@ -362,6 +362,12 @@ abstract contract DiamondTestBase is Test {
         selectors[20] = NodesFacet.getNodeInventory.selector;
         selectors[21] = NodesFacet.verifyTokenAccounting.selector;
         selectors[22] = NodesFacet.setAuraAssetAddress.selector;
+        selectors[23] = NodesFacet.addSupportedAsset.selector;
+        selectors[24] = NodesFacet.depositTokensToNode.selector;
+        selectors[25] = NodesFacet.getNodeInventoryWithMetadata.selector;
+        selectors[26] = NodesFacet.createNodeVault.selector;
+        selectors[27] = NodesFacet.getNodeVault.selector;
+        selectors[28] = NodesFacet.getNodeVaultNav.selector;
         return selectors;
     }
 
