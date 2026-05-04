@@ -1,2136 +1,2231 @@
 // Auto-generated from NodesFacet.sol - DO NOT EDIT
-// Generated at: 2026-03-10T19:30:30.101Z
+// Generated at: 2026-05-04T13:18:30.539Z
 
 export const NodesFacetABI = [
   {
-    inputs: [],
-    name: 'InvalidInitialization',
-    type: 'error',
+    "inputs": [],
+    "name": "InvalidInitialization",
+    "type": "error"
   },
   {
-    inputs: [],
-    name: 'NotInitializing',
-    type: 'error',
+    "inputs": [],
+    "name": "NotInitializing",
+    "type": "error"
   },
   {
-    inputs: [],
-    name: 'ReentrancyGuardReentrantCall',
-    type: 'error',
+    "inputs": [],
+    "name": "ReentrancyGuardReentrantCall",
+    "type": "error"
   },
   {
-    anonymous: false,
-    inputs: [
+    "anonymous": false,
+    "inputs": [
       {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'nodeHash',
-        type: 'bytes32',
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "nodeHash",
+        "type": "bytes32"
       },
       {
-        indexed: true,
-        internalType: 'address',
-        name: 'clobAddress',
-        type: 'address',
-      },
+        "indexed": true,
+        "internalType": "address",
+        "name": "clobAddress",
+        "type": "address"
+      }
     ],
-    name: 'ClobApprovalGranted',
-    type: 'event',
+    "name": "ClobApprovalGranted",
+    "type": "event"
   },
   {
-    anonymous: false,
-    inputs: [
+    "anonymous": false,
+    "inputs": [
       {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'nodeHash',
-        type: 'bytes32',
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "nodeHash",
+        "type": "bytes32"
       },
       {
-        indexed: true,
-        internalType: 'address',
-        name: 'clobAddress',
-        type: 'address',
-      },
+        "indexed": true,
+        "internalType": "address",
+        "name": "clobAddress",
+        "type": "address"
+      }
     ],
-    name: 'ClobApprovalRevoked',
-    type: 'event',
+    "name": "ClobApprovalRevoked",
+    "type": "event"
   },
   {
-    anonymous: false,
-    inputs: [
+    "anonymous": false,
+    "inputs": [
       {
-        indexed: false,
-        internalType: 'uint64',
-        name: 'version',
-        type: 'uint64',
-      },
+        "indexed": false,
+        "internalType": "uint64",
+        "name": "version",
+        "type": "uint64"
+      }
     ],
-    name: 'Initialized',
-    type: 'event',
+    "name": "Initialized",
+    "type": "event"
   },
   {
-    anonymous: false,
-    inputs: [
+    "anonymous": false,
+    "inputs": [
       {
-        indexed: true,
-        internalType: 'address',
-        name: 'admin',
-        type: 'address',
-      },
+        "indexed": true,
+        "internalType": "address",
+        "name": "admin",
+        "type": "address"
+      }
     ],
-    name: 'NodeAdminRevoked',
-    type: 'event',
+    "name": "NodeAdminRevoked",
+    "type": "event"
   },
   {
-    anonymous: false,
-    inputs: [
+    "anonymous": false,
+    "inputs": [
       {
-        indexed: true,
-        internalType: 'address',
-        name: 'admin',
-        type: 'address',
-      },
+        "indexed": true,
+        "internalType": "address",
+        "name": "admin",
+        "type": "address"
+      }
     ],
-    name: 'NodeAdminSet',
-    type: 'event',
+    "name": "NodeAdminSet",
+    "type": "event"
   },
   {
-    anonymous: false,
-    inputs: [
+    "anonymous": false,
+    "inputs": [
       {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'nodeHash',
-        type: 'bytes32',
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "nodeHash",
+        "type": "bytes32"
       },
       {
-        indexed: false,
-        internalType: 'uint256[]',
-        name: 'quantities',
-        type: 'uint256[]',
-      },
+        "indexed": false,
+        "internalType": "uint256[]",
+        "name": "quantities",
+        "type": "uint256[]"
+      }
     ],
-    name: 'NodeCapacityUpdated',
-    type: 'event',
+    "name": "NodeCapacityUpdated",
+    "type": "event"
   },
   {
-    anonymous: false,
-    inputs: [
+    "anonymous": false,
+    "inputs": [
       {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'nodeHash',
-        type: 'bytes32',
-      },
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "nodeHash",
+        "type": "bytes32"
+      }
     ],
-    name: 'NodeDeactivated',
-    type: 'event',
+    "name": "NodeDeactivated",
+    "type": "event"
   },
   {
-    anonymous: false,
-    inputs: [
+    "anonymous": false,
+    "inputs": [
       {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'nodeHash',
-        type: 'bytes32',
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "nodeHash",
+        "type": "bytes32"
       },
       {
-        indexed: true,
-        internalType: 'address',
-        name: 'owner',
-        type: 'address',
+        "indexed": true,
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
       },
       {
-        indexed: false,
-        internalType: 'string',
-        name: 'nodeType',
-        type: 'string',
-      },
+        "indexed": false,
+        "internalType": "string",
+        "name": "nodeType",
+        "type": "string"
+      }
     ],
-    name: 'NodeRegistered',
-    type: 'event',
+    "name": "NodeRegistered",
+    "type": "event"
   },
   {
-    anonymous: false,
-    inputs: [
+    "anonymous": false,
+    "inputs": [
       {
-        indexed: true,
-        internalType: 'address',
-        name: 'registrar',
-        type: 'address',
+        "indexed": true,
+        "internalType": "address",
+        "name": "registrar",
+        "type": "address"
       },
       {
-        indexed: false,
-        internalType: 'bool',
-        name: 'enabled',
-        type: 'bool',
-      },
+        "indexed": false,
+        "internalType": "bool",
+        "name": "enabled",
+        "type": "bool"
+      }
     ],
-    name: 'NodeRegistrarUpdated',
-    type: 'event',
+    "name": "NodeRegistrarUpdated",
+    "type": "event"
   },
   {
-    anonymous: false,
-    inputs: [
+    "anonymous": false,
+    "inputs": [
       {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'nodeHash',
-        type: 'bytes32',
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "nodeHash",
+        "type": "bytes32"
       },
       {
-        indexed: true,
-        internalType: 'uint256',
-        name: 'tokenId',
-        type: 'uint256',
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
       },
       {
-        indexed: false,
-        internalType: 'address',
-        name: 'quoteToken',
-        type: 'address',
+        "indexed": false,
+        "internalType": "address",
+        "name": "quoteToken",
+        "type": "address"
       },
       {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'price',
-        type: 'uint256',
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "price",
+        "type": "uint256"
       },
       {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'amount',
-        type: 'uint256',
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
       },
       {
-        indexed: false,
-        internalType: 'bytes32',
-        name: 'orderId',
-        type: 'bytes32',
-      },
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "orderId",
+        "type": "bytes32"
+      }
     ],
-    name: 'NodeSellOrderPlaced',
-    type: 'event',
+    "name": "NodeSellOrderPlaced",
+    "type": "event"
   },
   {
-    anonymous: false,
-    inputs: [
+    "anonymous": false,
+    "inputs": [
       {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'nodeHash',
-        type: 'bytes32',
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "nodeHash",
+        "type": "bytes32"
       },
       {
-        indexed: false,
-        internalType: 'string',
-        name: 'nodeType',
-        type: 'string',
+        "indexed": false,
+        "internalType": "string",
+        "name": "nodeType",
+        "type": "string"
       },
       {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'capacity',
-        type: 'uint256',
-      },
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "capacity",
+        "type": "uint256"
+      }
     ],
-    name: 'NodeUpdated',
-    type: 'event',
+    "name": "NodeUpdated",
+    "type": "event"
   },
   {
-    anonymous: false,
-    inputs: [
+    "anonymous": false,
+    "inputs": [
       {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'nodeHash',
-        type: 'bytes32',
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "nodeHash",
+        "type": "bytes32"
       },
       {
-        indexed: false,
-        internalType: 'address',
-        name: 'token',
-        type: 'address',
+        "indexed": true,
+        "internalType": "address",
+        "name": "vault",
+        "type": "address"
       },
       {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'tokenId',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'price',
-        type: 'uint256',
-      },
-      {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'capacity',
-        type: 'uint256',
-      },
+        "indexed": true,
+        "internalType": "address",
+        "name": "asset",
+        "type": "address"
+      }
     ],
-    name: 'SupportedAssetAdded',
-    type: 'event',
+    "name": "NodeVaultCreated",
+    "type": "event"
   },
   {
-    anonymous: false,
-    inputs: [
+    "anonymous": false,
+    "inputs": [
       {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'nodeHash',
-        type: 'bytes32',
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "nodeHash",
+        "type": "bytes32"
       },
       {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'count',
-        type: 'uint256',
+        "indexed": false,
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
       },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "price",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "capacity",
+        "type": "uint256"
+      }
     ],
-    name: 'SupportedAssetsUpdated',
-    type: 'event',
+    "name": "SupportedAssetAdded",
+    "type": "event"
   },
   {
-    anonymous: false,
-    inputs: [
+    "anonymous": false,
+    "inputs": [
       {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'nodeHash',
-        type: 'bytes32',
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "nodeHash",
+        "type": "bytes32"
       },
       {
-        indexed: false,
-        internalType: 'string',
-        name: 'url',
-        type: 'string',
-      },
-      {
-        indexed: false,
-        internalType: 'string',
-        name: 'title',
-        type: 'string',
-      },
-      {
-        indexed: false,
-        internalType: 'string',
-        name: 'description',
-        type: 'string',
-      },
-      {
-        indexed: false,
-        internalType: 'string',
-        name: 'documentType',
-        type: 'string',
-      },
-      {
-        indexed: false,
-        internalType: 'bool',
-        name: 'isFrozen',
-        type: 'bool',
-      },
-      {
-        indexed: true,
-        internalType: 'uint256',
-        name: 'timestamp',
-        type: 'uint256',
-      },
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'addedBy',
-        type: 'address',
-      },
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "count",
+        "type": "uint256"
+      }
     ],
-    name: 'SupportingDocumentAdded',
-    type: 'event',
+    "name": "SupportedAssetsUpdated",
+    "type": "event"
   },
   {
-    anonymous: false,
-    inputs: [
+    "anonymous": false,
+    "inputs": [
       {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'nodeHash',
-        type: 'bytes32',
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "nodeHash",
+        "type": "bytes32"
       },
       {
-        indexed: false,
-        internalType: 'string',
-        name: 'url',
-        type: 'string',
+        "indexed": false,
+        "internalType": "string",
+        "name": "url",
+        "type": "string"
       },
       {
-        indexed: true,
-        internalType: 'uint256',
-        name: 'timestamp',
-        type: 'uint256',
+        "indexed": false,
+        "internalType": "string",
+        "name": "title",
+        "type": "string"
       },
       {
-        indexed: true,
-        internalType: 'address',
-        name: 'removedBy',
-        type: 'address',
+        "indexed": false,
+        "internalType": "string",
+        "name": "description",
+        "type": "string"
       },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "documentType",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "isFrozen",
+        "type": "bool"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "addedBy",
+        "type": "address"
+      }
     ],
-    name: 'SupportingDocumentRemoved',
-    type: 'event',
+    "name": "SupportingDocumentAdded",
+    "type": "event"
   },
   {
-    anonymous: false,
-    inputs: [
+    "anonymous": false,
+    "inputs": [
       {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'nodeHash',
-        type: 'bytes32',
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "nodeHash",
+        "type": "bytes32"
       },
       {
-        indexed: true,
-        internalType: 'uint256',
-        name: 'tokenId',
-        type: 'uint256',
+        "indexed": false,
+        "internalType": "string",
+        "name": "url",
+        "type": "string"
       },
       {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'amount',
-        type: 'uint256',
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
       },
       {
-        indexed: true,
-        internalType: 'address',
-        name: 'depositor',
-        type: 'address',
-      },
+        "indexed": true,
+        "internalType": "address",
+        "name": "removedBy",
+        "type": "address"
+      }
     ],
-    name: 'TokensDepositedToNode',
-    type: 'event',
+    "name": "SupportingDocumentRemoved",
+    "type": "event"
   },
   {
-    anonymous: false,
-    inputs: [
+    "anonymous": false,
+    "inputs": [
       {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'nodeHash',
-        type: 'bytes32',
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "nodeHash",
+        "type": "bytes32"
       },
       {
-        indexed: true,
-        internalType: 'uint256',
-        name: 'tokenId',
-        type: 'uint256',
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
       },
       {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'amount',
-        type: 'uint256',
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
       },
       {
-        indexed: true,
-        internalType: 'address',
-        name: 'minter',
-        type: 'address',
-      },
+        "indexed": true,
+        "internalType": "address",
+        "name": "depositor",
+        "type": "address"
+      }
     ],
-    name: 'TokensMintedToNode',
-    type: 'event',
+    "name": "TokensDepositedToNode",
+    "type": "event"
   },
   {
-    anonymous: false,
-    inputs: [
+    "anonymous": false,
+    "inputs": [
       {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'fromNode',
-        type: 'bytes32',
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "nodeHash",
+        "type": "bytes32"
       },
       {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'toNode',
-        type: 'bytes32',
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
       },
       {
-        indexed: true,
-        internalType: 'uint256',
-        name: 'tokenId',
-        type: 'uint256',
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
       },
       {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'amount',
-        type: 'uint256',
-      },
+        "indexed": true,
+        "internalType": "address",
+        "name": "minter",
+        "type": "address"
+      }
     ],
-    name: 'TokensTransferredBetweenNodes',
-    type: 'event',
+    "name": "TokensMintedToNode",
+    "type": "event"
   },
   {
-    anonymous: false,
-    inputs: [
+    "anonymous": false,
+    "inputs": [
       {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'nodeHash',
-        type: 'bytes32',
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "fromNode",
+        "type": "bytes32"
       },
       {
-        indexed: true,
-        internalType: 'uint256',
-        name: 'tokenId',
-        type: 'uint256',
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "toNode",
+        "type": "bytes32"
       },
       {
-        indexed: false,
-        internalType: 'uint256',
-        name: 'amount',
-        type: 'uint256',
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
       },
       {
-        indexed: true,
-        internalType: 'address',
-        name: 'recipient',
-        type: 'address',
-      },
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
     ],
-    name: 'TokensWithdrawnFromNode',
-    type: 'event',
+    "name": "TokensTransferredBetweenNodes",
+    "type": "event"
   },
   {
-    anonymous: false,
-    inputs: [
+    "anonymous": false,
+    "inputs": [
       {
-        indexed: true,
-        internalType: 'string',
-        name: 'addressName',
-        type: 'string',
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "nodeHash",
+        "type": "bytes32"
       },
       {
-        indexed: false,
-        internalType: 'string',
-        name: 'lat',
-        type: 'string',
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
       },
       {
-        indexed: false,
-        internalType: 'string',
-        name: 'lng',
-        type: 'string',
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
       },
       {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'node',
-        type: 'bytes32',
-      },
+        "indexed": true,
+        "internalType": "address",
+        "name": "recipient",
+        "type": "address"
+      }
     ],
-    name: 'UpdateLocation',
-    type: 'event',
+    "name": "TokensWithdrawnFromNode",
+    "type": "event"
   },
   {
-    anonymous: false,
-    inputs: [
+    "anonymous": false,
+    "inputs": [
       {
-        indexed: true,
-        internalType: 'address',
-        name: 'owner',
-        type: 'address',
+        "indexed": true,
+        "internalType": "string",
+        "name": "addressName",
+        "type": "string"
       },
       {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'node',
-        type: 'bytes32',
+        "indexed": false,
+        "internalType": "string",
+        "name": "lat",
+        "type": "string"
       },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "lng",
+        "type": "string"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "node",
+        "type": "bytes32"
+      }
     ],
-    name: 'UpdateOwner',
-    type: 'event',
+    "name": "UpdateLocation",
+    "type": "event"
   },
   {
-    anonymous: false,
-    inputs: [
+    "anonymous": false,
+    "inputs": [
       {
-        indexed: true,
-        internalType: 'bytes1',
-        name: 'status',
-        type: 'bytes1',
+        "indexed": true,
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
       },
       {
-        indexed: true,
-        internalType: 'bytes32',
-        name: 'node',
-        type: 'bytes32',
-      },
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "node",
+        "type": "bytes32"
+      }
     ],
-    name: 'UpdateStatus',
-    type: 'event',
+    "name": "UpdateOwner",
+    "type": "event"
   },
   {
-    inputs: [],
-    name: 'NODE_REGISTRAR_ROLE',
-    outputs: [
+    "anonymous": false,
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '',
-        type: 'bytes32',
+        "indexed": true,
+        "internalType": "bytes1",
+        "name": "status",
+        "type": "bytes1"
       },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "node",
+        "type": "bytes32"
+      }
     ],
-    stateMutability: 'view',
-    type: 'function',
+    "name": "UpdateStatus",
+    "type": "event"
   },
   {
-    inputs: [
+    "inputs": [],
+    "name": "NODE_REGISTRAR_ROLE",
+    "outputs": [
       {
-        internalType: 'bytes32',
-        name: '_nodeHash',
-        type: 'bytes32',
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
       },
       {
-        internalType: 'address',
-        name: '_itemOwner',
-        type: 'address',
+        "internalType": "address",
+        "name": "_itemOwner",
+        "type": "address"
       },
       {
-        internalType: 'uint256',
-        name: '_amount',
-        type: 'uint256',
+        "internalType": "uint256",
+        "name": "_amount",
+        "type": "uint256"
       },
       {
-        components: [
+        "components": [
           {
-            internalType: 'string',
-            name: 'name',
-            type: 'string',
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
           },
           {
-            internalType: 'string',
-            name: 'assetClass',
-            type: 'string',
+            "internalType": "string",
+            "name": "assetClass",
+            "type": "string"
           },
           {
-            components: [
+            "components": [
               {
-                internalType: 'string',
-                name: 'name',
-                type: 'string',
+                "internalType": "string",
+                "name": "name",
+                "type": "string"
               },
               {
-                internalType: 'string[]',
-                name: 'values',
-                type: 'string[]',
+                "internalType": "string[]",
+                "name": "values",
+                "type": "string[]"
               },
               {
-                internalType: 'string',
-                name: 'description',
-                type: 'string',
-              },
+                "internalType": "string",
+                "name": "description",
+                "type": "string"
+              }
             ],
-            internalType: 'struct DiamondStorage.Attribute[]',
-            name: 'attributes',
-            type: 'tuple[]',
-          },
+            "internalType": "struct DiamondStorage.Attribute[]",
+            "name": "attributes",
+            "type": "tuple[]"
+          }
         ],
-        internalType: 'struct DiamondStorage.AssetDefinition',
-        name: '_asset',
-        type: 'tuple',
+        "internalType": "struct DiamondStorage.AssetDefinition",
+        "name": "_asset",
+        "type": "tuple"
       },
       {
-        internalType: 'string',
-        name: '_className',
-        type: 'string',
+        "internalType": "string",
+        "name": "_className",
+        "type": "string"
       },
       {
-        internalType: 'bytes',
-        name: '_data',
-        type: 'bytes',
-      },
+        "internalType": "bytes",
+        "name": "_data",
+        "type": "bytes"
+      }
     ],
-    name: 'addNodeItem',
-    outputs: [
+    "name": "addNodeItem",
+    "outputs": [
       {
-        internalType: 'uint256',
-        name: 'tokenId',
-        type: 'uint256',
-      },
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
     ],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_node',
-        type: 'bytes32',
+        "internalType": "bytes32",
+        "name": "_node",
+        "type": "bytes32"
       },
       {
-        internalType: 'address',
-        name: '_token',
-        type: 'address',
+        "internalType": "address",
+        "name": "_token",
+        "type": "address"
       },
       {
-        internalType: 'uint256',
-        name: '_tokenId',
-        type: 'uint256',
+        "internalType": "uint256",
+        "name": "_tokenId",
+        "type": "uint256"
       },
       {
-        internalType: 'uint256',
-        name: '_price',
-        type: 'uint256',
+        "internalType": "uint256",
+        "name": "_price",
+        "type": "uint256"
       },
       {
-        internalType: 'uint256',
-        name: '_capacity',
-        type: 'uint256',
-      },
+        "internalType": "uint256",
+        "name": "_capacity",
+        "type": "uint256"
+      }
     ],
-    name: 'addSupportedAsset',
-    outputs: [
+    "name": "addSupportedAsset",
+    "outputs": [
       {
-        internalType: 'uint256',
-        name: 'assetId',
-        type: 'uint256',
-      },
+        "internalType": "uint256",
+        "name": "assetId",
+        "type": "uint256"
+      }
     ],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_nodeHash',
-        type: 'bytes32',
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
       },
       {
-        internalType: 'string',
-        name: '_url',
-        type: 'string',
+        "internalType": "string",
+        "name": "_url",
+        "type": "string"
       },
       {
-        internalType: 'string',
-        name: '_title',
-        type: 'string',
+        "internalType": "string",
+        "name": "_title",
+        "type": "string"
       },
       {
-        internalType: 'string',
-        name: '_description',
-        type: 'string',
+        "internalType": "string",
+        "name": "_description",
+        "type": "string"
       },
       {
-        internalType: 'string',
-        name: '_documentType',
-        type: 'string',
-      },
+        "internalType": "string",
+        "name": "_documentType",
+        "type": "string"
+      }
     ],
-    name: 'addSupportingDocument',
-    outputs: [
+    "name": "addSupportingDocument",
+    "outputs": [
       {
-        internalType: 'bool',
-        name: 'isFrozen',
-        type: 'bool',
-      },
+        "internalType": "bool",
+        "name": "isFrozen",
+        "type": "bool"
+      }
     ],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_nodeHash',
-        type: 'bytes32',
-      },
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
+      }
     ],
-    name: 'approveAusysForTokens',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "name": "approveAusysForTokens",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_node',
-        type: 'bytes32',
+        "internalType": "bytes32",
+        "name": "_node",
+        "type": "bytes32"
       },
       {
-        internalType: 'address',
-        name: '_clobAddress',
-        type: 'address',
-      },
+        "internalType": "address",
+        "name": "_clobAddress",
+        "type": "address"
+      }
     ],
-    name: 'approveClobForTokens',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "name": "approveClobForTokens",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_node',
-        type: 'bytes32',
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
       },
       {
-        internalType: 'uint256',
-        name: '_tokenId',
-        type: 'uint256',
+        "internalType": "string",
+        "name": "_name",
+        "type": "string"
       },
       {
-        internalType: 'uint256',
-        name: '_amount',
-        type: 'uint256',
-      },
+        "internalType": "string",
+        "name": "_symbol",
+        "type": "string"
+      }
     ],
-    name: 'creditNodeTokens',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "name": "createNodeVault",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "vault",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_nodeHash',
-        type: 'bytes32',
+        "internalType": "bytes32",
+        "name": "_node",
+        "type": "bytes32"
       },
+      {
+        "internalType": "uint256",
+        "name": "_tokenId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_amount",
+        "type": "uint256"
+      }
     ],
-    name: 'deactivateNode',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "name": "creditNodeTokens",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_node',
-        type: 'bytes32',
-      },
-      {
-        internalType: 'uint256',
-        name: '_tokenId',
-        type: 'uint256',
-      },
-      {
-        internalType: 'uint256',
-        name: '_amount',
-        type: 'uint256',
-      },
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
+      }
     ],
-    name: 'debitNodeTokens',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "name": "deactivateNode",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_node',
-        type: 'bytes32',
+        "internalType": "bytes32",
+        "name": "_node",
+        "type": "bytes32"
       },
       {
-        internalType: 'uint256',
-        name: '_tokenId',
-        type: 'uint256',
+        "internalType": "uint256",
+        "name": "_tokenId",
+        "type": "uint256"
       },
       {
-        internalType: 'uint256',
-        name: '_amount',
-        type: 'uint256',
-      },
+        "internalType": "uint256",
+        "name": "_amount",
+        "type": "uint256"
+      }
     ],
-    name: 'depositTokensToNode',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "name": "debitNodeTokens",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_nodeHash',
-        type: 'bytes32',
+        "internalType": "bytes32",
+        "name": "_node",
+        "type": "bytes32"
       },
-    ],
-    name: 'getActiveSupportingDocuments',
-    outputs: [
       {
-        components: [
+        "internalType": "uint256",
+        "name": "_tokenId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "depositTokensToNode",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getActiveSupportingDocuments",
+    "outputs": [
+      {
+        "components": [
           {
-            internalType: 'string',
-            name: 'url',
-            type: 'string',
+            "internalType": "string",
+            "name": "url",
+            "type": "string"
           },
           {
-            internalType: 'string',
-            name: 'title',
-            type: 'string',
+            "internalType": "string",
+            "name": "title",
+            "type": "string"
           },
           {
-            internalType: 'string',
-            name: 'description',
-            type: 'string',
+            "internalType": "string",
+            "name": "description",
+            "type": "string"
           },
           {
-            internalType: 'string',
-            name: 'documentType',
-            type: 'string',
+            "internalType": "string",
+            "name": "documentType",
+            "type": "string"
           },
           {
-            internalType: 'bool',
-            name: 'isFrozen',
-            type: 'bool',
+            "internalType": "bool",
+            "name": "isFrozen",
+            "type": "bool"
           },
           {
-            internalType: 'bool',
-            name: 'isRemoved',
-            type: 'bool',
+            "internalType": "bool",
+            "name": "isRemoved",
+            "type": "bool"
           },
           {
-            internalType: 'uint256',
-            name: 'addedAt',
-            type: 'uint256',
+            "internalType": "uint256",
+            "name": "addedAt",
+            "type": "uint256"
           },
           {
-            internalType: 'uint256',
-            name: 'removedAt',
-            type: 'uint256',
+            "internalType": "uint256",
+            "name": "removedAt",
+            "type": "uint256"
           },
           {
-            internalType: 'address',
-            name: 'addedBy',
-            type: 'address',
+            "internalType": "address",
+            "name": "addedBy",
+            "type": "address"
           },
           {
-            internalType: 'address',
-            name: 'removedBy',
-            type: 'address',
-          },
+            "internalType": "address",
+            "name": "removedBy",
+            "type": "address"
+          }
         ],
-        internalType: 'struct DiamondStorage.SupportingDocument[]',
-        name: 'documents',
-        type: 'tuple[]',
-      },
+        "internalType": "struct DiamondStorage.SupportingDocument[]",
+        "name": "documents",
+        "type": "tuple[]"
+      }
     ],
-    stateMutability: 'view',
-    type: 'function',
+    "stateMutability": "view",
+    "type": "function"
   },
   {
-    inputs: [],
-    name: 'getAllowedNodeRegistrars',
-    outputs: [
+    "inputs": [],
+    "name": "getAllowedNodeRegistrars",
+    "outputs": [
       {
-        internalType: 'address[]',
-        name: '',
-        type: 'address[]',
-      },
+        "internalType": "address[]",
+        "name": "",
+        "type": "address[]"
+      }
     ],
-    stateMutability: 'view',
-    type: 'function',
+    "stateMutability": "view",
+    "type": "function"
   },
   {
-    inputs: [],
-    name: 'getAuraAssetAddress',
-    outputs: [
+    "inputs": [],
+    "name": "getAuraAssetAddress",
+    "outputs": [
       {
-        internalType: 'address',
-        name: '',
-        type: 'address',
-      },
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
     ],
-    stateMutability: 'view',
-    type: 'function',
+    "stateMutability": "view",
+    "type": "function"
   },
   {
-    inputs: [],
-    name: 'getClobAddress',
-    outputs: [
+    "inputs": [],
+    "name": "getClobAddress",
+    "outputs": [
       {
-        internalType: 'address',
-        name: '',
-        type: 'address',
-      },
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
     ],
-    stateMutability: 'view',
-    type: 'function',
+    "stateMutability": "view",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_nodeHash',
-        type: 'bytes32',
-      },
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
+      }
     ],
-    name: 'getNode',
-    outputs: [
+    "name": "getNode",
+    "outputs": [
       {
-        internalType: 'address',
-        name: 'owner',
-        type: 'address',
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
       },
       {
-        internalType: 'string',
-        name: 'nodeType',
-        type: 'string',
+        "internalType": "string",
+        "name": "nodeType",
+        "type": "string"
       },
       {
-        internalType: 'uint256',
-        name: 'capacity',
-        type: 'uint256',
+        "internalType": "uint256",
+        "name": "capacity",
+        "type": "uint256"
       },
       {
-        internalType: 'uint256',
-        name: 'createdAt',
-        type: 'uint256',
+        "internalType": "uint256",
+        "name": "createdAt",
+        "type": "uint256"
       },
       {
-        internalType: 'bool',
-        name: 'active',
-        type: 'bool',
+        "internalType": "bool",
+        "name": "active",
+        "type": "bool"
       },
       {
-        internalType: 'bool',
-        name: 'validNode',
-        type: 'bool',
+        "internalType": "bool",
+        "name": "validNode",
+        "type": "bool"
       },
       {
-        internalType: 'bytes32',
-        name: 'assetHash',
-        type: 'bytes32',
+        "internalType": "bytes32",
+        "name": "assetHash",
+        "type": "bytes32"
       },
       {
-        internalType: 'string',
-        name: 'addressName',
-        type: 'string',
+        "internalType": "string",
+        "name": "addressName",
+        "type": "string"
       },
       {
-        internalType: 'string',
-        name: 'lat',
-        type: 'string',
+        "internalType": "string",
+        "name": "lat",
+        "type": "string"
       },
       {
-        internalType: 'string',
-        name: 'lng',
-        type: 'string',
-      },
+        "internalType": "string",
+        "name": "lng",
+        "type": "string"
+      }
     ],
-    stateMutability: 'view',
-    type: 'function',
+    "stateMutability": "view",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_node',
-        type: 'bytes32',
-      },
+        "internalType": "bytes32",
+        "name": "_node",
+        "type": "bytes32"
+      }
     ],
-    name: 'getNodeAssets',
-    outputs: [
+    "name": "getNodeAssets",
+    "outputs": [
       {
-        components: [
+        "components": [
           {
-            internalType: 'address',
-            name: 'token',
-            type: 'address',
+            "internalType": "address",
+            "name": "token",
+            "type": "address"
           },
           {
-            internalType: 'uint256',
-            name: 'tokenId',
-            type: 'uint256',
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
           },
           {
-            internalType: 'uint256',
-            name: 'price',
-            type: 'uint256',
+            "internalType": "uint256",
+            "name": "price",
+            "type": "uint256"
           },
           {
-            internalType: 'uint256',
-            name: 'capacity',
-            type: 'uint256',
+            "internalType": "uint256",
+            "name": "capacity",
+            "type": "uint256"
           },
           {
-            internalType: 'uint256',
-            name: 'createdAt',
-            type: 'uint256',
+            "internalType": "uint256",
+            "name": "createdAt",
+            "type": "uint256"
           },
           {
-            internalType: 'bool',
-            name: 'active',
-            type: 'bool',
-          },
+            "internalType": "bool",
+            "name": "active",
+            "type": "bool"
+          }
         ],
-        internalType: 'struct DiamondStorage.NodeAsset[]',
-        name: '',
-        type: 'tuple[]',
-      },
+        "internalType": "struct DiamondStorage.NodeAsset[]",
+        "name": "",
+        "type": "tuple[]"
+      }
     ],
-    stateMutability: 'view',
-    type: 'function',
+    "stateMutability": "view",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_node',
-        type: 'bytes32',
-      },
+        "internalType": "bytes32",
+        "name": "_node",
+        "type": "bytes32"
+      }
     ],
-    name: 'getNodeInventory',
-    outputs: [
+    "name": "getNodeInventory",
+    "outputs": [
       {
-        internalType: 'uint256[]',
-        name: 'tokenIds',
-        type: 'uint256[]',
+        "internalType": "uint256[]",
+        "name": "tokenIds",
+        "type": "uint256[]"
       },
       {
-        internalType: 'uint256[]',
-        name: 'balances',
-        type: 'uint256[]',
-      },
+        "internalType": "uint256[]",
+        "name": "balances",
+        "type": "uint256[]"
+      }
     ],
-    stateMutability: 'view',
-    type: 'function',
+    "stateMutability": "view",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_node',
-        type: 'bytes32',
-      },
+        "internalType": "bytes32",
+        "name": "_node",
+        "type": "bytes32"
+      }
     ],
-    name: 'getNodeInventoryWithMetadata',
-    outputs: [
+    "name": "getNodeInventoryWithMetadata",
+    "outputs": [
       {
-        components: [
+        "components": [
           {
-            internalType: 'address',
-            name: 'token',
-            type: 'address',
+            "internalType": "address",
+            "name": "token",
+            "type": "address"
           },
           {
-            internalType: 'uint256',
-            name: 'tokenId',
-            type: 'uint256',
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
           },
           {
-            internalType: 'uint256',
-            name: 'price',
-            type: 'uint256',
+            "internalType": "uint256",
+            "name": "price",
+            "type": "uint256"
           },
           {
-            internalType: 'uint256',
-            name: 'capacity',
-            type: 'uint256',
+            "internalType": "uint256",
+            "name": "capacity",
+            "type": "uint256"
           },
           {
-            internalType: 'uint256',
-            name: 'balance',
-            type: 'uint256',
+            "internalType": "uint256",
+            "name": "balance",
+            "type": "uint256"
           },
           {
-            internalType: 'uint256',
-            name: 'createdAt',
-            type: 'uint256',
+            "internalType": "uint256",
+            "name": "createdAt",
+            "type": "uint256"
           },
           {
-            internalType: 'bool',
-            name: 'active',
-            type: 'bool',
-          },
+            "internalType": "bool",
+            "name": "active",
+            "type": "bool"
+          }
         ],
-        internalType: 'struct NodesFacet.AssetWithBalance[]',
-        name: 'assets',
-        type: 'tuple[]',
-      },
+        "internalType": "struct NodesFacet.AssetWithBalance[]",
+        "name": "assets",
+        "type": "tuple[]"
+      }
     ],
-    stateMutability: 'view',
-    type: 'function',
+    "stateMutability": "view",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_node',
-        type: 'bytes32',
-      },
+        "internalType": "bytes32",
+        "name": "_node",
+        "type": "bytes32"
+      }
     ],
-    name: 'getNodeSellableAssets',
-    outputs: [
+    "name": "getNodeSellableAssets",
+    "outputs": [
       {
-        components: [
+        "components": [
           {
-            internalType: 'address',
-            name: 'token',
-            type: 'address',
+            "internalType": "address",
+            "name": "token",
+            "type": "address"
           },
           {
-            internalType: 'uint256',
-            name: 'tokenId',
-            type: 'uint256',
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
           },
           {
-            internalType: 'uint256',
-            name: 'price',
-            type: 'uint256',
+            "internalType": "uint256",
+            "name": "price",
+            "type": "uint256"
           },
           {
-            internalType: 'uint256',
-            name: 'capacity',
-            type: 'uint256',
+            "internalType": "uint256",
+            "name": "capacity",
+            "type": "uint256"
           },
           {
-            internalType: 'uint256',
-            name: 'balance',
-            type: 'uint256',
+            "internalType": "uint256",
+            "name": "balance",
+            "type": "uint256"
           },
           {
-            internalType: 'uint256',
-            name: 'createdAt',
-            type: 'uint256',
+            "internalType": "uint256",
+            "name": "createdAt",
+            "type": "uint256"
           },
           {
-            internalType: 'bool',
-            name: 'active',
-            type: 'bool',
-          },
+            "internalType": "bool",
+            "name": "active",
+            "type": "bool"
+          }
         ],
-        internalType: 'struct NodesFacet.AssetWithBalance[]',
-        name: 'assets',
-        type: 'tuple[]',
+        "internalType": "struct NodesFacet.AssetWithBalance[]",
+        "name": "assets",
+        "type": "tuple[]"
       },
       {
-        internalType: 'uint256',
-        name: 'count',
-        type: 'uint256',
-      },
+        "internalType": "uint256",
+        "name": "count",
+        "type": "uint256"
+      }
     ],
-    stateMutability: 'view',
-    type: 'function',
+    "stateMutability": "view",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'address',
-        name: '_node',
-        type: 'address',
-      },
+        "internalType": "address",
+        "name": "_node",
+        "type": "address"
+      }
     ],
-    name: 'getNodeStatus',
-    outputs: [
+    "name": "getNodeStatus",
+    "outputs": [
       {
-        internalType: 'bytes1',
-        name: '',
-        type: 'bytes1',
-      },
+        "internalType": "bytes1",
+        "name": "",
+        "type": "bytes1"
+      }
     ],
-    stateMutability: 'view',
-    type: 'function',
+    "stateMutability": "view",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_node',
-        type: 'bytes32',
+        "internalType": "bytes32",
+        "name": "_node",
+        "type": "bytes32"
       },
       {
-        internalType: 'uint256',
-        name: '_tokenId',
-        type: 'uint256',
-      },
+        "internalType": "uint256",
+        "name": "_tokenId",
+        "type": "uint256"
+      }
     ],
-    name: 'getNodeTokenBalance',
-    outputs: [
+    "name": "getNodeTokenBalance",
+    "outputs": [
       {
-        internalType: 'uint256',
-        name: 'balance',
-        type: 'uint256',
-      },
+        "internalType": "uint256",
+        "name": "balance",
+        "type": "uint256"
+      }
     ],
-    stateMutability: 'view',
-    type: 'function',
+    "stateMutability": "view",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_node',
-        type: 'bytes32',
-      },
+        "internalType": "bytes32",
+        "name": "_node",
+        "type": "bytes32"
+      }
     ],
-    name: 'getNodeTokenIds',
-    outputs: [
+    "name": "getNodeTokenIds",
+    "outputs": [
       {
-        internalType: 'uint256[]',
-        name: '',
-        type: 'uint256[]',
-      },
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
+      }
     ],
-    stateMutability: 'view',
-    type: 'function',
+    "stateMutability": "view",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'address',
-        name: '_owner',
-        type: 'address',
-      },
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
+      }
     ],
-    name: 'getOwnerNodes',
-    outputs: [
+    "name": "getNodeVault",
+    "outputs": [
       {
-        internalType: 'bytes32[]',
-        name: '',
-        type: 'bytes32[]',
-      },
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
     ],
-    stateMutability: 'view',
-    type: 'function',
+    "stateMutability": "view",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_nodeHash',
-        type: 'bytes32',
-      },
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
+      }
     ],
-    name: 'getSupportingDocumentCount',
-    outputs: [
+    "name": "getNodeVaultNav",
+    "outputs": [
       {
-        internalType: 'uint256',
-        name: 'total',
-        type: 'uint256',
-      },
-      {
-        internalType: 'uint256',
-        name: 'active',
-        type: 'uint256',
-      },
+        "internalType": "uint256",
+        "name": "navAssets",
+        "type": "uint256"
+      }
     ],
-    stateMutability: 'view',
-    type: 'function',
+    "stateMutability": "view",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_nodeHash',
-        type: 'bytes32',
-      },
+        "internalType": "address",
+        "name": "_owner",
+        "type": "address"
+      }
     ],
-    name: 'getSupportingDocuments',
-    outputs: [
+    "name": "getOwnerNodes",
+    "outputs": [
       {
-        components: [
+        "internalType": "bytes32[]",
+        "name": "",
+        "type": "bytes32[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getSupportingDocumentCount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "total",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "active",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getSupportingDocuments",
+    "outputs": [
+      {
+        "components": [
           {
-            internalType: 'string',
-            name: 'url',
-            type: 'string',
+            "internalType": "string",
+            "name": "url",
+            "type": "string"
           },
           {
-            internalType: 'string',
-            name: 'title',
-            type: 'string',
+            "internalType": "string",
+            "name": "title",
+            "type": "string"
           },
           {
-            internalType: 'string',
-            name: 'description',
-            type: 'string',
+            "internalType": "string",
+            "name": "description",
+            "type": "string"
           },
           {
-            internalType: 'string',
-            name: 'documentType',
-            type: 'string',
+            "internalType": "string",
+            "name": "documentType",
+            "type": "string"
           },
           {
-            internalType: 'bool',
-            name: 'isFrozen',
-            type: 'bool',
+            "internalType": "bool",
+            "name": "isFrozen",
+            "type": "bool"
           },
           {
-            internalType: 'bool',
-            name: 'isRemoved',
-            type: 'bool',
+            "internalType": "bool",
+            "name": "isRemoved",
+            "type": "bool"
           },
           {
-            internalType: 'uint256',
-            name: 'addedAt',
-            type: 'uint256',
+            "internalType": "uint256",
+            "name": "addedAt",
+            "type": "uint256"
           },
           {
-            internalType: 'uint256',
-            name: 'removedAt',
-            type: 'uint256',
+            "internalType": "uint256",
+            "name": "removedAt",
+            "type": "uint256"
           },
           {
-            internalType: 'address',
-            name: 'addedBy',
-            type: 'address',
+            "internalType": "address",
+            "name": "addedBy",
+            "type": "address"
           },
           {
-            internalType: 'address',
-            name: 'removedBy',
-            type: 'address',
-          },
+            "internalType": "address",
+            "name": "removedBy",
+            "type": "address"
+          }
         ],
-        internalType: 'struct DiamondStorage.SupportingDocument[]',
-        name: 'documents',
-        type: 'tuple[]',
-      },
+        "internalType": "struct DiamondStorage.SupportingDocument[]",
+        "name": "documents",
+        "type": "tuple[]"
+      }
     ],
-    stateMutability: 'view',
-    type: 'function',
+    "stateMutability": "view",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_node',
-        type: 'bytes32',
-      },
+        "internalType": "bytes32",
+        "name": "_node",
+        "type": "bytes32"
+      }
     ],
-    name: 'getTotalNodeAssets',
-    outputs: [
+    "name": "getTotalNodeAssets",
+    "outputs": [
       {
-        internalType: 'uint256',
-        name: '',
-        type: 'uint256',
-      },
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
     ],
-    stateMutability: 'view',
-    type: 'function',
+    "stateMutability": "view",
+    "type": "function"
   },
   {
-    inputs: [],
-    name: 'getTotalNodes',
-    outputs: [
+    "inputs": [],
+    "name": "getTotalNodes",
+    "outputs": [
       {
-        internalType: 'uint256',
-        name: '',
-        type: 'uint256',
-      },
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
     ],
-    stateMutability: 'view',
-    type: 'function',
+    "stateMutability": "view",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: 'role',
-        type: 'bytes32',
+        "internalType": "bytes32",
+        "name": "role",
+        "type": "bytes32"
       },
       {
-        internalType: 'address',
-        name: 'account',
-        type: 'address',
-      },
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
     ],
-    name: 'hasNodeRole',
-    outputs: [
+    "name": "hasNodeRole",
+    "outputs": [
       {
-        internalType: 'bool',
-        name: '',
-        type: 'bool',
-      },
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
     ],
-    stateMutability: 'view',
-    type: 'function',
+    "stateMutability": "view",
+    "type": "function"
   },
   {
-    inputs: [],
-    name: 'initialize',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "inputs": [],
+    "name": "initialize",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'address',
-        name: '',
-        type: 'address',
-      },
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
     ],
-    name: 'isClobApproved',
-    outputs: [
+    "name": "isClobApproved",
+    "outputs": [
       {
-        internalType: 'bool',
-        name: '',
-        type: 'bool',
-      },
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
     ],
-    stateMutability: 'pure',
-    type: 'function',
+    "stateMutability": "pure",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'address',
-        name: '_admin',
-        type: 'address',
-      },
+        "internalType": "address",
+        "name": "_admin",
+        "type": "address"
+      }
     ],
-    name: 'isNodeAdmin',
-    outputs: [
+    "name": "isNodeAdmin",
+    "outputs": [
       {
-        internalType: 'bool',
-        name: '',
-        type: 'bool',
-      },
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
     ],
-    stateMutability: 'view',
-    type: 'function',
+    "stateMutability": "view",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_nodeHash',
-        type: 'bytes32',
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
       },
       {
-        internalType: 'bytes32',
-        name: '_journeyId',
-        type: 'bytes32',
-      },
+        "internalType": "bytes32",
+        "name": "_journeyId",
+        "type": "bytes32"
+      }
     ],
-    name: 'nodeHandOn',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "name": "nodeHandOn",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_nodeHash',
-        type: 'bytes32',
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
       },
       {
-        internalType: 'bytes32',
-        name: '_journeyId',
-        type: 'bytes32',
-      },
+        "internalType": "bytes32",
+        "name": "_journeyId",
+        "type": "bytes32"
+      }
     ],
-    name: 'nodeHandoff',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "name": "nodeHandoff",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_nodeHash',
-        type: 'bytes32',
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
       },
       {
-        internalType: 'bytes32',
-        name: '_journeyId',
-        type: 'bytes32',
-      },
+        "internalType": "bytes32",
+        "name": "_journeyId",
+        "type": "bytes32"
+      }
     ],
-    name: 'nodeSign',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "name": "nodeSign",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_node',
-        type: 'bytes32',
+        "internalType": "bytes32",
+        "name": "_node",
+        "type": "bytes32"
       },
       {
-        internalType: 'uint256',
-        name: '_tokenId',
-        type: 'uint256',
+        "internalType": "uint256",
+        "name": "_tokenId",
+        "type": "uint256"
       },
       {
-        internalType: 'address',
-        name: '_quoteToken',
-        type: 'address',
+        "internalType": "address",
+        "name": "_quoteToken",
+        "type": "address"
       },
       {
-        internalType: 'uint256',
-        name: '_price',
-        type: 'uint256',
+        "internalType": "uint256",
+        "name": "_price",
+        "type": "uint256"
       },
       {
-        internalType: 'uint256',
-        name: '_amount',
-        type: 'uint256',
-      },
+        "internalType": "uint256",
+        "name": "_amount",
+        "type": "uint256"
+      }
     ],
-    name: 'placeSellOrderFromNode',
-    outputs: [
+    "name": "placeSellOrderFromNode",
+    "outputs": [
       {
-        internalType: 'bytes32',
-        name: 'orderId',
-        type: 'bytes32',
-      },
+        "internalType": "bytes32",
+        "name": "orderId",
+        "type": "bytes32"
+      }
     ],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_nodeHash',
-        type: 'bytes32',
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
       },
       {
-        internalType: 'address',
-        name: '_token',
-        type: 'address',
+        "internalType": "address",
+        "name": "_token",
+        "type": "address"
       },
       {
-        internalType: 'uint256',
-        name: '_tokenId',
-        type: 'uint256',
+        "internalType": "uint256",
+        "name": "_tokenId",
+        "type": "uint256"
       },
       {
-        internalType: 'uint256',
-        name: '_quantityToReduce',
-        type: 'uint256',
-      },
+        "internalType": "uint256",
+        "name": "_quantityToReduce",
+        "type": "uint256"
+      }
     ],
-    name: 'reduceCapacityForOrder',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "name": "reduceCapacityForOrder",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'string',
-        name: '_nodeType',
-        type: 'string',
+        "internalType": "string",
+        "name": "_nodeType",
+        "type": "string"
       },
       {
-        internalType: 'uint256',
-        name: '_capacity',
-        type: 'uint256',
+        "internalType": "uint256",
+        "name": "_capacity",
+        "type": "uint256"
       },
       {
-        internalType: 'bytes32',
-        name: '_assetHash',
-        type: 'bytes32',
+        "internalType": "bytes32",
+        "name": "_assetHash",
+        "type": "bytes32"
       },
       {
-        internalType: 'string',
-        name: '_addressName',
-        type: 'string',
+        "internalType": "string",
+        "name": "_addressName",
+        "type": "string"
       },
       {
-        internalType: 'string',
-        name: '_lat',
-        type: 'string',
+        "internalType": "string",
+        "name": "_lat",
+        "type": "string"
       },
       {
-        internalType: 'string',
-        name: '_lng',
-        type: 'string',
-      },
+        "internalType": "string",
+        "name": "_lng",
+        "type": "string"
+      }
     ],
-    name: 'registerNode',
-    outputs: [
+    "name": "registerNode",
+    "outputs": [
       {
-        internalType: 'bytes32',
-        name: 'nodeHash',
-        type: 'bytes32',
-      },
+        "internalType": "bytes32",
+        "name": "nodeHash",
+        "type": "bytes32"
+      }
     ],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_nodeHash',
-        type: 'bytes32',
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
       },
       {
-        internalType: 'string',
-        name: '_url',
-        type: 'string',
-      },
+        "internalType": "string",
+        "name": "_url",
+        "type": "string"
+      }
     ],
-    name: 'removeSupportingDocument',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "name": "removeSupportingDocument",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_nodeHash',
-        type: 'bytes32',
-      },
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
+      }
     ],
-    name: 'revokeAusysApproval',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "name": "revokeAusysApproval",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_node',
-        type: 'bytes32',
+        "internalType": "bytes32",
+        "name": "_node",
+        "type": "bytes32"
       },
       {
-        internalType: 'address',
-        name: '_clobAddress',
-        type: 'address',
-      },
+        "internalType": "address",
+        "name": "_clobAddress",
+        "type": "address"
+      }
     ],
-    name: 'revokeClobApproval',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "name": "revokeClobApproval",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'address',
-        name: '_admin',
-        type: 'address',
-      },
+        "internalType": "address",
+        "name": "_admin",
+        "type": "address"
+      }
     ],
-    name: 'revokeNodeAdmin',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "name": "revokeNodeAdmin",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'address',
-        name: '_auraAsset',
-        type: 'address',
-      },
+        "internalType": "address",
+        "name": "_auraAsset",
+        "type": "address"
+      }
     ],
-    name: 'setAuraAssetAddress',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "name": "setAuraAssetAddress",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'address',
-        name: '_clobAddress',
-        type: 'address',
-      },
+        "internalType": "address",
+        "name": "_clobAddress",
+        "type": "address"
+      }
     ],
-    name: 'setClobAddress',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "name": "setClobAddress",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'uint256',
-        name: 'cap',
-        type: 'uint256',
-      },
+        "internalType": "uint256",
+        "name": "cap",
+        "type": "uint256"
+      }
     ],
-    name: 'setMaxNodesPerRegistrar',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "name": "setMaxNodesPerRegistrar",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'address',
-        name: '_admin',
-        type: 'address',
-      },
+        "internalType": "address",
+        "name": "_admin",
+        "type": "address"
+      }
     ],
-    name: 'setNodeAdmin',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "name": "setNodeAdmin",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'address',
-        name: 'registrar',
-        type: 'address',
+        "internalType": "address",
+        "name": "registrar",
+        "type": "address"
       },
       {
-        internalType: 'bool',
-        name: 'enable',
-        type: 'bool',
-      },
+        "internalType": "bool",
+        "name": "enable",
+        "type": "bool"
+      }
     ],
-    name: 'setNodeRegistrar',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "name": "setNodeRegistrar",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_fromNode',
-        type: 'bytes32',
+        "internalType": "bytes32",
+        "name": "_fromNode",
+        "type": "bytes32"
       },
       {
-        internalType: 'bytes32',
-        name: '_toNode',
-        type: 'bytes32',
+        "internalType": "bytes32",
+        "name": "_toNode",
+        "type": "bytes32"
       },
       {
-        internalType: 'uint256',
-        name: '_tokenId',
-        type: 'uint256',
+        "internalType": "uint256",
+        "name": "_tokenId",
+        "type": "uint256"
       },
       {
-        internalType: 'uint256',
-        name: '_amount',
-        type: 'uint256',
-      },
+        "internalType": "uint256",
+        "name": "_amount",
+        "type": "uint256"
+      }
     ],
-    name: 'transferTokensBetweenNodes',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "name": "transferTokensBetweenNodes",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_nodeHash',
-        type: 'bytes32',
+        "internalType": "bytes32",
+        "name": "_nodeHash",
+        "type": "bytes32"
       },
       {
-        internalType: 'string',
-        name: '_nodeType',
-        type: 'string',
+        "internalType": "string",
+        "name": "_nodeType",
+        "type": "string"
       },
       {
-        internalType: 'uint256',
-        name: '_capacity',
-        type: 'uint256',
-      },
+        "internalType": "uint256",
+        "name": "_capacity",
+        "type": "uint256"
+      }
     ],
-    name: 'updateNode',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "name": "updateNode",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_node',
-        type: 'bytes32',
+        "internalType": "bytes32",
+        "name": "_node",
+        "type": "bytes32"
       },
       {
-        internalType: 'uint256[]',
-        name: '_quantities',
-        type: 'uint256[]',
-      },
+        "internalType": "uint256[]",
+        "name": "_quantities",
+        "type": "uint256[]"
+      }
     ],
-    name: 'updateNodeCapacity',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "name": "updateNodeCapacity",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'string',
-        name: '_addressName',
-        type: 'string',
+        "internalType": "string",
+        "name": "_addressName",
+        "type": "string"
       },
       {
-        internalType: 'string',
-        name: '_lat',
-        type: 'string',
+        "internalType": "string",
+        "name": "_lat",
+        "type": "string"
       },
       {
-        internalType: 'string',
-        name: '_lng',
-        type: 'string',
+        "internalType": "string",
+        "name": "_lng",
+        "type": "string"
       },
       {
-        internalType: 'bytes32',
-        name: '_node',
-        type: 'bytes32',
-      },
+        "internalType": "bytes32",
+        "name": "_node",
+        "type": "bytes32"
+      }
     ],
-    name: 'updateNodeLocation',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "name": "updateNodeLocation",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'address',
-        name: '_owner',
-        type: 'address',
+        "internalType": "address",
+        "name": "_owner",
+        "type": "address"
       },
       {
-        internalType: 'bytes32',
-        name: '_node',
-        type: 'bytes32',
-      },
+        "internalType": "bytes32",
+        "name": "_node",
+        "type": "bytes32"
+      }
     ],
-    name: 'updateNodeOwner',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "name": "updateNodeOwner",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes1',
-        name: '_status',
-        type: 'bytes1',
+        "internalType": "bytes1",
+        "name": "_status",
+        "type": "bytes1"
       },
       {
-        internalType: 'bytes32',
-        name: '_node',
-        type: 'bytes32',
-      },
+        "internalType": "bytes32",
+        "name": "_node",
+        "type": "bytes32"
+      }
     ],
-    name: 'updateNodeStatus',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "name": "updateNodeStatus",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_node',
-        type: 'bytes32',
+        "internalType": "bytes32",
+        "name": "_node",
+        "type": "bytes32"
       },
       {
-        internalType: 'address[]',
-        name: '_tokens',
-        type: 'address[]',
+        "internalType": "address[]",
+        "name": "_tokens",
+        "type": "address[]"
       },
       {
-        internalType: 'uint256[]',
-        name: '_tokenIds',
-        type: 'uint256[]',
+        "internalType": "uint256[]",
+        "name": "_tokenIds",
+        "type": "uint256[]"
       },
       {
-        internalType: 'uint256[]',
-        name: '_prices',
-        type: 'uint256[]',
+        "internalType": "uint256[]",
+        "name": "_prices",
+        "type": "uint256[]"
       },
       {
-        internalType: 'uint256[]',
-        name: '_capacities',
-        type: 'uint256[]',
-      },
+        "internalType": "uint256[]",
+        "name": "_capacities",
+        "type": "uint256[]"
+      }
     ],
-    name: 'updateSupportedAssets',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
+    "name": "updateSupportedAssets",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'uint256',
-        name: '_tokenId',
-        type: 'uint256',
+        "internalType": "uint256",
+        "name": "_tokenId",
+        "type": "uint256"
       },
       {
-        internalType: 'bytes32[]',
-        name: '_nodeHashes',
-        type: 'bytes32[]',
-      },
+        "internalType": "bytes32[]",
+        "name": "_nodeHashes",
+        "type": "bytes32[]"
+      }
     ],
-    name: 'verifyTokenAccounting',
-    outputs: [
+    "name": "verifyTokenAccounting",
+    "outputs": [
       {
-        internalType: 'uint256',
-        name: 'diamondBalance',
-        type: 'uint256',
+        "internalType": "uint256",
+        "name": "diamondBalance",
+        "type": "uint256"
       },
       {
-        internalType: 'uint256',
-        name: 'sumNodeBalances',
-        type: 'uint256',
+        "internalType": "uint256",
+        "name": "sumNodeBalances",
+        "type": "uint256"
       },
       {
-        internalType: 'bool',
-        name: 'isBalanced',
-        type: 'bool',
-      },
+        "internalType": "bool",
+        "name": "isBalanced",
+        "type": "bool"
+      }
     ],
-    stateMutability: 'view',
-    type: 'function',
+    "stateMutability": "view",
+    "type": "function"
   },
   {
-    inputs: [
+    "inputs": [
       {
-        internalType: 'bytes32',
-        name: '_node',
-        type: 'bytes32',
+        "internalType": "bytes32",
+        "name": "_node",
+        "type": "bytes32"
       },
       {
-        internalType: 'uint256',
-        name: '_tokenId',
-        type: 'uint256',
+        "internalType": "uint256",
+        "name": "_tokenId",
+        "type": "uint256"
       },
       {
-        internalType: 'uint256',
-        name: '_amount',
-        type: 'uint256',
-      },
+        "internalType": "uint256",
+        "name": "_amount",
+        "type": "uint256"
+      }
     ],
-    name: 'withdrawTokensFromNode',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
+    "name": "withdrawTokensFromNode",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
 ] as const;
 
 export const NodesFacetEvents = [
   {
-    name: 'ClobApprovalGranted',
-    signature: 'ClobApprovalGranted(bytes32,address)',
-    signatureHash: '0xd5126df4',
+    "name": "ClobApprovalGranted",
+    "signature": "ClobApprovalGranted(bytes32,address)",
+    "signatureHash": "0xd5126df4"
   },
   {
-    name: 'ClobApprovalRevoked',
-    signature: 'ClobApprovalRevoked(bytes32,address)',
-    signatureHash: '0xbdd45b26',
+    "name": "ClobApprovalRevoked",
+    "signature": "ClobApprovalRevoked(bytes32,address)",
+    "signatureHash": "0xbdd45b26"
   },
   {
-    name: 'Initialized',
-    signature: 'Initialized(uint64)',
-    signatureHash: '0xc7f505b2',
+    "name": "Initialized",
+    "signature": "Initialized(uint64)",
+    "signatureHash": "0xc7f505b2"
   },
   {
-    name: 'NodeAdminRevoked',
-    signature: 'NodeAdminRevoked(address)',
-    signatureHash: '0xd75e887b',
+    "name": "NodeAdminRevoked",
+    "signature": "NodeAdminRevoked(address)",
+    "signatureHash": "0xd75e887b"
   },
   {
-    name: 'NodeAdminSet',
-    signature: 'NodeAdminSet(address)',
-    signatureHash: '0x73fad87b',
+    "name": "NodeAdminSet",
+    "signature": "NodeAdminSet(address)",
+    "signatureHash": "0x73fad87b"
   },
   {
-    name: 'NodeCapacityUpdated',
-    signature: 'NodeCapacityUpdated(bytes32,uint256[])',
-    signatureHash: '0x0ba8897d',
+    "name": "NodeCapacityUpdated",
+    "signature": "NodeCapacityUpdated(bytes32,uint256[])",
+    "signatureHash": "0x0ba8897d"
   },
   {
-    name: 'NodeDeactivated',
-    signature: 'NodeDeactivated(bytes32)',
-    signatureHash: '0x62b30865',
+    "name": "NodeDeactivated",
+    "signature": "NodeDeactivated(bytes32)",
+    "signatureHash": "0x62b30865"
   },
   {
-    name: 'NodeRegistered',
-    signature: 'NodeRegistered(bytes32,address,string)',
-    signatureHash: '0x8326de45',
+    "name": "NodeRegistered",
+    "signature": "NodeRegistered(bytes32,address,string)",
+    "signatureHash": "0x8326de45"
   },
   {
-    name: 'NodeRegistrarUpdated',
-    signature: 'NodeRegistrarUpdated(address,bool)',
-    signatureHash: '0xff3e2fb4',
+    "name": "NodeRegistrarUpdated",
+    "signature": "NodeRegistrarUpdated(address,bool)",
+    "signatureHash": "0xff3e2fb4"
   },
   {
-    name: 'NodeSellOrderPlaced',
-    signature:
-      'NodeSellOrderPlaced(bytes32,uint256,address,uint256,uint256,bytes32)',
-    signatureHash: '0x3de5f088',
+    "name": "NodeSellOrderPlaced",
+    "signature": "NodeSellOrderPlaced(bytes32,uint256,address,uint256,uint256,bytes32)",
+    "signatureHash": "0x3de5f088"
   },
   {
-    name: 'NodeUpdated',
-    signature: 'NodeUpdated(bytes32,string,uint256)',
-    signatureHash: '0x9c97a401',
+    "name": "NodeUpdated",
+    "signature": "NodeUpdated(bytes32,string,uint256)",
+    "signatureHash": "0x9c97a401"
   },
   {
-    name: 'SupportedAssetAdded',
-    signature: 'SupportedAssetAdded(bytes32,address,uint256,uint256,uint256)',
-    signatureHash: '0x9f0a9fa6',
+    "name": "NodeVaultCreated",
+    "signature": "NodeVaultCreated(bytes32,address,address)",
+    "signatureHash": "0xb12500a2"
   },
   {
-    name: 'SupportedAssetsUpdated',
-    signature: 'SupportedAssetsUpdated(bytes32,uint256)',
-    signatureHash: '0x1af735b1',
+    "name": "SupportedAssetAdded",
+    "signature": "SupportedAssetAdded(bytes32,address,uint256,uint256,uint256)",
+    "signatureHash": "0x9f0a9fa6"
   },
   {
-    name: 'SupportingDocumentAdded',
-    signature:
-      'SupportingDocumentAdded(bytes32,string,string,string,string,bool,uint256,address)',
-    signatureHash: '0xb9819508',
+    "name": "SupportedAssetsUpdated",
+    "signature": "SupportedAssetsUpdated(bytes32,uint256)",
+    "signatureHash": "0x1af735b1"
   },
   {
-    name: 'SupportingDocumentRemoved',
-    signature: 'SupportingDocumentRemoved(bytes32,string,uint256,address)',
-    signatureHash: '0x69399cc3',
+    "name": "SupportingDocumentAdded",
+    "signature": "SupportingDocumentAdded(bytes32,string,string,string,string,bool,uint256,address)",
+    "signatureHash": "0xb9819508"
   },
   {
-    name: 'TokensDepositedToNode',
-    signature: 'TokensDepositedToNode(bytes32,uint256,uint256,address)',
-    signatureHash: '0x9d994707',
+    "name": "SupportingDocumentRemoved",
+    "signature": "SupportingDocumentRemoved(bytes32,string,uint256,address)",
+    "signatureHash": "0x69399cc3"
   },
   {
-    name: 'TokensMintedToNode',
-    signature: 'TokensMintedToNode(bytes32,uint256,uint256,address)',
-    signatureHash: '0x1177d829',
+    "name": "TokensDepositedToNode",
+    "signature": "TokensDepositedToNode(bytes32,uint256,uint256,address)",
+    "signatureHash": "0x9d994707"
   },
   {
-    name: 'TokensTransferredBetweenNodes',
-    signature: 'TokensTransferredBetweenNodes(bytes32,bytes32,uint256,uint256)',
-    signatureHash: '0x5cee2a26',
+    "name": "TokensMintedToNode",
+    "signature": "TokensMintedToNode(bytes32,uint256,uint256,address)",
+    "signatureHash": "0x1177d829"
   },
   {
-    name: 'TokensWithdrawnFromNode',
-    signature: 'TokensWithdrawnFromNode(bytes32,uint256,uint256,address)',
-    signatureHash: '0x59947f68',
+    "name": "TokensTransferredBetweenNodes",
+    "signature": "TokensTransferredBetweenNodes(bytes32,bytes32,uint256,uint256)",
+    "signatureHash": "0x5cee2a26"
   },
   {
-    name: 'UpdateLocation',
-    signature: 'UpdateLocation(string,string,string,bytes32)',
-    signatureHash: '0x6d4f5fd0',
+    "name": "TokensWithdrawnFromNode",
+    "signature": "TokensWithdrawnFromNode(bytes32,uint256,uint256,address)",
+    "signatureHash": "0x59947f68"
   },
   {
-    name: 'UpdateOwner',
-    signature: 'UpdateOwner(address,bytes32)',
-    signatureHash: '0xea9df86c',
+    "name": "UpdateLocation",
+    "signature": "UpdateLocation(string,string,string,bytes32)",
+    "signatureHash": "0x6d4f5fd0"
   },
   {
-    name: 'UpdateStatus',
-    signature: 'UpdateStatus(bytes1,bytes32)',
-    signatureHash: '0xcf4e8a63',
+    "name": "UpdateOwner",
+    "signature": "UpdateOwner(address,bytes32)",
+    "signatureHash": "0xea9df86c"
   },
+  {
+    "name": "UpdateStatus",
+    "signature": "UpdateStatus(bytes1,bytes32)",
+    "signatureHash": "0xcf4e8a63"
+  }
 ] as const;

@@ -1,31 +1,14 @@
 // Auto-generated handler for ausys domain
-// Generated at: 2026-03-11T00:43:03.887Z
+// Generated at: 2026-05-04T13:18:30.548Z
 //
 // Inline aggregate writes: raw event insert + aggregate table upsert in ONE ponder.on() handler.
 // This avoids the Ponder 0.16 restriction: only one ponder.on() per event name is allowed.
 // Events from: AuSysFacet
 
-import { ponder } from 'ponder:registry';
+import { ponder } from "ponder:registry";
 
 // Import event tables from generated schema
-import {
-  diamondAuSysAdminRevokedEvents,
-  diamondAuSysAdminSetEvents,
-  diamondAuSysJourneyStatusUpdatedEvents,
-  diamondAuSysOrderCreatedEvents,
-  diamondAuSysOrderSettledEvents,
-  diamondAuSysOrderStatusUpdatedEvents,
-  diamondDriverAssignedEvents,
-  diamondEmitSigEvents,
-  diamondJourneyCanceledEvents,
-  diamondJourneyCreatedEvents,
-  diamondNodeFeeDistributedEvents,
-  diamondOrderQuantityCorrectedEvents,
-  diamondP2POfferAcceptedEvents,
-  diamondP2POfferCanceledEvents,
-  diamondP2POfferCreatedEvents,
-  diamondSellerPaidEvents,
-} from 'ponder:schema';
+import { diamondAuSysAdminRevokedEvents, diamondAuSysAdminSetEvents, diamondAuSysJourneyStatusUpdatedEvents, diamondAuSysOrderCreatedEvents, diamondAuSysOrderSettledEvents, diamondAuSysOrderStatusUpdatedEvents, diamondDriverAssignedEvents, diamondEmitSigEvents, diamondJourneyCanceledEvents, diamondJourneyCreatedEvents, diamondNodeFeeDistributedEvents, diamondOrderQuantityCorrectedEvents, diamondP2POfferAcceptedEvents, diamondP2POfferCanceledEvents, diamondP2POfferCreatedEvents, diamondSellerPaidEvents } from "ponder:schema";
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
@@ -78,23 +61,7 @@ ponder.on('Diamond:AuSysAdminSet', async ({ event, context }) => {
  * Hash: 0x3ad95bcd
  */
 ponder.on('Diamond:AuSysJourneyStatusUpdated', async ({ event, context }) => {
-  const {
-    journeyId,
-    newStatus,
-    sender,
-    receiver,
-    driver,
-    bounty,
-    ETA,
-    journeyStart,
-    journeyEnd,
-    startLat,
-    startLng,
-    endLat,
-    endLng,
-    startName,
-    endName,
-  } = event.args;
+  const { journeyId, newStatus, sender, receiver, driver, bounty, ETA, journeyStart, journeyEnd, startLat, startLng, endLat, endLng, startName, endName } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Raw event insert
@@ -127,18 +94,7 @@ ponder.on('Diamond:AuSysJourneyStatusUpdated', async ({ event, context }) => {
  * Hash: 0xda4150a1
  */
 ponder.on('Diamond:AuSysOrderCreated', async ({ event, context }) => {
-  const {
-    orderId,
-    buyer,
-    seller,
-    token,
-    tokenId,
-    tokenQuantity,
-    price,
-    txFee,
-    currentStatus,
-    nodes,
-  } = event.args;
+  const { orderId, buyer, seller, token, tokenId, tokenQuantity, price, txFee, currentStatus, nodes } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Raw event insert
@@ -153,9 +109,7 @@ ponder.on('Diamond:AuSysOrderCreated', async ({ event, context }) => {
     price: price,
     tx_fee: txFee,
     current_status: BigInt(currentStatus),
-    nodes: JSON.stringify(Array.from(nodes), (_, v) =>
-      typeof v === 'bigint' ? v.toString() : v,
-    ),
+    nodes: JSON.stringify(Array.from(nodes), (_, v) => typeof v === 'bigint' ? v.toString() : v),
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,
@@ -207,20 +161,7 @@ ponder.on('Diamond:AuSysOrderStatusUpdated', async ({ event, context }) => {
  * Hash: 0x038b3745
  */
 ponder.on('Diamond:DriverAssigned', async ({ event, context }) => {
-  const {
-    journeyId,
-    driver,
-    sender,
-    receiver,
-    bounty,
-    ETA,
-    startLat,
-    startLng,
-    endLat,
-    endLng,
-    startName,
-    endName,
-  } = event.args;
+  const { journeyId, driver, sender, receiver, bounty, ETA, startLat, startLng, endLat, endLng, startName, endName } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Raw event insert
@@ -270,20 +211,7 @@ ponder.on('Diamond:EmitSig', async ({ event, context }) => {
  * Hash: 0x08a09942
  */
 ponder.on('Diamond:JourneyCanceled', async ({ event, context }) => {
-  const {
-    journeyId,
-    sender,
-    receiver,
-    driver,
-    refundedAmount,
-    bounty,
-    startLat,
-    startLng,
-    endLat,
-    endLng,
-    startName,
-    endName,
-  } = event.args;
+  const { journeyId, sender, receiver, driver, refundedAmount, bounty, startLat, startLng, endLat, endLng, startName, endName } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Raw event insert
@@ -313,21 +241,7 @@ ponder.on('Diamond:JourneyCanceled', async ({ event, context }) => {
  * Hash: 0x5508139b
  */
 ponder.on('Diamond:JourneyCreated', async ({ event, context }) => {
-  const {
-    journeyId,
-    sender,
-    receiver,
-    driver,
-    bounty,
-    ETA,
-    orderId,
-    startLat,
-    startLng,
-    endLat,
-    endLng,
-    startName,
-    endName,
-  } = event.args;
+  const { journeyId, sender, receiver, driver, bounty, ETA, orderId, startLat, startLng, endLat, endLng, startName, endName } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Raw event insert
@@ -440,17 +354,7 @@ ponder.on('Diamond:P2POfferCanceled', async ({ event, context }) => {
  * Hash: 0x4c52c233
  */
 ponder.on('Diamond:P2POfferCreated', async ({ event, context }) => {
-  const {
-    orderId,
-    creator,
-    isSellerInitiated,
-    token,
-    tokenId,
-    tokenQuantity,
-    price,
-    targetCounterparty,
-    expiresAt,
-  } = event.args;
+  const { orderId, creator, isSellerInitiated, token, tokenId, tokenQuantity, price, targetCounterparty, expiresAt } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Raw event insert
@@ -490,3 +394,4 @@ ponder.on('Diamond:SellerPaid', async ({ event, context }) => {
     transaction_hash: event.transaction.hash,
   });
 });
+

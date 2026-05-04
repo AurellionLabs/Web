@@ -1,27 +1,14 @@
 // Auto-generated handler for bridge domain
-// Generated at: 2026-03-11T00:43:03.886Z
+// Generated at: 2026-05-04T13:18:30.546Z
 //
 // Inline aggregate writes: raw event insert + aggregate table upsert in ONE ponder.on() handler.
 // This avoids the Ponder 0.16 restriction: only one ponder.on() per event name is allowed.
 // Events from: BridgeFacet
 
-import { ponder } from 'ponder:registry';
+import { ponder } from "ponder:registry";
 
 // Import event tables from generated schema
-import {
-  diamondBountyPaidEvents,
-  diamondBridgeFeeRecipientUpdatedEvents,
-  diamondBridgeOrderCancelledEvents,
-  diamondFundsEscrowedEvents,
-  diamondFundsRefundedEvents,
-  diamondJourneyStatusUpdatedEvents,
-  diamondLogisticsOrderCreatedEvents,
-  diamondOrderSettledEvents,
-  diamondTradeMatchedEvents,
-  diamondUnifiedOrderCreatedEvents,
-  orders,
-  journeys,
-} from 'ponder:schema';
+import { diamondBountyPaidEvents, diamondBridgeFeeRecipientUpdatedEvents, diamondBridgeOrderCancelledEvents, diamondFundsEscrowedEvents, diamondFundsRefundedEvents, diamondJourneyStatusUpdatedEvents, diamondLogisticsOrderCreatedEvents, diamondOrderSettledEvents, diamondTradeMatchedEvents, diamondUnifiedOrderCreatedEvents, orders, journeys } from "ponder:schema";
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
@@ -90,12 +77,14 @@ ponder.on('Diamond:BridgeOrderCancelled', async ({ event, context }) => {
   });
 
   // Inline aggregate writes (inlined to avoid duplicate ponder.on() for same event)
-  await context.db.update(orders, { id: unifiedOrderId }).set({
+  await context.db
+    .update(orders, { id: unifiedOrderId })
+    .set({
     current_status: 5,
     updated_at: BigInt(event.block.timestamp),
     block_number: event.block.number,
     transaction_hash: event.transaction.hash,
-  });
+    });
 });
 
 /**
@@ -159,13 +148,15 @@ ponder.on('Diamond:JourneyStatusUpdated', async ({ event, context }) => {
   });
 
   // Inline aggregate writes (inlined to avoid duplicate ponder.on() for same event)
-  await context.db.update(journeys, { id: journeyId }).set({
+  await context.db
+    .update(journeys, { id: journeyId })
+    .set({
     current_status: Number(BigInt(phase)),
     order_id: unifiedOrderId,
     updated_at: BigInt(event.block.timestamp),
     block_number: event.block.number,
     transaction_hash: event.transaction.hash,
-  });
+    });
 });
 
 /**
@@ -182,9 +173,7 @@ ponder.on('Diamond:LogisticsOrderCreated', async ({ event, context }) => {
     id: id,
     unified_order_id: unifiedOrderId,
     ausys_order_id: ausysOrderId,
-    journey_ids: JSON.stringify(Array.from(journeyIds), (_, v) =>
-      typeof v === 'bigint' ? v.toString() : v,
-    ),
+    journey_ids: JSON.stringify(Array.from(journeyIds), (_, v) => typeof v === 'bigint' ? v.toString() : v),
     bounty: bounty,
     node: node,
     block_number: event.block.number,
@@ -193,21 +182,18 @@ ponder.on('Diamond:LogisticsOrderCreated', async ({ event, context }) => {
   });
 
   // Inline aggregate writes (inlined to avoid duplicate ponder.on() for same event)
-  await context.db
-    .insert(journeys)
-    .values({
-      id: ausysOrderId,
-      sender: node,
-      receiver: node,
-      current_status: 0,
-      bounty: bounty,
-      order_id: unifiedOrderId,
-      created_at: BigInt(event.block.timestamp),
-      updated_at: BigInt(event.block.timestamp),
-      block_number: event.block.number,
-      transaction_hash: event.transaction.hash,
-    })
-    .onConflictDoNothing();
+  await context.db.insert(journeys).values({
+    id: ausysOrderId,
+    sender: node,
+    receiver: node,
+    current_status: 0,
+    bounty: bounty,
+    order_id: unifiedOrderId,
+    created_at: BigInt(event.block.timestamp),
+    updated_at: BigInt(event.block.timestamp),
+    block_number: event.block.number,
+    transaction_hash: event.transaction.hash,
+  }).onConflictDoNothing();
 });
 
 /**
@@ -216,8 +202,7 @@ ponder.on('Diamond:LogisticsOrderCreated', async ({ event, context }) => {
  * Hash: 0xe72627b4
  */
 ponder.on('Diamond:OrderSettled', async ({ event, context }) => {
-  const { unifiedOrderId, seller, sellerAmount, driver, driverAmount } =
-    event.args;
+  const { unifiedOrderId, seller, sellerAmount, driver, driverAmount } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Raw event insert
@@ -234,12 +219,14 @@ ponder.on('Diamond:OrderSettled', async ({ event, context }) => {
   });
 
   // Inline aggregate writes (inlined to avoid duplicate ponder.on() for same event)
-  await context.db.update(orders, { id: unifiedOrderId }).set({
+  await context.db
+    .update(orders, { id: unifiedOrderId })
+    .set({
     current_status: 4,
     updated_at: BigInt(event.block.timestamp),
     block_number: event.block.number,
     transaction_hash: event.transaction.hash,
-  });
+    });
 });
 
 /**
@@ -248,8 +235,7 @@ ponder.on('Diamond:OrderSettled', async ({ event, context }) => {
  * Hash: 0x51d0a1e6
  */
 ponder.on('Diamond:TradeMatched', async ({ event, context }) => {
-  const { unifiedOrderId, clobTradeId, clobOrderId, maker, price, amount } =
-    event.args;
+  const { unifiedOrderId, clobTradeId, clobOrderId, maker, price, amount } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Raw event insert
@@ -273,16 +259,7 @@ ponder.on('Diamond:TradeMatched', async ({ event, context }) => {
  * Hash: 0xc8b6af07
  */
 ponder.on('Diamond:UnifiedOrderCreated', async ({ event, context }) => {
-  const {
-    unifiedOrderId,
-    clobOrderId,
-    buyer,
-    seller,
-    token,
-    tokenId,
-    quantity,
-    price,
-  } = event.args;
+  const { unifiedOrderId, clobOrderId, buyer, seller, token, tokenId, quantity, price } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Raw event insert
@@ -302,23 +279,21 @@ ponder.on('Diamond:UnifiedOrderCreated', async ({ event, context }) => {
   });
 
   // Inline aggregate writes (inlined to avoid duplicate ponder.on() for same event)
-  await context.db
-    .insert(orders)
-    .values({
-      id: unifiedOrderId,
-      buyer: buyer,
-      seller: seller,
-      token: token,
-      token_id: tokenId,
-      token_quantity: quantity,
-      requested_token_quantity: quantity,
-      price: price,
-      tx_fee: BigInt(0),
-      current_status: 0,
-      created_at: BigInt(event.block.timestamp),
-      updated_at: BigInt(event.block.timestamp),
-      block_number: event.block.number,
-      transaction_hash: event.transaction.hash,
-    })
-    .onConflictDoNothing();
+  await context.db.insert(orders).values({
+    id: unifiedOrderId,
+    buyer: buyer,
+    seller: seller,
+    token: token,
+    token_id: tokenId,
+    token_quantity: quantity,
+    requested_token_quantity: quantity,
+    price: price,
+    tx_fee: BigInt(0),
+    current_status: 0,
+    created_at: BigInt(event.block.timestamp),
+    updated_at: BigInt(event.block.timestamp),
+    block_number: event.block.number,
+    transaction_hash: event.transaction.hash,
+  }).onConflictDoNothing();
 });
+

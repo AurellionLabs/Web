@@ -1,23 +1,14 @@
 // Auto-generated handler for clob domain
-// Generated at: 2026-03-10T19:30:30.104Z
+// Generated at: 2026-05-04T13:18:30.546Z
 //
 // Inline aggregate writes: raw event insert + aggregate table upsert in ONE ponder.on() handler.
 // This avoids the Ponder 0.16 restriction: only one ponder.on() per event name is allowed.
 // Events from: CLOBFacetV2, OrderRouterFacet
 
-import { ponder } from 'ponder:registry';
+import { ponder } from "ponder:registry";
 
 // Import event tables from generated schema
-import {
-  diamondCLOBOrderCancelledEvents,
-  diamondCLOBOrderFilledEvents,
-  diamondCLOBTradeExecutedEvents,
-  diamondMarketCreatedEvents,
-  diamondOrderCreatedEvents,
-  diamondOrderExpiredEvents,
-  diamondOrderPlacedWithTokensEvents,
-  diamondRouterOrderPlacedEvents,
-} from 'ponder:schema';
+import { diamondCLOBOrderCancelledEvents, diamondCLOBOrderFilledEvents, diamondCLOBTradeExecutedEvents, diamondMarketCreatedEvents, diamondOrderCreatedEvents, diamondOrderExpiredEvents, diamondOrderPlacedWithTokensEvents, diamondRouterOrderPlacedEvents } from "ponder:schema";
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
@@ -54,14 +45,7 @@ ponder.on('Diamond:CLOBOrderCancelled', async ({ event, context }) => {
  * Hash: 0x2d540948
  */
 ponder.on('Diamond:CLOBOrderFilled', async ({ event, context }) => {
-  const {
-    orderId,
-    tradeId,
-    fillAmount,
-    fillPrice,
-    remainingAmount,
-    cumulativeFilled,
-  } = event.args;
+  const { orderId, tradeId, fillAmount, fillPrice, remainingAmount, cumulativeFilled } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Raw event insert
@@ -85,21 +69,7 @@ ponder.on('Diamond:CLOBOrderFilled', async ({ event, context }) => {
  * Hash: 0x57e60214
  */
 ponder.on('Diamond:CLOBTradeExecuted', async ({ event, context }) => {
-  const {
-    tradeId,
-    takerOrderId,
-    makerOrderId,
-    taker,
-    maker,
-    marketId,
-    price,
-    amount,
-    quoteAmount,
-    takerFee,
-    makerFee,
-    timestamp,
-    takerIsBuy,
-  } = event.args;
+  const { tradeId, takerOrderId, makerOrderId, taker, maker, marketId, price, amount, quoteAmount, takerFee, makerFee, timestamp, takerIsBuy } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Raw event insert
@@ -152,18 +122,7 @@ ponder.on('Diamond:MarketCreated', async ({ event, context }) => {
  * Hash: 0x43fe20c0
  */
 ponder.on('Diamond:OrderCreated', async ({ event, context }) => {
-  const {
-    orderId,
-    marketId,
-    maker,
-    price,
-    amount,
-    isBuy,
-    orderType,
-    timeInForce,
-    expiry,
-    nonce,
-  } = event.args;
+  const { orderId, marketId, maker, price, amount, isBuy, orderType, timeInForce, expiry, nonce } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Raw event insert
@@ -211,17 +170,7 @@ ponder.on('Diamond:OrderExpired', async ({ event, context }) => {
  * Hash: 0xe764a4f2
  */
 ponder.on('Diamond:OrderPlacedWithTokens', async ({ event, context }) => {
-  const {
-    orderId,
-    maker,
-    baseToken,
-    baseTokenId,
-    quoteToken,
-    price,
-    amount,
-    isBuy,
-    orderType,
-  } = event.args;
+  const { orderId, maker, baseToken, baseTokenId, quoteToken, price, amount, isBuy, orderType } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Raw event insert
@@ -242,6 +191,7 @@ ponder.on('Diamond:OrderPlacedWithTokens', async ({ event, context }) => {
   });
 });
 
+
 // =============================================================================
 // OrderRouterFacet Events
 // =============================================================================
@@ -252,17 +202,7 @@ ponder.on('Diamond:OrderPlacedWithTokens', async ({ event, context }) => {
  * Hash: 0x0e2e2fa3
  */
 ponder.on('Diamond:RouterOrderPlaced', async ({ event, context }) => {
-  const {
-    orderId,
-    maker,
-    baseToken,
-    baseTokenId,
-    quoteToken,
-    price,
-    amount,
-    isBuy,
-    orderType,
-  } = event.args;
+  const { orderId, maker, baseToken, baseTokenId, quoteToken, price, amount, isBuy, orderType } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Raw event insert
@@ -282,3 +222,4 @@ ponder.on('Diamond:RouterOrderPlaced', async ({ event, context }) => {
     transaction_hash: event.transaction.hash,
   });
 });
+

@@ -1,32 +1,14 @@
 // Auto-generated handler for rwy-staking domain
-// Generated at: 2026-03-10T19:30:30.104Z
+// Generated at: 2026-05-04T13:18:30.547Z
 //
 // Inline aggregate writes: raw event insert + aggregate table upsert in ONE ponder.on() handler.
 // This avoids the Ponder 0.16 restriction: only one ponder.on() per event name is allowed.
 // Events from: RWYStakingFacet
 
-import { ponder } from 'ponder:registry';
+import { ponder } from "ponder:registry";
 
 // Import event tables from generated schema
-import {
-  diamondCollateralReturnedEvents,
-  diamondCommodityStakedEvents,
-  diamondCommodityUnstakedEvents,
-  diamondConfigUpdatedEvents,
-  diamondCustodyProofSubmittedEvents,
-  diamondDeliveryConfirmedEvents,
-  diamondDeliveryStartedEvents,
-  diamondInsuranceUpdatedEvents,
-  diamondOpportunityCancelledEvents,
-  diamondOpportunityCompletedEvents,
-  diamondOpportunityCreatedEvents,
-  diamondOpportunityFundedEvents,
-  diamondProcessingCompletedEvents,
-  diamondProcessingStartedEvents,
-  diamondProfitDistributedEvents,
-  diamondSaleProceedsRecordedEvents,
-  diamondTokenizationProofSubmittedEvents,
-} from 'ponder:schema';
+import { diamondCollateralReturnedEvents, diamondCommodityStakedEvents, diamondCommodityUnstakedEvents, diamondConfigUpdatedEvents, diamondCustodyProofSubmittedEvents, diamondDeliveryConfirmedEvents, diamondDeliveryStartedEvents, diamondInsuranceUpdatedEvents, diamondOpportunityCancelledEvents, diamondOpportunityCompletedEvents, diamondOpportunityCreatedEvents, diamondOpportunityFundedEvents, diamondProcessingCompletedEvents, diamondProcessingStartedEvents, diamondProfitDistributedEvents, diamondSaleProceedsRecordedEvents, diamondTokenizationProofSubmittedEvents } from "ponder:schema";
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
@@ -126,8 +108,7 @@ ponder.on('Diamond:ConfigUpdated', async ({ event, context }) => {
  * Hash: 0x51d9b1fc
  */
 ponder.on('Diamond:CustodyProofSubmitted', async ({ event, context }) => {
-  const { opportunityId, documentUri, proofType, submitter, timestamp } =
-    event.args;
+  const { opportunityId, documentUri, proofType, submitter, timestamp } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Raw event insert
@@ -190,8 +171,7 @@ ponder.on('Diamond:DeliveryStarted', async ({ event, context }) => {
  * Hash: 0xaf953efb
  */
 ponder.on('Diamond:InsuranceUpdated', async ({ event, context }) => {
-  const { opportunityId, isInsured, documentUri, coverageAmount, expiryDate } =
-    event.args;
+  const { opportunityId, isInsured, documentUri, coverageAmount, expiryDate } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Raw event insert
@@ -254,14 +234,7 @@ ponder.on('Diamond:OpportunityCompleted', async ({ event, context }) => {
  * Hash: 0x1e5c8915
  */
 ponder.on('Diamond:OpportunityCreated', async ({ event, context }) => {
-  const {
-    id: arg_id,
-    operator,
-    inputToken,
-    inputTokenId,
-    targetAmount,
-    promisedYieldBps,
-  } = event.args;
+  const { id: arg_id, operator, inputToken, inputTokenId, targetAmount, promisedYieldBps } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Raw event insert
@@ -402,3 +375,4 @@ ponder.on('Diamond:TokenizationProofSubmitted', async ({ event, context }) => {
     transaction_hash: event.transaction.hash,
   });
 });
+

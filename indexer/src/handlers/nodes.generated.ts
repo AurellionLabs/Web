@@ -1,35 +1,14 @@
 // Auto-generated handler for nodes domain
-// Generated at: 2026-03-11T00:43:03.885Z
+// Generated at: 2026-05-04T13:18:30.545Z
 //
 // Inline aggregate writes: raw event insert + aggregate table upsert in ONE ponder.on() handler.
 // This avoids the Ponder 0.16 restriction: only one ponder.on() per event name is allowed.
 // Events from: NodesFacet
 
-import { ponder } from 'ponder:registry';
+import { ponder } from "ponder:registry";
 
 // Import event tables from generated schema
-import {
-  diamondClobApprovalGrantedEvents,
-  diamondClobApprovalRevokedEvents,
-  diamondNodeAdminRevokedEvents,
-  diamondNodeAdminSetEvents,
-  diamondNodeCapacityUpdatedEvents,
-  diamondNodeDeactivatedEvents,
-  diamondNodeRegisteredEvents,
-  diamondNodeSellOrderPlacedEvents,
-  diamondNodeUpdatedEvents,
-  diamondSupportedAssetAddedEvents,
-  diamondSupportedAssetsUpdatedEvents,
-  diamondSupportingDocumentAddedEvents,
-  diamondSupportingDocumentRemovedEvents,
-  diamondTokensDepositedToNodeEvents,
-  diamondTokensMintedToNodeEvents,
-  diamondTokensTransferredBetweenNodesEvents,
-  diamondTokensWithdrawnFromNodeEvents,
-  diamondUpdateLocationEvents,
-  diamondUpdateOwnerEvents,
-  diamondUpdateStatusEvents,
-} from 'ponder:schema';
+import { diamondClobApprovalGrantedEvents, diamondClobApprovalRevokedEvents, diamondNodeAdminRevokedEvents, diamondNodeAdminSetEvents, diamondNodeCapacityUpdatedEvents, diamondNodeDeactivatedEvents, diamondNodeRegisteredEvents, diamondNodeSellOrderPlacedEvents, diamondNodeUpdatedEvents, diamondNodeVaultCreatedEvents, diamondSupportedAssetAddedEvents, diamondSupportedAssetsUpdatedEvents, diamondSupportingDocumentAddedEvents, diamondSupportingDocumentRemovedEvents, diamondTokensDepositedToNodeEvents, diamondTokensMintedToNodeEvents, diamondTokensTransferredBetweenNodesEvents, diamondTokensWithdrawnFromNodeEvents, diamondUpdateLocationEvents, diamondUpdateOwnerEvents, diamondUpdateStatusEvents } from "ponder:schema";
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
@@ -129,9 +108,7 @@ ponder.on('Diamond:NodeCapacityUpdated', async ({ event, context }) => {
   await context.db.insert(diamondNodeCapacityUpdatedEvents).values({
     id: id,
     node_hash: nodeHash,
-    quantities: JSON.stringify(Array.from(quantities), (_, v) =>
-      typeof v === 'bigint' ? v.toString() : v,
-    ),
+    quantities: JSON.stringify(Array.from(quantities), (_, v) => typeof v === 'bigint' ? v.toString() : v),
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,
@@ -224,6 +201,27 @@ ponder.on('Diamond:NodeUpdated', async ({ event, context }) => {
 });
 
 /**
+ * Handle NodeVaultCreated event from NodesFacet
+ * Signature: NodeVaultCreated(bytes32,address,address)
+ * Hash: 0xb12500a2
+ */
+ponder.on('Diamond:NodeVaultCreated', async ({ event, context }) => {
+  const { nodeHash, vault, asset } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
+
+  // Raw event insert
+  await context.db.insert(diamondNodeVaultCreatedEvents).values({
+    id: id,
+    node_hash: nodeHash,
+    vault: vault,
+    asset: asset,
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+});
+
+/**
  * Handle SupportedAssetAdded event from NodesFacet
  * Signature: SupportedAssetAdded(bytes32,address,uint256,uint256,uint256)
  * Hash: 0x9f0a9fa6
@@ -272,16 +270,7 @@ ponder.on('Diamond:SupportedAssetsUpdated', async ({ event, context }) => {
  * Hash: 0xb9819508
  */
 ponder.on('Diamond:SupportingDocumentAdded', async ({ event, context }) => {
-  const {
-    nodeHash,
-    url,
-    title,
-    description,
-    documentType,
-    isFrozen,
-    timestamp,
-    addedBy,
-  } = event.args;
+  const { nodeHash, url, title, description, documentType, isFrozen, timestamp, addedBy } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Raw event insert
@@ -372,25 +361,22 @@ ponder.on('Diamond:TokensMintedToNode', async ({ event, context }) => {
  * Signature: TokensTransferredBetweenNodes(bytes32,bytes32,uint256,uint256)
  * Hash: 0x5cee2a26
  */
-ponder.on(
-  'Diamond:TokensTransferredBetweenNodes',
-  async ({ event, context }) => {
-    const { fromNode, toNode, tokenId, amount } = event.args;
-    const id = eventId(event.transaction.hash, event.log.logIndex);
+ponder.on('Diamond:TokensTransferredBetweenNodes', async ({ event, context }) => {
+  const { fromNode, toNode, tokenId, amount } = event.args;
+  const id = eventId(event.transaction.hash, event.log.logIndex);
 
-    // Raw event insert
-    await context.db.insert(diamondTokensTransferredBetweenNodesEvents).values({
-      id: id,
-      from_node: fromNode,
-      to_node: toNode,
-      token_id: tokenId,
-      amount: amount,
-      block_number: event.block.number,
-      block_timestamp: BigInt(event.block.timestamp),
-      transaction_hash: event.transaction.hash,
-    });
-  },
-);
+  // Raw event insert
+  await context.db.insert(diamondTokensTransferredBetweenNodesEvents).values({
+    id: id,
+    from_node: fromNode,
+    to_node: toNode,
+    token_id: tokenId,
+    amount: amount,
+    block_number: event.block.number,
+    block_timestamp: BigInt(event.block.timestamp),
+    transaction_hash: event.transaction.hash,
+  });
+});
 
 /**
  * Handle TokensWithdrawnFromNode event from NodesFacet
@@ -475,3 +461,4 @@ ponder.on('Diamond:UpdateStatus', async ({ event, context }) => {
     transaction_hash: event.transaction.hash,
   });
 });
+

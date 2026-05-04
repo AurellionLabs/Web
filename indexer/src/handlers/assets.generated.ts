@@ -1,26 +1,14 @@
 // Auto-generated handler for assets domain
-// Generated at: 2026-03-10T19:30:30.105Z
+// Generated at: 2026-05-04T13:18:30.548Z
 //
 // Inline aggregate writes: raw event insert + aggregate table upsert in ONE ponder.on() handler.
 // This avoids the Ponder 0.16 restriction: only one ponder.on() per event name is allowed.
 // Events from: AssetsFacet
 
-import { ponder } from 'ponder:registry';
+import { ponder } from "ponder:registry";
 
 // Import event tables from generated schema
-import {
-  diamondApprovalForAllEvents,
-  diamondAssetAttributeAddedEvents,
-  diamondCustodyEstablishedEvents,
-  diamondCustodyReleasedEvents,
-  diamondMintedAssetEvents,
-  diamondSupportedClassAddedEvents,
-  diamondSupportedClassRemovedEvents,
-  diamondTransferBatchEvents,
-  diamondTransferSingleEvents,
-  diamondURIEvents,
-  assets,
-} from 'ponder:schema';
+import { diamondApprovalForAllEvents, diamondAssetAttributeAddedEvents, diamondCustodyEstablishedEvents, diamondCustodyReleasedEvents, diamondMintedAssetEvents, diamondSupportedClassAddedEvents, diamondSupportedClassRemovedEvents, diamondTransferBatchEvents, diamondTransferSingleEvents, diamondURIEvents, assets } from "ponder:schema";
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
@@ -65,9 +53,7 @@ ponder.on('Diamond:AssetAttributeAdded', async ({ event, context }) => {
     hash: hash,
     attribute_index: attributeIndex,
     name: name,
-    values: JSON.stringify(Array.from(values), (_, v) =>
-      typeof v === 'bigint' ? v.toString() : v,
-    ),
+    values: JSON.stringify(Array.from(values), (_, v) => typeof v === 'bigint' ? v.toString() : v),
     description: description,
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
@@ -145,29 +131,29 @@ ponder.on('Diamond:MintedAsset', async ({ event, context }) => {
   await context.db
     .insert(assets)
     .values({
-      id: hash,
-      hash: hash,
-      token_id: tokenId,
-      name: name,
-      asset_class: assetClass,
-      class_name: className,
-      account: account,
-      created_at: BigInt(event.block.timestamp),
-      updated_at: BigInt(event.block.timestamp),
-      block_number: event.block.number,
-      transaction_hash: event.transaction.hash,
+    id: hash,
+    hash: hash,
+    token_id: tokenId,
+    name: name,
+    asset_class: assetClass,
+    class_name: className,
+    account: account,
+    created_at: BigInt(event.block.timestamp),
+    updated_at: BigInt(event.block.timestamp),
+    block_number: event.block.number,
+    transaction_hash: event.transaction.hash,
     })
     .onConflictDoUpdate({
-      hash: hash,
-      token_id: tokenId,
-      name: name,
-      asset_class: assetClass,
-      class_name: className,
-      account: account,
-      created_at: BigInt(event.block.timestamp),
-      updated_at: BigInt(event.block.timestamp),
-      block_number: event.block.number,
-      transaction_hash: event.transaction.hash,
+    hash: hash,
+    token_id: tokenId,
+    name: name,
+    asset_class: assetClass,
+    class_name: className,
+    account: account,
+    created_at: BigInt(event.block.timestamp),
+    updated_at: BigInt(event.block.timestamp),
+    block_number: event.block.number,
+    transaction_hash: event.transaction.hash,
     });
 });
 
@@ -226,12 +212,8 @@ ponder.on('Diamond:TransferBatch', async ({ event, context }) => {
     operator: operator,
     from: from,
     to: to,
-    ids: JSON.stringify(Array.from(ids), (_, v) =>
-      typeof v === 'bigint' ? v.toString() : v,
-    ),
-    values: JSON.stringify(Array.from(values), (_, v) =>
-      typeof v === 'bigint' ? v.toString() : v,
-    ),
+    ids: JSON.stringify(Array.from(ids), (_, v) => typeof v === 'bigint' ? v.toString() : v),
+    values: JSON.stringify(Array.from(values), (_, v) => typeof v === 'bigint' ? v.toString() : v),
     block_number: event.block.number,
     block_timestamp: BigInt(event.block.timestamp),
     transaction_hash: event.transaction.hash,
@@ -280,3 +262,4 @@ ponder.on('Diamond:URI', async ({ event, context }) => {
     transaction_hash: event.transaction.hash,
   });
 });
+

@@ -1,17 +1,14 @@
 // Auto-generated handler for clob-mev domain
-// Generated at: 2026-03-10T19:30:30.105Z
+// Generated at: 2026-05-04T13:18:30.548Z
 //
 // Inline aggregate writes: raw event insert + aggregate table upsert in ONE ponder.on() handler.
 // This avoids the Ponder 0.16 restriction: only one ponder.on() per event name is allowed.
 // Events from: CLOBMEVFacet
 
-import { ponder } from 'ponder:registry';
+import { ponder } from "ponder:registry";
 
 // Import event tables from generated schema
-import {
-  diamondOrderCommittedEvents,
-  diamondOrderRevealedEvents,
-} from 'ponder:schema';
+import { diamondOrderCommittedEvents, diamondOrderRevealedEvents } from "ponder:schema";
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
@@ -61,3 +58,4 @@ ponder.on('Diamond:OrderRevealed', async ({ event, context }) => {
     transaction_hash: event.transaction.hash,
   });
 });
+

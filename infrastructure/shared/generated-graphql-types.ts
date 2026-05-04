@@ -1,5 +1,5 @@
 // Auto-generated GraphQL types - DO NOT EDIT
-// Generated at: 2026-03-11T00:43:03.889Z
+// Generated at: 2026-05-04T13:18:30.550Z
 //
 // This file provides type-safe GraphQL query helpers for Ponder tables.
 // All table names and field names are derived from the schema generator.
@@ -10,191 +10,100 @@
 // ============================================================================
 // Use these constants in GraphQL queries to ensure correct table names
 
-export const TABLE_DIAMOND_CLOB_APPROVAL_GRANTED_EVENTS =
-  'diamondClobApprovalGrantedEventss' as const;
-export const TABLE_DIAMOND_CLOB_APPROVAL_REVOKED_EVENTS =
-  'diamondClobApprovalRevokedEventss' as const;
-export const TABLE_DIAMOND_INITIALIZED_EVENTS =
-  'diamondInitializedEventss' as const;
-export const TABLE_DIAMOND_NODE_ADMIN_REVOKED_EVENTS =
-  'diamondNodeAdminRevokedEventss' as const;
-export const TABLE_DIAMOND_NODE_ADMIN_SET_EVENTS =
-  'diamondNodeAdminSetEventss' as const;
-export const TABLE_DIAMOND_NODE_CAPACITY_UPDATED_EVENTS =
-  'diamondNodeCapacityUpdatedEventss' as const;
-export const TABLE_DIAMOND_NODE_DEACTIVATED_EVENTS =
-  'diamondNodeDeactivatedEventss' as const;
-export const TABLE_DIAMOND_NODE_REGISTERED_EVENTS =
-  'diamondNodeRegisteredEventss' as const;
-export const TABLE_DIAMOND_NODE_SELL_ORDER_PLACED_EVENTS =
-  'diamondNodeSellOrderPlacedEventss' as const;
-export const TABLE_DIAMOND_NODE_UPDATED_EVENTS =
-  'diamondNodeUpdatedEventss' as const;
-export const TABLE_DIAMOND_SUPPORTED_ASSET_ADDED_EVENTS =
-  'diamondSupportedAssetAddedEventss' as const;
-export const TABLE_DIAMOND_SUPPORTED_ASSETS_UPDATED_EVENTS =
-  'diamondSupportedAssetsUpdatedEventss' as const;
-export const TABLE_DIAMOND_SUPPORTING_DOCUMENT_ADDED_EVENTS =
-  'diamondSupportingDocumentAddedEventss' as const;
-export const TABLE_DIAMOND_SUPPORTING_DOCUMENT_REMOVED_EVENTS =
-  'diamondSupportingDocumentRemovedEventss' as const;
-export const TABLE_DIAMOND_TOKENS_DEPOSITED_TO_NODE_EVENTS =
-  'diamondTokensDepositedToNodeEventss' as const;
-export const TABLE_DIAMOND_TOKENS_MINTED_TO_NODE_EVENTS =
-  'diamondTokensMintedToNodeEventss' as const;
-export const TABLE_DIAMOND_TOKENS_TRANSFERRED_BETWEEN_NODES_EVENTS =
-  'diamondTokensTransferredBetweenNodesEventss' as const;
-export const TABLE_DIAMOND_TOKENS_WITHDRAWN_FROM_NODE_EVENTS =
-  'diamondTokensWithdrawnFromNodeEventss' as const;
-export const TABLE_DIAMOND_UPDATE_LOCATION_EVENTS =
-  'diamondUpdateLocationEventss' as const;
-export const TABLE_DIAMOND_UPDATE_OWNER_EVENTS =
-  'diamondUpdateOwnerEventss' as const;
-export const TABLE_DIAMOND_UPDATE_STATUS_EVENTS =
-  'diamondUpdateStatusEventss' as const;
-export const TABLE_DIAMOND_C_L_O_B_ORDER_CANCELLED_EVENTS =
-  'diamondCLOBOrderCancelledEventss' as const;
-export const TABLE_DIAMOND_C_L_O_B_ORDER_FILLED_EVENTS =
-  'diamondCLOBOrderFilledEventss' as const;
-export const TABLE_DIAMOND_C_L_O_B_TRADE_EXECUTED_EVENTS =
-  'diamondCLOBTradeExecutedEventss' as const;
-export const TABLE_DIAMOND_MARKET_CREATED_EVENTS =
-  'diamondMarketCreatedEventss' as const;
-export const TABLE_DIAMOND_ORDER_CREATED_EVENTS =
-  'diamondOrderCreatedEventss' as const;
-export const TABLE_DIAMOND_ORDER_EXPIRED_EVENTS =
-  'diamondOrderExpiredEventss' as const;
-export const TABLE_DIAMOND_ORDER_PLACED_WITH_TOKENS_EVENTS =
-  'diamondOrderPlacedWithTokensEventss' as const;
-export const TABLE_DIAMOND_ROUTER_ORDER_PLACED_EVENTS =
-  'diamondRouterOrderPlacedEventss' as const;
-export const TABLE_DIAMOND_BOUNTY_PAID_EVENTS =
-  'diamondBountyPaidEventss' as const;
-export const TABLE_DIAMOND_BRIDGE_FEE_RECIPIENT_UPDATED_EVENTS =
-  'diamondBridgeFeeRecipientUpdatedEventss' as const;
-export const TABLE_DIAMOND_BRIDGE_ORDER_CANCELLED_EVENTS =
-  'diamondBridgeOrderCancelledEventss' as const;
-export const TABLE_DIAMOND_FUNDS_ESCROWED_EVENTS =
-  'diamondFundsEscrowedEventss' as const;
-export const TABLE_DIAMOND_FUNDS_REFUNDED_EVENTS =
-  'diamondFundsRefundedEventss' as const;
-export const TABLE_DIAMOND_JOURNEY_STATUS_UPDATED_EVENTS =
-  'diamondJourneyStatusUpdatedEventss' as const;
-export const TABLE_DIAMOND_LOGISTICS_ORDER_CREATED_EVENTS =
-  'diamondLogisticsOrderCreatedEventss' as const;
-export const TABLE_DIAMOND_ORDER_SETTLED_EVENTS =
-  'diamondOrderSettledEventss' as const;
-export const TABLE_DIAMOND_TRADE_MATCHED_EVENTS =
-  'diamondTradeMatchedEventss' as const;
-export const TABLE_DIAMOND_UNIFIED_ORDER_CREATED_EVENTS =
-  'diamondUnifiedOrderCreatedEventss' as const;
-export const TABLE_DIAMOND_COLLATERAL_RETURNED_EVENTS =
-  'diamondCollateralReturnedEventss' as const;
-export const TABLE_DIAMOND_COMMODITY_STAKED_EVENTS =
-  'diamondCommodityStakedEventss' as const;
-export const TABLE_DIAMOND_COMMODITY_UNSTAKED_EVENTS =
-  'diamondCommodityUnstakedEventss' as const;
-export const TABLE_DIAMOND_CONFIG_UPDATED_EVENTS =
-  'diamondConfigUpdatedEventss' as const;
-export const TABLE_DIAMOND_CUSTODY_PROOF_SUBMITTED_EVENTS =
-  'diamondCustodyProofSubmittedEventss' as const;
-export const TABLE_DIAMOND_DELIVERY_CONFIRMED_EVENTS =
-  'diamondDeliveryConfirmedEventss' as const;
-export const TABLE_DIAMOND_DELIVERY_STARTED_EVENTS =
-  'diamondDeliveryStartedEventss' as const;
-export const TABLE_DIAMOND_INSURANCE_UPDATED_EVENTS =
-  'diamondInsuranceUpdatedEventss' as const;
-export const TABLE_DIAMOND_OPPORTUNITY_CANCELLED_EVENTS =
-  'diamondOpportunityCancelledEventss' as const;
-export const TABLE_DIAMOND_OPPORTUNITY_COMPLETED_EVENTS =
-  'diamondOpportunityCompletedEventss' as const;
-export const TABLE_DIAMOND_OPPORTUNITY_CREATED_EVENTS =
-  'diamondOpportunityCreatedEventss' as const;
-export const TABLE_DIAMOND_OPPORTUNITY_FUNDED_EVENTS =
-  'diamondOpportunityFundedEventss' as const;
-export const TABLE_DIAMOND_PROCESSING_COMPLETED_EVENTS =
-  'diamondProcessingCompletedEventss' as const;
-export const TABLE_DIAMOND_PROCESSING_STARTED_EVENTS =
-  'diamondProcessingStartedEventss' as const;
-export const TABLE_DIAMOND_PROFIT_DISTRIBUTED_EVENTS =
-  'diamondProfitDistributedEventss' as const;
-export const TABLE_DIAMOND_SALE_PROCEEDS_RECORDED_EVENTS =
-  'diamondSaleProceedsRecordedEventss' as const;
-export const TABLE_DIAMOND_TOKENIZATION_PROOF_SUBMITTED_EVENTS =
-  'diamondTokenizationProofSubmittedEventss' as const;
-export const TABLE_DIAMOND_CIRCUIT_BREAKER_CONFIGURED_EVENTS =
-  'diamondCircuitBreakerConfiguredEventss' as const;
-export const TABLE_DIAMOND_CIRCUIT_BREAKER_RESET_EVENTS =
-  'diamondCircuitBreakerResetEventss' as const;
-export const TABLE_DIAMOND_CIRCUIT_BREAKER_TRIPPED_EVENTS =
-  'diamondCircuitBreakerTrippedEventss' as const;
-export const TABLE_DIAMOND_FEE_RECIPIENT_UPDATED_EVENTS =
-  'diamondFeeRecipientUpdatedEventss' as const;
-export const TABLE_DIAMOND_FEES_UPDATED_EVENTS =
-  'diamondFeesUpdatedEventss' as const;
-export const TABLE_DIAMOND_GLOBAL_PAUSE_EVENTS =
-  'diamondGlobalPauseEventss' as const;
-export const TABLE_DIAMOND_M_E_V_PROTECTION_UPDATED_EVENTS =
-  'diamondMEVProtectionUpdatedEventss' as const;
-export const TABLE_DIAMOND_MARKET_PAUSED_EVENTS =
-  'diamondMarketPausedEventss' as const;
-export const TABLE_DIAMOND_MARKET_UNPAUSED_EVENTS =
-  'diamondMarketUnpausedEventss' as const;
-export const TABLE_DIAMOND_RATE_LIMITS_UPDATED_EVENTS =
-  'diamondRateLimitsUpdatedEventss' as const;
-export const TABLE_DIAMOND_ORDER_COMMITTED_EVENTS =
-  'diamondOrderCommittedEventss' as const;
-export const TABLE_DIAMOND_ORDER_REVEALED_EVENTS =
-  'diamondOrderRevealedEventss' as const;
-export const TABLE_DIAMOND_AU_SYS_ADMIN_REVOKED_EVENTS =
-  'diamondAuSysAdminRevokedEventss' as const;
-export const TABLE_DIAMOND_AU_SYS_ADMIN_SET_EVENTS =
-  'diamondAuSysAdminSetEventss' as const;
-export const TABLE_DIAMOND_AU_SYS_JOURNEY_STATUS_UPDATED_EVENTS =
-  'diamondAuSysJourneyStatusUpdatedEventss' as const;
-export const TABLE_DIAMOND_AU_SYS_ORDER_CREATED_EVENTS =
-  'diamondAuSysOrderCreatedEventss' as const;
-export const TABLE_DIAMOND_AU_SYS_ORDER_SETTLED_EVENTS =
-  'diamondAuSysOrderSettledEventss' as const;
-export const TABLE_DIAMOND_AU_SYS_ORDER_STATUS_UPDATED_EVENTS =
-  'diamondAuSysOrderStatusUpdatedEventss' as const;
-export const TABLE_DIAMOND_DRIVER_ASSIGNED_EVENTS =
-  'diamondDriverAssignedEventss' as const;
+export const TABLE_DIAMOND_CLOB_APPROVAL_GRANTED_EVENTS = 'diamondClobApprovalGrantedEventss' as const;
+export const TABLE_DIAMOND_CLOB_APPROVAL_REVOKED_EVENTS = 'diamondClobApprovalRevokedEventss' as const;
+export const TABLE_DIAMOND_INITIALIZED_EVENTS = 'diamondInitializedEventss' as const;
+export const TABLE_DIAMOND_NODE_ADMIN_REVOKED_EVENTS = 'diamondNodeAdminRevokedEventss' as const;
+export const TABLE_DIAMOND_NODE_ADMIN_SET_EVENTS = 'diamondNodeAdminSetEventss' as const;
+export const TABLE_DIAMOND_NODE_CAPACITY_UPDATED_EVENTS = 'diamondNodeCapacityUpdatedEventss' as const;
+export const TABLE_DIAMOND_NODE_DEACTIVATED_EVENTS = 'diamondNodeDeactivatedEventss' as const;
+export const TABLE_DIAMOND_NODE_REGISTERED_EVENTS = 'diamondNodeRegisteredEventss' as const;
+export const TABLE_DIAMOND_NODE_SELL_ORDER_PLACED_EVENTS = 'diamondNodeSellOrderPlacedEventss' as const;
+export const TABLE_DIAMOND_NODE_UPDATED_EVENTS = 'diamondNodeUpdatedEventss' as const;
+export const TABLE_DIAMOND_NODE_VAULT_CREATED_EVENTS = 'diamondNodeVaultCreatedEventss' as const;
+export const TABLE_DIAMOND_SUPPORTED_ASSET_ADDED_EVENTS = 'diamondSupportedAssetAddedEventss' as const;
+export const TABLE_DIAMOND_SUPPORTED_ASSETS_UPDATED_EVENTS = 'diamondSupportedAssetsUpdatedEventss' as const;
+export const TABLE_DIAMOND_SUPPORTING_DOCUMENT_ADDED_EVENTS = 'diamondSupportingDocumentAddedEventss' as const;
+export const TABLE_DIAMOND_SUPPORTING_DOCUMENT_REMOVED_EVENTS = 'diamondSupportingDocumentRemovedEventss' as const;
+export const TABLE_DIAMOND_TOKENS_DEPOSITED_TO_NODE_EVENTS = 'diamondTokensDepositedToNodeEventss' as const;
+export const TABLE_DIAMOND_TOKENS_MINTED_TO_NODE_EVENTS = 'diamondTokensMintedToNodeEventss' as const;
+export const TABLE_DIAMOND_TOKENS_TRANSFERRED_BETWEEN_NODES_EVENTS = 'diamondTokensTransferredBetweenNodesEventss' as const;
+export const TABLE_DIAMOND_TOKENS_WITHDRAWN_FROM_NODE_EVENTS = 'diamondTokensWithdrawnFromNodeEventss' as const;
+export const TABLE_DIAMOND_UPDATE_LOCATION_EVENTS = 'diamondUpdateLocationEventss' as const;
+export const TABLE_DIAMOND_UPDATE_OWNER_EVENTS = 'diamondUpdateOwnerEventss' as const;
+export const TABLE_DIAMOND_UPDATE_STATUS_EVENTS = 'diamondUpdateStatusEventss' as const;
+export const TABLE_DIAMOND_C_L_O_B_ORDER_CANCELLED_EVENTS = 'diamondCLOBOrderCancelledEventss' as const;
+export const TABLE_DIAMOND_C_L_O_B_ORDER_FILLED_EVENTS = 'diamondCLOBOrderFilledEventss' as const;
+export const TABLE_DIAMOND_C_L_O_B_TRADE_EXECUTED_EVENTS = 'diamondCLOBTradeExecutedEventss' as const;
+export const TABLE_DIAMOND_MARKET_CREATED_EVENTS = 'diamondMarketCreatedEventss' as const;
+export const TABLE_DIAMOND_ORDER_CREATED_EVENTS = 'diamondOrderCreatedEventss' as const;
+export const TABLE_DIAMOND_ORDER_EXPIRED_EVENTS = 'diamondOrderExpiredEventss' as const;
+export const TABLE_DIAMOND_ORDER_PLACED_WITH_TOKENS_EVENTS = 'diamondOrderPlacedWithTokensEventss' as const;
+export const TABLE_DIAMOND_ROUTER_ORDER_PLACED_EVENTS = 'diamondRouterOrderPlacedEventss' as const;
+export const TABLE_DIAMOND_BOUNTY_PAID_EVENTS = 'diamondBountyPaidEventss' as const;
+export const TABLE_DIAMOND_BRIDGE_FEE_RECIPIENT_UPDATED_EVENTS = 'diamondBridgeFeeRecipientUpdatedEventss' as const;
+export const TABLE_DIAMOND_BRIDGE_ORDER_CANCELLED_EVENTS = 'diamondBridgeOrderCancelledEventss' as const;
+export const TABLE_DIAMOND_FUNDS_ESCROWED_EVENTS = 'diamondFundsEscrowedEventss' as const;
+export const TABLE_DIAMOND_FUNDS_REFUNDED_EVENTS = 'diamondFundsRefundedEventss' as const;
+export const TABLE_DIAMOND_JOURNEY_STATUS_UPDATED_EVENTS = 'diamondJourneyStatusUpdatedEventss' as const;
+export const TABLE_DIAMOND_LOGISTICS_ORDER_CREATED_EVENTS = 'diamondLogisticsOrderCreatedEventss' as const;
+export const TABLE_DIAMOND_ORDER_SETTLED_EVENTS = 'diamondOrderSettledEventss' as const;
+export const TABLE_DIAMOND_TRADE_MATCHED_EVENTS = 'diamondTradeMatchedEventss' as const;
+export const TABLE_DIAMOND_UNIFIED_ORDER_CREATED_EVENTS = 'diamondUnifiedOrderCreatedEventss' as const;
+export const TABLE_DIAMOND_COLLATERAL_RETURNED_EVENTS = 'diamondCollateralReturnedEventss' as const;
+export const TABLE_DIAMOND_COMMODITY_STAKED_EVENTS = 'diamondCommodityStakedEventss' as const;
+export const TABLE_DIAMOND_COMMODITY_UNSTAKED_EVENTS = 'diamondCommodityUnstakedEventss' as const;
+export const TABLE_DIAMOND_CONFIG_UPDATED_EVENTS = 'diamondConfigUpdatedEventss' as const;
+export const TABLE_DIAMOND_CUSTODY_PROOF_SUBMITTED_EVENTS = 'diamondCustodyProofSubmittedEventss' as const;
+export const TABLE_DIAMOND_DELIVERY_CONFIRMED_EVENTS = 'diamondDeliveryConfirmedEventss' as const;
+export const TABLE_DIAMOND_DELIVERY_STARTED_EVENTS = 'diamondDeliveryStartedEventss' as const;
+export const TABLE_DIAMOND_INSURANCE_UPDATED_EVENTS = 'diamondInsuranceUpdatedEventss' as const;
+export const TABLE_DIAMOND_OPPORTUNITY_CANCELLED_EVENTS = 'diamondOpportunityCancelledEventss' as const;
+export const TABLE_DIAMOND_OPPORTUNITY_COMPLETED_EVENTS = 'diamondOpportunityCompletedEventss' as const;
+export const TABLE_DIAMOND_OPPORTUNITY_CREATED_EVENTS = 'diamondOpportunityCreatedEventss' as const;
+export const TABLE_DIAMOND_OPPORTUNITY_FUNDED_EVENTS = 'diamondOpportunityFundedEventss' as const;
+export const TABLE_DIAMOND_PROCESSING_COMPLETED_EVENTS = 'diamondProcessingCompletedEventss' as const;
+export const TABLE_DIAMOND_PROCESSING_STARTED_EVENTS = 'diamondProcessingStartedEventss' as const;
+export const TABLE_DIAMOND_PROFIT_DISTRIBUTED_EVENTS = 'diamondProfitDistributedEventss' as const;
+export const TABLE_DIAMOND_SALE_PROCEEDS_RECORDED_EVENTS = 'diamondSaleProceedsRecordedEventss' as const;
+export const TABLE_DIAMOND_TOKENIZATION_PROOF_SUBMITTED_EVENTS = 'diamondTokenizationProofSubmittedEventss' as const;
+export const TABLE_DIAMOND_CIRCUIT_BREAKER_CONFIGURED_EVENTS = 'diamondCircuitBreakerConfiguredEventss' as const;
+export const TABLE_DIAMOND_CIRCUIT_BREAKER_RESET_EVENTS = 'diamondCircuitBreakerResetEventss' as const;
+export const TABLE_DIAMOND_CIRCUIT_BREAKER_TRIPPED_EVENTS = 'diamondCircuitBreakerTrippedEventss' as const;
+export const TABLE_DIAMOND_FEE_RECIPIENT_UPDATED_EVENTS = 'diamondFeeRecipientUpdatedEventss' as const;
+export const TABLE_DIAMOND_FEES_UPDATED_EVENTS = 'diamondFeesUpdatedEventss' as const;
+export const TABLE_DIAMOND_GLOBAL_PAUSE_EVENTS = 'diamondGlobalPauseEventss' as const;
+export const TABLE_DIAMOND_M_E_V_PROTECTION_UPDATED_EVENTS = 'diamondMEVProtectionUpdatedEventss' as const;
+export const TABLE_DIAMOND_MARKET_PAUSED_EVENTS = 'diamondMarketPausedEventss' as const;
+export const TABLE_DIAMOND_MARKET_UNPAUSED_EVENTS = 'diamondMarketUnpausedEventss' as const;
+export const TABLE_DIAMOND_RATE_LIMITS_UPDATED_EVENTS = 'diamondRateLimitsUpdatedEventss' as const;
+export const TABLE_DIAMOND_ORDER_COMMITTED_EVENTS = 'diamondOrderCommittedEventss' as const;
+export const TABLE_DIAMOND_ORDER_REVEALED_EVENTS = 'diamondOrderRevealedEventss' as const;
+export const TABLE_DIAMOND_AU_SYS_ADMIN_REVOKED_EVENTS = 'diamondAuSysAdminRevokedEventss' as const;
+export const TABLE_DIAMOND_AU_SYS_ADMIN_SET_EVENTS = 'diamondAuSysAdminSetEventss' as const;
+export const TABLE_DIAMOND_AU_SYS_JOURNEY_STATUS_UPDATED_EVENTS = 'diamondAuSysJourneyStatusUpdatedEventss' as const;
+export const TABLE_DIAMOND_AU_SYS_ORDER_CREATED_EVENTS = 'diamondAuSysOrderCreatedEventss' as const;
+export const TABLE_DIAMOND_AU_SYS_ORDER_SETTLED_EVENTS = 'diamondAuSysOrderSettledEventss' as const;
+export const TABLE_DIAMOND_AU_SYS_ORDER_STATUS_UPDATED_EVENTS = 'diamondAuSysOrderStatusUpdatedEventss' as const;
+export const TABLE_DIAMOND_DRIVER_ASSIGNED_EVENTS = 'diamondDriverAssignedEventss' as const;
 export const TABLE_DIAMOND_EMIT_SIG_EVENTS = 'diamondEmitSigEventss' as const;
-export const TABLE_DIAMOND_JOURNEY_CANCELED_EVENTS =
-  'diamondJourneyCanceledEventss' as const;
-export const TABLE_DIAMOND_JOURNEY_CREATED_EVENTS =
-  'diamondJourneyCreatedEventss' as const;
-export const TABLE_DIAMOND_NODE_FEE_DISTRIBUTED_EVENTS =
-  'diamondNodeFeeDistributedEventss' as const;
-export const TABLE_DIAMOND_ORDER_QUANTITY_CORRECTED_EVENTS =
-  'diamondOrderQuantityCorrectedEventss' as const;
-export const TABLE_DIAMOND_P2_P_OFFER_ACCEPTED_EVENTS =
-  'diamondP2POfferAcceptedEventss' as const;
-export const TABLE_DIAMOND_P2_P_OFFER_CANCELED_EVENTS =
-  'diamondP2POfferCanceledEventss' as const;
-export const TABLE_DIAMOND_P2_P_OFFER_CREATED_EVENTS =
-  'diamondP2POfferCreatedEventss' as const;
-export const TABLE_DIAMOND_SELLER_PAID_EVENTS =
-  'diamondSellerPaidEventss' as const;
-export const TABLE_DIAMOND_APPROVAL_FOR_ALL_EVENTS =
-  'diamondApprovalForAllEventss' as const;
-export const TABLE_DIAMOND_ASSET_ATTRIBUTE_ADDED_EVENTS =
-  'diamondAssetAttributeAddedEventss' as const;
-export const TABLE_DIAMOND_CUSTODY_ESTABLISHED_EVENTS =
-  'diamondCustodyEstablishedEventss' as const;
-export const TABLE_DIAMOND_CUSTODY_RELEASED_EVENTS =
-  'diamondCustodyReleasedEventss' as const;
-export const TABLE_DIAMOND_MINTED_ASSET_EVENTS =
-  'diamondMintedAssetEventss' as const;
-export const TABLE_DIAMOND_SUPPORTED_CLASS_ADDED_EVENTS =
-  'diamondSupportedClassAddedEventss' as const;
-export const TABLE_DIAMOND_SUPPORTED_CLASS_REMOVED_EVENTS =
-  'diamondSupportedClassRemovedEventss' as const;
-export const TABLE_DIAMOND_TRANSFER_BATCH_EVENTS =
-  'diamondTransferBatchEventss' as const;
-export const TABLE_DIAMOND_TRANSFER_SINGLE_EVENTS =
-  'diamondTransferSingleEventss' as const;
+export const TABLE_DIAMOND_JOURNEY_CANCELED_EVENTS = 'diamondJourneyCanceledEventss' as const;
+export const TABLE_DIAMOND_JOURNEY_CREATED_EVENTS = 'diamondJourneyCreatedEventss' as const;
+export const TABLE_DIAMOND_NODE_FEE_DISTRIBUTED_EVENTS = 'diamondNodeFeeDistributedEventss' as const;
+export const TABLE_DIAMOND_ORDER_QUANTITY_CORRECTED_EVENTS = 'diamondOrderQuantityCorrectedEventss' as const;
+export const TABLE_DIAMOND_P2_P_OFFER_ACCEPTED_EVENTS = 'diamondP2POfferAcceptedEventss' as const;
+export const TABLE_DIAMOND_P2_P_OFFER_CANCELED_EVENTS = 'diamondP2POfferCanceledEventss' as const;
+export const TABLE_DIAMOND_P2_P_OFFER_CREATED_EVENTS = 'diamondP2POfferCreatedEventss' as const;
+export const TABLE_DIAMOND_SELLER_PAID_EVENTS = 'diamondSellerPaidEventss' as const;
+export const TABLE_DIAMOND_APPROVAL_FOR_ALL_EVENTS = 'diamondApprovalForAllEventss' as const;
+export const TABLE_DIAMOND_ASSET_ATTRIBUTE_ADDED_EVENTS = 'diamondAssetAttributeAddedEventss' as const;
+export const TABLE_DIAMOND_CUSTODY_ESTABLISHED_EVENTS = 'diamondCustodyEstablishedEventss' as const;
+export const TABLE_DIAMOND_CUSTODY_RELEASED_EVENTS = 'diamondCustodyReleasedEventss' as const;
+export const TABLE_DIAMOND_MINTED_ASSET_EVENTS = 'diamondMintedAssetEventss' as const;
+export const TABLE_DIAMOND_SUPPORTED_CLASS_ADDED_EVENTS = 'diamondSupportedClassAddedEventss' as const;
+export const TABLE_DIAMOND_SUPPORTED_CLASS_REMOVED_EVENTS = 'diamondSupportedClassRemovedEventss' as const;
+export const TABLE_DIAMOND_TRANSFER_BATCH_EVENTS = 'diamondTransferBatchEventss' as const;
+export const TABLE_DIAMOND_TRANSFER_SINGLE_EVENTS = 'diamondTransferSingleEventss' as const;
 export const TABLE_DIAMOND_U_R_I_EVENTS = 'diamondURIEventss' as const;
 
 // All valid table names for validation
@@ -209,6 +118,7 @@ export const VALID_TABLE_NAMES = [
   'diamondNodeRegisteredEventss',
   'diamondNodeSellOrderPlacedEventss',
   'diamondNodeUpdatedEventss',
+  'diamondNodeVaultCreatedEventss',
   'diamondSupportedAssetAddedEventss',
   'diamondSupportedAssetsUpdatedEventss',
   'diamondSupportingDocumentAddedEventss',
@@ -295,7 +205,7 @@ export const VALID_TABLE_NAMES = [
   'diamondURIEventss',
 ] as const;
 
-export type ValidTableName = (typeof VALID_TABLE_NAMES)[number];
+export type ValidTableName = typeof VALID_TABLE_NAMES[number];
 
 // ============================================================================
 // EVENT RESPONSE TYPES
@@ -389,6 +299,16 @@ export interface diamondNodeUpdatedEvent {
   node_hash: string;
   node_type: string;
   capacity: string;
+  block_number: string;
+  block_timestamp: string;
+  transaction_hash: string;
+}
+
+export interface diamondNodeVaultCreatedEvent {
+  id: string;
+  node_hash: string;
+  vault: string;
+  asset: string;
   block_number: string;
   block_timestamp: string;
   transaction_hash: string;
@@ -1382,6 +1302,10 @@ export interface diamondNodeUpdatedEventsResponse {
   diamondNodeUpdatedEventss: PonderItemsResponse<diamondNodeUpdatedEvent>;
 }
 
+export interface diamondNodeVaultCreatedEventsResponse {
+  diamondNodeVaultCreatedEventss: PonderItemsResponse<diamondNodeVaultCreatedEvent>;
+}
+
 export interface diamondSupportedAssetAddedEventsResponse {
   diamondSupportedAssetAddedEventss: PonderItemsResponse<diamondSupportedAssetAddedEvent>;
 }
@@ -1810,6 +1734,16 @@ export const FIELDS_DIAMOND_NODE_UPDATED_EVENTS = [
   'node_hash',
   'node_type',
   'capacity',
+  'block_number',
+  'block_timestamp',
+  'transaction_hash',
+] as const;
+
+export const FIELDS_DIAMOND_NODE_VAULT_CREATED_EVENTS = [
+  'id',
+  'node_hash',
+  'vault',
+  'asset',
   'block_number',
   'block_timestamp',
   'transaction_hash',
@@ -2761,13 +2695,13 @@ export function validateQueryTableNames(query: string): void {
   // Extract table names from query (pattern: tableName( or tableName {)
   const tableNamePattern = /([a-zA-Z]+[a-zA-Z0-9]*(?:Eventss|ss))\s*[({]/g;
   let match;
-
+  
   while ((match = tableNamePattern.exec(query)) !== null) {
     const tableName = match[1];
     if (!VALID_TABLE_NAMES.includes(tableName as ValidTableName)) {
       throw new Error(
         `Invalid GraphQL table name: "${tableName}". \n` +
-          `Valid table names are: ${VALID_TABLE_NAMES.slice(0, 5).join(', ')}...`,
+        `Valid table names are: ${VALID_TABLE_NAMES.slice(0, 5).join(', ')}...`
       );
     }
   }
@@ -2785,101 +2719,101 @@ export function isValidTableName(name: string): name is ValidTableName {
  */
 export function getTableName(eventName: string): ValidTableName | undefined {
   const mapping: Record<string, ValidTableName> = {
-    ClobApprovalGranted: 'diamondClobApprovalGrantedEventss',
-    ClobApprovalRevoked: 'diamondClobApprovalRevokedEventss',
-    Initialized: 'diamondInitializedEventss',
-    NodeAdminRevoked: 'diamondNodeAdminRevokedEventss',
-    NodeAdminSet: 'diamondNodeAdminSetEventss',
-    NodeCapacityUpdated: 'diamondNodeCapacityUpdatedEventss',
-    NodeDeactivated: 'diamondNodeDeactivatedEventss',
-    NodeRegistered: 'diamondNodeRegisteredEventss',
-    NodeSellOrderPlaced: 'diamondNodeSellOrderPlacedEventss',
-    NodeUpdated: 'diamondNodeUpdatedEventss',
-    SupportedAssetAdded: 'diamondSupportedAssetAddedEventss',
-    SupportedAssetsUpdated: 'diamondSupportedAssetsUpdatedEventss',
-    SupportingDocumentAdded: 'diamondSupportingDocumentAddedEventss',
-    SupportingDocumentRemoved: 'diamondSupportingDocumentRemovedEventss',
-    TokensDepositedToNode: 'diamondTokensDepositedToNodeEventss',
-    TokensMintedToNode: 'diamondTokensMintedToNodeEventss',
-    TokensTransferredBetweenNodes:
-      'diamondTokensTransferredBetweenNodesEventss',
-    TokensWithdrawnFromNode: 'diamondTokensWithdrawnFromNodeEventss',
-    UpdateLocation: 'diamondUpdateLocationEventss',
-    UpdateOwner: 'diamondUpdateOwnerEventss',
-    UpdateStatus: 'diamondUpdateStatusEventss',
-    CLOBOrderCancelled: 'diamondCLOBOrderCancelledEventss',
-    CLOBOrderFilled: 'diamondCLOBOrderFilledEventss',
-    CLOBTradeExecuted: 'diamondCLOBTradeExecutedEventss',
-    MarketCreated: 'diamondMarketCreatedEventss',
-    OrderCreated: 'diamondOrderCreatedEventss',
-    OrderExpired: 'diamondOrderExpiredEventss',
-    OrderPlacedWithTokens: 'diamondOrderPlacedWithTokensEventss',
-    RouterOrderPlaced: 'diamondRouterOrderPlacedEventss',
-    BountyPaid: 'diamondBountyPaidEventss',
-    BridgeFeeRecipientUpdated: 'diamondBridgeFeeRecipientUpdatedEventss',
-    BridgeOrderCancelled: 'diamondBridgeOrderCancelledEventss',
-    FundsEscrowed: 'diamondFundsEscrowedEventss',
-    FundsRefunded: 'diamondFundsRefundedEventss',
-    JourneyStatusUpdated: 'diamondJourneyStatusUpdatedEventss',
-    LogisticsOrderCreated: 'diamondLogisticsOrderCreatedEventss',
-    OrderSettled: 'diamondOrderSettledEventss',
-    TradeMatched: 'diamondTradeMatchedEventss',
-    UnifiedOrderCreated: 'diamondUnifiedOrderCreatedEventss',
-    CollateralReturned: 'diamondCollateralReturnedEventss',
-    CommodityStaked: 'diamondCommodityStakedEventss',
-    CommodityUnstaked: 'diamondCommodityUnstakedEventss',
-    ConfigUpdated: 'diamondConfigUpdatedEventss',
-    CustodyProofSubmitted: 'diamondCustodyProofSubmittedEventss',
-    DeliveryConfirmed: 'diamondDeliveryConfirmedEventss',
-    DeliveryStarted: 'diamondDeliveryStartedEventss',
-    InsuranceUpdated: 'diamondInsuranceUpdatedEventss',
-    OpportunityCancelled: 'diamondOpportunityCancelledEventss',
-    OpportunityCompleted: 'diamondOpportunityCompletedEventss',
-    OpportunityCreated: 'diamondOpportunityCreatedEventss',
-    OpportunityFunded: 'diamondOpportunityFundedEventss',
-    ProcessingCompleted: 'diamondProcessingCompletedEventss',
-    ProcessingStarted: 'diamondProcessingStartedEventss',
-    ProfitDistributed: 'diamondProfitDistributedEventss',
-    SaleProceedsRecorded: 'diamondSaleProceedsRecordedEventss',
-    TokenizationProofSubmitted: 'diamondTokenizationProofSubmittedEventss',
-    CircuitBreakerConfigured: 'diamondCircuitBreakerConfiguredEventss',
-    CircuitBreakerReset: 'diamondCircuitBreakerResetEventss',
-    CircuitBreakerTripped: 'diamondCircuitBreakerTrippedEventss',
-    FeeRecipientUpdated: 'diamondFeeRecipientUpdatedEventss',
-    FeesUpdated: 'diamondFeesUpdatedEventss',
-    GlobalPause: 'diamondGlobalPauseEventss',
-    MEVProtectionUpdated: 'diamondMEVProtectionUpdatedEventss',
-    MarketPaused: 'diamondMarketPausedEventss',
-    MarketUnpaused: 'diamondMarketUnpausedEventss',
-    RateLimitsUpdated: 'diamondRateLimitsUpdatedEventss',
-    OrderCommitted: 'diamondOrderCommittedEventss',
-    OrderRevealed: 'diamondOrderRevealedEventss',
-    AuSysAdminRevoked: 'diamondAuSysAdminRevokedEventss',
-    AuSysAdminSet: 'diamondAuSysAdminSetEventss',
-    AuSysJourneyStatusUpdated: 'diamondAuSysJourneyStatusUpdatedEventss',
-    AuSysOrderCreated: 'diamondAuSysOrderCreatedEventss',
-    AuSysOrderSettled: 'diamondAuSysOrderSettledEventss',
-    AuSysOrderStatusUpdated: 'diamondAuSysOrderStatusUpdatedEventss',
-    DriverAssigned: 'diamondDriverAssignedEventss',
-    EmitSig: 'diamondEmitSigEventss',
-    JourneyCanceled: 'diamondJourneyCanceledEventss',
-    JourneyCreated: 'diamondJourneyCreatedEventss',
-    NodeFeeDistributed: 'diamondNodeFeeDistributedEventss',
-    OrderQuantityCorrected: 'diamondOrderQuantityCorrectedEventss',
-    P2POfferAccepted: 'diamondP2POfferAcceptedEventss',
-    P2POfferCanceled: 'diamondP2POfferCanceledEventss',
-    P2POfferCreated: 'diamondP2POfferCreatedEventss',
-    SellerPaid: 'diamondSellerPaidEventss',
-    ApprovalForAll: 'diamondApprovalForAllEventss',
-    AssetAttributeAdded: 'diamondAssetAttributeAddedEventss',
-    CustodyEstablished: 'diamondCustodyEstablishedEventss',
-    CustodyReleased: 'diamondCustodyReleasedEventss',
-    MintedAsset: 'diamondMintedAssetEventss',
-    SupportedClassAdded: 'diamondSupportedClassAddedEventss',
-    SupportedClassRemoved: 'diamondSupportedClassRemovedEventss',
-    TransferBatch: 'diamondTransferBatchEventss',
-    TransferSingle: 'diamondTransferSingleEventss',
-    URI: 'diamondURIEventss',
+    'ClobApprovalGranted': 'diamondClobApprovalGrantedEventss',
+    'ClobApprovalRevoked': 'diamondClobApprovalRevokedEventss',
+    'Initialized': 'diamondInitializedEventss',
+    'NodeAdminRevoked': 'diamondNodeAdminRevokedEventss',
+    'NodeAdminSet': 'diamondNodeAdminSetEventss',
+    'NodeCapacityUpdated': 'diamondNodeCapacityUpdatedEventss',
+    'NodeDeactivated': 'diamondNodeDeactivatedEventss',
+    'NodeRegistered': 'diamondNodeRegisteredEventss',
+    'NodeSellOrderPlaced': 'diamondNodeSellOrderPlacedEventss',
+    'NodeUpdated': 'diamondNodeUpdatedEventss',
+    'NodeVaultCreated': 'diamondNodeVaultCreatedEventss',
+    'SupportedAssetAdded': 'diamondSupportedAssetAddedEventss',
+    'SupportedAssetsUpdated': 'diamondSupportedAssetsUpdatedEventss',
+    'SupportingDocumentAdded': 'diamondSupportingDocumentAddedEventss',
+    'SupportingDocumentRemoved': 'diamondSupportingDocumentRemovedEventss',
+    'TokensDepositedToNode': 'diamondTokensDepositedToNodeEventss',
+    'TokensMintedToNode': 'diamondTokensMintedToNodeEventss',
+    'TokensTransferredBetweenNodes': 'diamondTokensTransferredBetweenNodesEventss',
+    'TokensWithdrawnFromNode': 'diamondTokensWithdrawnFromNodeEventss',
+    'UpdateLocation': 'diamondUpdateLocationEventss',
+    'UpdateOwner': 'diamondUpdateOwnerEventss',
+    'UpdateStatus': 'diamondUpdateStatusEventss',
+    'CLOBOrderCancelled': 'diamondCLOBOrderCancelledEventss',
+    'CLOBOrderFilled': 'diamondCLOBOrderFilledEventss',
+    'CLOBTradeExecuted': 'diamondCLOBTradeExecutedEventss',
+    'MarketCreated': 'diamondMarketCreatedEventss',
+    'OrderCreated': 'diamondOrderCreatedEventss',
+    'OrderExpired': 'diamondOrderExpiredEventss',
+    'OrderPlacedWithTokens': 'diamondOrderPlacedWithTokensEventss',
+    'RouterOrderPlaced': 'diamondRouterOrderPlacedEventss',
+    'BountyPaid': 'diamondBountyPaidEventss',
+    'BridgeFeeRecipientUpdated': 'diamondBridgeFeeRecipientUpdatedEventss',
+    'BridgeOrderCancelled': 'diamondBridgeOrderCancelledEventss',
+    'FundsEscrowed': 'diamondFundsEscrowedEventss',
+    'FundsRefunded': 'diamondFundsRefundedEventss',
+    'JourneyStatusUpdated': 'diamondJourneyStatusUpdatedEventss',
+    'LogisticsOrderCreated': 'diamondLogisticsOrderCreatedEventss',
+    'OrderSettled': 'diamondOrderSettledEventss',
+    'TradeMatched': 'diamondTradeMatchedEventss',
+    'UnifiedOrderCreated': 'diamondUnifiedOrderCreatedEventss',
+    'CollateralReturned': 'diamondCollateralReturnedEventss',
+    'CommodityStaked': 'diamondCommodityStakedEventss',
+    'CommodityUnstaked': 'diamondCommodityUnstakedEventss',
+    'ConfigUpdated': 'diamondConfigUpdatedEventss',
+    'CustodyProofSubmitted': 'diamondCustodyProofSubmittedEventss',
+    'DeliveryConfirmed': 'diamondDeliveryConfirmedEventss',
+    'DeliveryStarted': 'diamondDeliveryStartedEventss',
+    'InsuranceUpdated': 'diamondInsuranceUpdatedEventss',
+    'OpportunityCancelled': 'diamondOpportunityCancelledEventss',
+    'OpportunityCompleted': 'diamondOpportunityCompletedEventss',
+    'OpportunityCreated': 'diamondOpportunityCreatedEventss',
+    'OpportunityFunded': 'diamondOpportunityFundedEventss',
+    'ProcessingCompleted': 'diamondProcessingCompletedEventss',
+    'ProcessingStarted': 'diamondProcessingStartedEventss',
+    'ProfitDistributed': 'diamondProfitDistributedEventss',
+    'SaleProceedsRecorded': 'diamondSaleProceedsRecordedEventss',
+    'TokenizationProofSubmitted': 'diamondTokenizationProofSubmittedEventss',
+    'CircuitBreakerConfigured': 'diamondCircuitBreakerConfiguredEventss',
+    'CircuitBreakerReset': 'diamondCircuitBreakerResetEventss',
+    'CircuitBreakerTripped': 'diamondCircuitBreakerTrippedEventss',
+    'FeeRecipientUpdated': 'diamondFeeRecipientUpdatedEventss',
+    'FeesUpdated': 'diamondFeesUpdatedEventss',
+    'GlobalPause': 'diamondGlobalPauseEventss',
+    'MEVProtectionUpdated': 'diamondMEVProtectionUpdatedEventss',
+    'MarketPaused': 'diamondMarketPausedEventss',
+    'MarketUnpaused': 'diamondMarketUnpausedEventss',
+    'RateLimitsUpdated': 'diamondRateLimitsUpdatedEventss',
+    'OrderCommitted': 'diamondOrderCommittedEventss',
+    'OrderRevealed': 'diamondOrderRevealedEventss',
+    'AuSysAdminRevoked': 'diamondAuSysAdminRevokedEventss',
+    'AuSysAdminSet': 'diamondAuSysAdminSetEventss',
+    'AuSysJourneyStatusUpdated': 'diamondAuSysJourneyStatusUpdatedEventss',
+    'AuSysOrderCreated': 'diamondAuSysOrderCreatedEventss',
+    'AuSysOrderSettled': 'diamondAuSysOrderSettledEventss',
+    'AuSysOrderStatusUpdated': 'diamondAuSysOrderStatusUpdatedEventss',
+    'DriverAssigned': 'diamondDriverAssignedEventss',
+    'EmitSig': 'diamondEmitSigEventss',
+    'JourneyCanceled': 'diamondJourneyCanceledEventss',
+    'JourneyCreated': 'diamondJourneyCreatedEventss',
+    'NodeFeeDistributed': 'diamondNodeFeeDistributedEventss',
+    'OrderQuantityCorrected': 'diamondOrderQuantityCorrectedEventss',
+    'P2POfferAccepted': 'diamondP2POfferAcceptedEventss',
+    'P2POfferCanceled': 'diamondP2POfferCanceledEventss',
+    'P2POfferCreated': 'diamondP2POfferCreatedEventss',
+    'SellerPaid': 'diamondSellerPaidEventss',
+    'ApprovalForAll': 'diamondApprovalForAllEventss',
+    'AssetAttributeAdded': 'diamondAssetAttributeAddedEventss',
+    'CustodyEstablished': 'diamondCustodyEstablishedEventss',
+    'CustodyReleased': 'diamondCustodyReleasedEventss',
+    'MintedAsset': 'diamondMintedAssetEventss',
+    'SupportedClassAdded': 'diamondSupportedClassAddedEventss',
+    'SupportedClassRemoved': 'diamondSupportedClassRemovedEventss',
+    'TransferBatch': 'diamondTransferBatchEventss',
+    'TransferSingle': 'diamondTransferSingleEventss',
+    'URI': 'diamondURIEventss',
   };
   return mapping[eventName];
 }
@@ -2928,8 +2862,5 @@ export const COLUMN_NAME_MAP: Record<string, string> = {
  * Convert camelCase field name to snake_case column name
  */
 export function toColumnName(fieldName: string): string {
-  return (
-    COLUMN_NAME_MAP[fieldName] ||
-    fieldName.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)
-  );
+  return COLUMN_NAME_MAP[fieldName] || fieldName.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
 }

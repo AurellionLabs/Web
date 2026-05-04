@@ -7,6 +7,7 @@
       "addSupportingDocument": "0x284b031b",
       "approveAusysForTokens": "0x9b714d01",
       "approveClobForTokens": "0x40ed3118",
+      "createNodeVault": "0x0dc384c0",
       "creditNodeTokens": "0x0a063811",
       "deactivateNode": "0xa2444390",
       "debitNodeTokens": "0x4794010e",
@@ -23,6 +24,8 @@
       "getNodeStatus": "0xb65f8177",
       "getNodeTokenBalance": "0x2159e90e",
       "getNodeTokenIds": "0x653a5887",
+      "getNodeVault": "0x395609a6",
+      "getNodeVaultNav": "0x23b1a2d5",
       "getOwnerNodes": "0xb59d3bea",
       "getSupportingDocumentCount": "0x5310993c",
       "getSupportingDocuments": "0x8a1dd33d",
@@ -64,6 +67,7 @@
       "0x284b031b",
       "0x9b714d01",
       "0x40ed3118",
+      "0x0dc384c0",
       "0x0a063811",
       "0xa2444390",
       "0x4794010e",
@@ -80,6 +84,8 @@
       "0xb65f8177",
       "0x2159e90e",
       "0x653a5887",
+      "0x395609a6",
+      "0x23b1a2d5",
       "0xb59d3bea",
       "0x5310993c",
       "0x8a1dd33d",
@@ -127,7 +133,7 @@
       "acceptP2POfferWithPickupNode": "0xeabff2ba",
       "assignDriverToJourney": "0x26ed9054",
       "cancelP2POffer": "0xf8919799",
-      "createAuSysOrder": "0x10c0dfcc",
+      "createAuSysOrder": "0xfc9fd69b",
       "createJourney": "0x32807bbc",
       "createOrderJourney": "0xd975d24e",
       "handOff": "0x9d99e418",
@@ -147,7 +153,7 @@
       "0xeabff2ba",
       "0x26ed9054",
       "0xf8919799",
-      "0x10c0dfcc",
+      "0xfc9fd69b",
       "0x32807bbc",
       "0xd975d24e",
       "0x9d99e418",
@@ -286,7 +292,12 @@
       "onERC1155BatchReceived": "0xbc197c81",
       "onERC1155Received": "0xf23a6e61"
     },
-    "allSelectors": ["0xe1f1c4a7", "0x76e8374b", "0xbc197c81", "0xf23a6e61"]
+    "allSelectors": [
+      "0xe1f1c4a7",
+      "0x76e8374b",
+      "0xbc197c81",
+      "0xf23a6e61"
+    ]
   },
   "CLOBAdminFacet": {
     "selectors": {
@@ -452,7 +463,11 @@
       "onERC1155Received": "0xf23a6e61",
       "supportsInterface": "0x01ffc9a7"
     },
-    "allSelectors": ["0xbc197c81", "0xf23a6e61", "0x01ffc9a7"]
+    "allSelectors": [
+      "0xbc197c81",
+      "0xf23a6e61",
+      "0x01ffc9a7"
+    ]
   },
   "OperatorFacet": {
     "selectors": {

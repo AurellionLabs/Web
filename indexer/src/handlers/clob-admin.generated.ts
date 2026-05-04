@@ -1,25 +1,14 @@
 // Auto-generated handler for clob-admin domain
-// Generated at: 2026-03-10T19:30:30.104Z
+// Generated at: 2026-05-04T13:18:30.547Z
 //
 // Inline aggregate writes: raw event insert + aggregate table upsert in ONE ponder.on() handler.
 // This avoids the Ponder 0.16 restriction: only one ponder.on() per event name is allowed.
 // Events from: CLOBAdminFacet
 
-import { ponder } from 'ponder:registry';
+import { ponder } from "ponder:registry";
 
 // Import event tables from generated schema
-import {
-  diamondCircuitBreakerConfiguredEvents,
-  diamondCircuitBreakerResetEvents,
-  diamondCircuitBreakerTrippedEvents,
-  diamondFeeRecipientUpdatedEvents,
-  diamondFeesUpdatedEvents,
-  diamondGlobalPauseEvents,
-  diamondMEVProtectionUpdatedEvents,
-  diamondMarketPausedEvents,
-  diamondMarketUnpausedEvents,
-  diamondRateLimitsUpdatedEvents,
-} from 'ponder:schema';
+import { diamondCircuitBreakerConfiguredEvents, diamondCircuitBreakerResetEvents, diamondCircuitBreakerTrippedEvents, diamondFeeRecipientUpdatedEvents, diamondFeesUpdatedEvents, diamondGlobalPauseEvents, diamondMEVProtectionUpdatedEvents, diamondMarketPausedEvents, diamondMarketUnpausedEvents, diamondRateLimitsUpdatedEvents } from "ponder:schema";
 
 // Utility functions
 const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
@@ -34,8 +23,7 @@ const eventId = (txHash: string, logIndex: number) => `${txHash}-${logIndex}`;
  * Hash: 0x58807e46
  */
 ponder.on('Diamond:CircuitBreakerConfigured', async ({ event, context }) => {
-  const { marketId, priceChangeThreshold, cooldownPeriod, isEnabled } =
-    event.args;
+  const { marketId, priceChangeThreshold, cooldownPeriod, isEnabled } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Raw event insert
@@ -77,13 +65,7 @@ ponder.on('Diamond:CircuitBreakerReset', async ({ event, context }) => {
  * Hash: 0x5953204a
  */
 ponder.on('Diamond:CircuitBreakerTripped', async ({ event, context }) => {
-  const {
-    marketId,
-    triggerPrice,
-    previousPrice,
-    changePercent,
-    cooldownUntil,
-  } = event.args;
+  const { marketId, triggerPrice, previousPrice, changePercent, cooldownUntil } = event.args;
   const id = eventId(event.transaction.hash, event.log.logIndex);
 
   // Raw event insert
@@ -237,3 +219,4 @@ ponder.on('Diamond:RateLimitsUpdated', async ({ event, context }) => {
     transaction_hash: event.transaction.hash,
   });
 });
+
