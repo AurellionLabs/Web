@@ -106,7 +106,10 @@ async function getDiamondContext(): Promise<DiamondContextType> {
   if (!diamondContextPromise) {
     diamondContextPromise = (async () => {
       const context = new DiamondContextCtor();
-      await context.initializeReadOnly(getRpcUrl());
+      await context.initializeReadOnly(
+        getRpcUrl(),
+        NEXT_PUBLIC_DEFAULT_CHAIN_ID,
+      );
       return context;
     })();
   }
