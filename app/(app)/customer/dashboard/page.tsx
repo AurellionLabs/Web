@@ -1,8 +1,15 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useMainProvider } from '@/app/providers/main.provider';
 import { useCustomer } from '@/app/providers/customer.provider';
+import { useDiamond } from '@/app/providers/diamond.provider';
 import {
   EvaPanel,
   HexStatCard,
@@ -71,16 +78,22 @@ import { P2PDeliveryDetails, P2POffer, P2POfferStatus } from '@/domain/p2p';
 import { NEXT_PUBLIC_DIAMOND_ADDRESS } from '@/chain-constants';
 import { getDefaultP2PDeliveryBountyWei } from '@/config/p2p';
 import { useWallet } from '@/hooks/useWallet';
+import { graphqlRequest } from '@/infrastructure/repositories/shared/graph';
+import { getCurrentIndexerUrl } from '@/infrastructure/config/indexer-endpoint';
+import { type P2PStepTransactionMap } from '@/app/components/p2p/p2p-order-step-transactions';
 import {
   getP2PActivitySnapshot,
   isP2POrderExpanded,
   reconcileP2PExpansionOverrides,
   toggleP2POrderExpansion,
 } from '@/lib/order-expansion';
+import { getTransactionExplorerHref } from '@/lib/block-explorer';
 import { formatTokenAmount } from '@/lib/formatters';
 import { sortOrdersWithPinnedActivity } from '@/lib/order-sorting';
+import { loadP2PStepTransactionMap } from '@/lib/p2p-step-transaction-loader';
 import { getJourneyRoleConflictMessage } from '@/utils/journey-role-conflicts';
 import { useQuoteTokenMetadata } from '@/hooks/useQuoteTokenMetadata';
+import type { OrderWithAsset } from '@/app/types/shared';
 import {
   buildAssetNameLookup,
   resolveOrderAssetName,
@@ -142,8 +155,9 @@ export default function CustomerDashboard() {
     getP2PSignatureState,
     createP2PJourney,
   } = useCustomer();
+  const { diamondContext } = useDiamond();
   const { toast } = useToast();
-  const { address: walletAddress } = useWallet();
+  const { address: walletAddress, chainId: walletChainId } = useWallet();
   const { decimals: quoteTokenDecimals } = useQuoteTokenMetadata();
 
   // User holdings for redemption
@@ -261,6 +275,12 @@ export default function CustomerDashboard() {
   >({});
   // Track which P2P orders are expanded to show the flow detail
   const [expandedP2POrders, setExpandedP2POrders] = useState<
+    Record<string, boolean>
+  >({});
+  const [p2pStepTransactions, setP2PStepTransactions] = useState<
+    Record<string, P2PStepTransactionMap>
+  >({});
+  const [loadingP2PStepTransactions, setLoadingP2PStepTransactions] = useState<
     Record<string, boolean>
   >({});
   const previousP2PActivityRef = useRef<Record<string, boolean>>({});
@@ -385,6 +405,11 @@ export default function CustomerDashboard() {
     previousP2PActivityRef.current = nextActivity;
   }, [orders]);
 
+  useEffect(() => {
+    setP2PStepTransactions({});
+    setLoadingP2PStepTransactions({});
+  }, [orders]);
+
   const handleSort = (key: 'tokenQuantity' | 'price') => {
     setSortConfig((prevSort) => ({
       key,
@@ -416,6 +441,61 @@ export default function CustomerDashboard() {
   }) => {
     setExpandedP2POrders((prev) => toggleP2POrderExpansion(order, prev));
   };
+
+  const loadP2POrderStepTransactions = useCallback(
+    async (order: OrderWithAsset) => {
+      if (
+        p2pStepTransactions[order.id] ||
+        loadingP2PStepTransactions[order.id]
+      ) {
+        return;
+      }
+
+      setLoadingP2PStepTransactions((prev) => ({
+        ...prev,
+        [order.id]: true,
+      }));
+
+      try {
+        if (!diamondContext) {
+          throw new Error('Diamond not initialized');
+        }
+
+        const ausys = diamondContext.getDiamond();
+        const stepTransactions = await loadP2PStepTransactionMap({
+          order,
+          indexerUrl: getCurrentIndexerUrl(),
+          graphqlRequest,
+          getJourney: ausys.getJourney.bind(ausys),
+          logger: console,
+        });
+
+        setP2PStepTransactions((prev) => ({
+          ...prev,
+          [order.id]: stepTransactions,
+        }));
+      } catch (error) {
+        console.error(
+          '[CustomerDashboard] Failed to load P2P order step transactions:',
+          error,
+        );
+        toast({
+          title: 'Unable to load transactions',
+          description:
+            error instanceof Error
+              ? error.message
+              : 'Failed to load order step transactions.',
+          variant: 'destructive',
+        });
+      } finally {
+        setLoadingP2PStepTransactions((prev) => ({
+          ...prev,
+          [order.id]: false,
+        }));
+      }
+    },
+    [diamondContext, loadingP2PStepTransactions, p2pStepTransactions, toast],
+  );
 
   const handleSignP2PDelivery = async (orderId: string, journeyId: string) => {
     try {
@@ -1129,6 +1209,21 @@ export default function CustomerDashboard() {
                               onScheduleDelivery={handleScheduleDelivery}
                               fetchSignatureState={getP2PSignatureState}
                               isActionLoading={p2pActionLoading}
+                              stepTransactions={p2pStepTransactions[order.id]}
+                              isStepTransactionsLoading={
+                                loadingP2PStepTransactions[order.id] ?? false
+                              }
+                              onOpenStepTransactions={() => {
+                                void loadP2POrderStepTransactions(order);
+                              }}
+                              getTransactionHref={(txHash) =>
+                                getTransactionExplorerHref({
+                                  transactionHash: txHash,
+                                  walletChainId,
+                                  publicChainId: null,
+                                  viewMode: null,
+                                })
+                              }
                             />
                           </td>
                         </tr>
