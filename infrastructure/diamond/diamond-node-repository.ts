@@ -425,33 +425,41 @@ export class DiamondNodeRepository implements NodeRepository {
         return null;
       }
 
-      // Use live on-chain tokenNodeCustodyAmounts as capacity source of truth.
-      // nodeAssets.capacity is set at mint time and never decrements on sales or
-      // redemptions — using it as a floor permanently overstates capacity after any
-      // settled order. Live custody is authoritative.
-      const nodeAssets = await diamond.getNodeAssets(nodeHash);
-      const assets: NodeAsset[] = await Promise.all(
-        nodeAssets.map(async (asset: any) => {
-          const tokenId = BigInt(asset.tokenId.toString());
-          const custodyAmount = await diamond.getNodeCustodyInfo(
-            tokenId,
-            nodeHash,
-          );
-          // Live custody IS the capacity — don't use registeredCapacity as floor.
-          // If custody somehow reads 0 for a newly-minted token (race before first
-          // settlement), fall back to registeredCapacity only in that case.
-          const registeredCapacity = BigInt(asset.capacity.toString());
-          const effectiveCapacity =
-            custodyAmount > 0n ? custodyAmount : registeredCapacity;
+      let assets: NodeAsset[] = [];
+      try {
+        // Use live on-chain tokenNodeCustodyAmounts as capacity source of truth.
+        // nodeAssets.capacity is set at mint time and never decrements on sales or
+        // redemptions — using it as a floor permanently overstates capacity after any
+        // settled order. Live custody is authoritative.
+        const nodeAssets = await diamond.getNodeAssets(nodeHash);
+        assets = await Promise.all(
+          nodeAssets.map(async (asset: any) => {
+            const tokenId = BigInt(asset.tokenId.toString());
+            const custodyAmount = await diamond.getNodeCustodyInfo(
+              tokenId,
+              nodeHash,
+            );
+            // Live custody IS the capacity — don't use registeredCapacity as floor.
+            // If custody somehow reads 0 for a newly-minted token (race before first
+            // settlement), fall back to registeredCapacity only in that case.
+            const registeredCapacity = BigInt(asset.capacity.toString());
+            const effectiveCapacity =
+              custodyAmount > 0n ? custodyAmount : registeredCapacity;
 
-          return {
-            token: asset.token,
-            tokenId: asset.tokenId.toString(),
-            price: BigInt(asset.price),
-            capacity: Number(effectiveCapacity),
-          };
-        }),
-      );
+            return {
+              token: asset.token,
+              tokenId: asset.tokenId.toString(),
+              price: BigInt(asset.price),
+              capacity: Number(effectiveCapacity),
+            };
+          }),
+        );
+      } catch (assetError) {
+        console.warn(
+          '[DiamondNodeRepository] Failed to enrich node assets during getNode; returning core node metadata only:',
+          assetError,
+        );
+      }
 
       return {
         address: nodeAddress,
